@@ -3,16 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم الأمنية المباشرة | Security Telemetry Dashboard</title>
+    <title>لوحة التحكم الأمنية المباشرة | Live Dashboard</title>
     
-    <!-- Leaflet CSS for Maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Cairo Font -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
@@ -22,15 +17,15 @@
             animation: pulse-red 1.2s infinite;
         }
         @keyframes pulse-red {
-            0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
             100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen p-4 md:p-6">
 
-    <!-- Header / Navbar -->
+    <!-- Header -->
     <header class="flex flex-col md:flex-row justify-between items-center mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm gap-4">
         <div class="flex items-center gap-3">
             <div class="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 text-xl">
@@ -38,11 +33,11 @@
             </div>
             <div>
                 <h1 class="text-xl md:text-2xl font-bold text-slate-900">غرفة العمليات والمراقبة الأمنية المباشرة</h1>
-                <p class="text-xs text-slate-500">تتبع مباشر وحي لساعات Wear OS عبر Google Sheets API</p>
+                <p class="text-xs text-slate-500">تتبع حي ومباشر من Google Sheets API</p>
             </div>
         </div>
 
-        <!-- KPIs Top Right -->
+        <!-- KPIs -->
         <div class="flex flex-wrap gap-3 w-full md:w-auto">
             <div class="flex-1 md:flex-none bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center">
                 <span class="block text-[11px] text-slate-500">البث الحي</span>
@@ -51,7 +46,7 @@
                 </span>
             </div>
             <div class="flex-1 md:flex-none bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center">
-                <span class="block text-[11px] text-slate-500">إجمالي الموظفين</span>
+                <span class="block text-[11px] text-slate-500">إجمالي الأجهزة</span>
                 <span id="activeCount" class="font-bold text-blue-600 text-sm">0</span>
             </div>
             <div id="sosBadgeCard" class="flex-1 md:flex-none bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center">
@@ -61,28 +56,28 @@
         </div>
     </header>
 
-    <!-- Main Content Layout -->
+    <!-- Content -->
     <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Live Map (2 Columns) -->
+        <!-- Map -->
         <section class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
             <div class="flex justify-between items-center mb-3">
                 <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                    📍 الخريطة المباشرة والتفاعلية للموقع
+                    📍 الخريطة المباشرة والتفاعلية
                 </h2>
-                <span class="text-xs text-slate-400" id="lastUpdated">جاري الاتصال...</span>
+                <span class="text-xs text-slate-400" id="lastUpdated">جاري جلب البيانات...</span>
             </div>
             <div id="map" class="z-10 shadow-inner"></div>
         </section>
 
-        <!-- Live Feed (1 Column) -->
+        <!-- Feed -->
         <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[580px]">
             <h2 class="text-base font-bold mb-3 text-slate-800 flex items-center gap-2">
-                📡 سجل التنبيهات والأجهزة (سحي)
+                📡 سجل الأجهزة والتنبيهات الحية
             </h2>
             <div class="overflow-y-auto flex-1 pr-1 space-y-3" id="feedContainer">
                 <div class="text-center text-slate-400 py-20 text-sm">
-                    جاري جلب بيانات الـ 20 موظفاً من Google Sheets...
+                    جاري التوصيل بـ Google Sheets...
                 </div>
             </div>
         </section>
@@ -90,10 +85,8 @@
     </main>
 
     <script>
-        // الرابط الجديد المحدث
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbySKiGWIbzBje3icVcEYWyzcPRU6t31cXpMcq_Wq0d9p-x0FoD4IELDn4ZH-WoMWy0ReQ/exec";
 
-        // إعداد خريطة Leaflet
         const map = L.map('map').setView([24.7136, 46.6753], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -103,7 +96,6 @@
         let employeeMarkers = {};
         const mapBoundsGroup = L.featureGroup();
 
-        // دالة جلب البيانات الحية من Google Apps Script
         async function fetchTelemetryData() {
             try {
                 const response = await fetch(WEB_APP_URL);
@@ -113,13 +105,18 @@
                     renderDashboard(data);
                 }
             } catch (error) {
-                console.log("تحديث الاتصال مستمر...");
+                console.log("استمرار الاتصال الحي...");
             } finally {
-                document.getElementById('lastUpdated').innerText = "تحديث لايف: " + new Date().toLocaleTimeString('ar-SA');
+                document.getElementById('lastUpdated').innerText = "آخر تحديث: " + new Date().toLocaleTimeString('ar-SA');
             }
         }
 
-        // دالة عرض ورسم البيانات المباشرة
+        function checkIsSOS(statusStr) {
+            if (!statusStr) return false;
+            const s = statusStr.toString().toUpperCase();
+            return s.includes('SOS') || s.includes('EMERGENCY') || s.includes('DANGER') || s.includes('ALERT');
+        }
+
         function renderDashboard(telemetryList) {
             const feedContainer = document.getElementById('feedContainer');
             feedContainer.innerHTML = '';
@@ -127,7 +124,7 @@
             let sosCount = 0;
             const uniqueEmployees = new Map();
 
-            // ترتيب البيانات وعرض أحدث قراءة لكل موظف
+            // حفظ أحدث قراءة لكل جهاز
             telemetryList.forEach((item) => {
                 if (item.emp_id) {
                     uniqueEmployees.set(item.emp_id, item);
@@ -137,18 +134,18 @@
             let isFirstLoad = Object.keys(employeeMarkers).length === 0;
 
             uniqueEmployees.forEach((item) => {
-                const isSOS = item.status && item.status.toUpperCase() === 'SOS';
-                const isWarning = item.status && item.status.toUpperCase() === 'WARNING';
+                const isSOS = checkIsSOS(item.status);
+                const isWarning = item.status && item.status.toString().toUpperCase().includes('WARN');
                 if (isSOS) sosCount++;
 
-                // 1. تحديث الخريطة التفاعلية لايف
+                // 1. الخريطة المباشرة
                 if (item.lat && item.lng && item.lat !== 0) {
-                    const latLng = [item.lat, item.lng];
+                    const latLng = [parseFloat(item.lat), parseFloat(item.lng)];
                     const markerColor = isSOS ? '#ef4444' : (isWarning ? '#f59e0b' : '#10b981');
 
                     if (!employeeMarkers[item.emp_id]) {
                         const marker = L.circleMarker(latLng, {
-                            radius: 9,
+                            radius: 10,
                             fillColor: markerColor,
                             color: '#ffffff',
                             weight: 2,
@@ -158,32 +155,27 @@
                         marker.bindPopup(`
                             <div dir="rtl" class="p-1 font-sans text-xs">
                                 <b class="text-sm text-slate-900">${item.emp_name || item.emp_id}</b><br>
-                                <b>الرقم الوظيفي:</b> ${item.emp_id}<br>
-                                <b>نبض القلب:</b> ${item.heart_rate || '0'} BPM<br>
-                                <b>الخطوات:</b> ${item.steps || '0'}<br>
-                                <b>البطارية:</b> ${item.battery || '100%'}<br>
-                                <b>الحالة الصحية:</b> <b style="color:${markerColor}">${item.status}</b>
+                                <b>المعرف:</b> ${item.emp_id}<br>
+                                <b>النبض:</b> ${item.heart_rate || '0'} BPM<br>
+                                <b>الحالة:</b> <b style="color:${markerColor}">${item.status}</b>
                             </div>
                         `);
                         employeeMarkers[item.emp_id] = marker;
                         mapBoundsGroup.addLayer(marker);
                     } else {
-                        // تحريك الدبوس بسلاسة إلى الموقع الجديد
                         employeeMarkers[item.emp_id].setLatLng(latLng);
-                        employeeMarkers[item.emp_id].setStyle({
-                            fillColor: markerColor
-                        });
+                        employeeMarkers[item.emp_id].setStyle({ fillColor: markerColor });
                     }
                 }
 
-                // 2. تحديث قائمة الموظفين الجانبية
+                // 2. الكروت الجانبية وتغيير الألوان عند الـ SOS
                 const card = document.createElement('div');
                 let cardBg = 'bg-slate-50 border-slate-200 hover:bg-slate-100';
                 let badgeStyle = 'bg-emerald-100 text-emerald-700 border-emerald-200';
 
                 if (isSOS) {
-                    cardBg = 'bg-red-50 border-red-300 sos-pulse';
-                    badgeStyle = 'bg-red-600 text-white';
+                    cardBg = 'bg-red-50 border-red-400 sos-pulse';
+                    badgeStyle = 'bg-red-600 text-white font-bold animate-bounce';
                 } else if (isWarning) {
                     cardBg = 'bg-amber-50 border-amber-200';
                     badgeStyle = 'bg-amber-100 text-amber-800 border-amber-200';
@@ -193,12 +185,12 @@
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-1.5">
                         <div>
-                            <span class="font-bold text-sm ${isSOS ? 'text-red-600' : 'text-slate-800'}">
+                            <span class="font-bold text-sm ${isSOS ? 'text-red-600 font-black' : 'text-slate-800'}">
                                 ${item.emp_name || 'موظف'}
                             </span>
                             <span class="text-xs text-slate-400 block">ID: ${item.emp_id}</span>
                         </div>
-                        <span class="px-2.5 py-1 text-[10px] font-bold rounded-lg border ${badgeStyle}">
+                        <span class="px-2.5 py-1 text-[10px] rounded-lg border ${badgeStyle}">
                             ${item.status || 'NORMAL'}
                         </span>
                     </div>
@@ -211,24 +203,21 @@
                 feedContainer.appendChild(card);
             });
 
-            // تعديل زوم الخريطة ليشمل جميع الموظفين في المرة الأولى
             if (isFirstLoad && mapBoundsGroup.getLayers().length > 0) {
-                map.fitBounds(mapBoundsGroup.getBounds().pad(0.1));
+                map.fitBounds(mapBoundsGroup.getBounds().pad(0.15));
             }
 
-            // تحديث البطاقات العلوية
             document.getElementById('activeCount').innerText = uniqueEmployees.size;
             document.getElementById('sosCount').innerText = sosCount;
 
             const sosBadgeCard = document.getElementById('sosBadgeCard');
             if (sosCount > 0) {
-                sosBadgeCard.className = "flex-1 md:flex-none bg-red-100 border border-red-300 px-4 py-2 rounded-xl text-center sos-pulse text-red-700 font-bold";
+                sosBadgeCard.className = "flex-1 md:flex-none bg-red-100 border border-red-400 px-4 py-2 rounded-xl text-center sos-pulse text-red-700 font-bold";
             } else {
                 sosBadgeCard.className = "flex-1 md:flex-none bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center";
             }
         }
 
-        // جلب البيانات تلقائياً كل 3 ثوانٍ
         setInterval(fetchTelemetryData, 3000);
         fetchTelemetryData();
     </script>
