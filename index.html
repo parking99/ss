@@ -151,20 +151,88 @@
         @media (prefers-reduced-motion: reduce) {
             .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing { animation: none !important; }
         }
+
+        /* بوابة الدخول: طبقة كاملة الشاشة، تعمل قبل عرض أي بيانات حساسة */
+        #accessGate {
+            position: fixed; inset: 0; z-index: 200;
+            background: var(--bg-page);
+            display: flex; align-items: center; justify-content: center;
+        }
+        #accessGate .gate-card {
+            background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 1rem;
+            box-shadow: var(--shadow-md); padding: 2rem; width: 100%; max-width: 360px;
+        }
+
+        /* نافذة استعراض حالات الطوارئ الكاملة، بدل تفريغها كلها داخل الشريط العلوي */
+        #sosModalOverlay {
+            position: fixed; inset: 0; z-index: 90;
+            background: rgba(16,24,43,0.35);
+            display: flex; align-items: center; justify-content: center; padding: 1rem;
+        }
+        #sosModal {
+            background: var(--bg-panel); border-radius: 1rem; width: 100%; max-width: 480px;
+            max-height: 80vh; display: flex; flex-direction: column; box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-soft);
+        }
+        .sos-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 8px;
+            padding: 10px 12px; border-radius: 0.65rem; background: var(--sos-soft);
+            border: 1px solid #F3B9B9; margin-bottom: 6px;
+        }
+        .sos-row.acked { background: var(--bg-subtle); border-color: var(--border-soft); opacity: 0.75; }
+        .ack-btn {
+            font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+            background: var(--navy); color: #fff; flex-shrink: 0;
+        }
+        .ack-btn.done { background: var(--normal); }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
-    <!-- SOS Banner -->
-    <div id="sosBanner" class="hidden text-white px-4 py-2.5 flex justify-between items-center shadow-lg z-50" style="background-color: var(--sos);">
-        <div class="flex items-center gap-2">
-            <i data-lucide="siren" class="w-5 h-5"></i>
-            <span class="font-bold text-sm md:text-base font-display" id="sosBannerMessage">طوارئ نشطة!</span>
+    <!-- Access gate: guards the live location/health data behind a basic PIN before anything renders -->
+    <div id="accessGate">
+        <div class="gate-card">
+            <div class="flex items-center gap-2 mb-1">
+                <div class="p-2 rounded-lg" style="background: var(--navy-soft); color: var(--navy);">
+                    <i data-lucide="lock" class="w-5 h-5"></i>
+                </div>
+                <h2 class="font-bold font-display text-base" style="color: var(--text-primary);">دخول غرفة العمليات</h2>
+            </div>
+            <p class="text-xs mb-4" style="color: var(--text-secondary);">هذه الشاشة تعرض مواقع وبيانات حيوية حية للموظفين. الرجاء إدخال رمز الدخول المصرح به.</p>
+            <input type="password" id="gatePinInput" class="w-full border rounded-xl px-3 py-2 text-sm outline-none mb-2" style="border-color: var(--border-soft);" placeholder="رمز الدخول" autocomplete="off">
+            <p id="gateError" class="hidden text-xs mb-2" style="color: var(--sos);">رمز غير صحيح، حاول مرة أخرى.</p>
+            <button id="gateSubmitBtn" class="w-full py-2 rounded-xl text-sm font-bold text-white" style="background: var(--navy);">دخول</button>
+            <p class="text-[10px] mt-3" style="color: var(--text-muted);">ملاحظة أمنية: هذا حاجز أساسي على مستوى المتصفح فقط، وليس بديلاً عن توثيق فعلي في الخادم الخلفي.</p>
         </div>
-        <button id="muteAlarmBtn" class="bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
-            <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4"></i>
-            <span>كتم / تفعيل</span>
-        </button>
+    </div>
+
+    <!-- SOS Banner: مُلخّص ثابت الارتفاع بدل تفريغ كل الأسماء بشكل غير محدود -->
+    <div id="sosBanner" class="hidden text-white px-4 py-2.5 flex justify-between items-center gap-3 shadow-lg z-50" style="background-color: var(--sos);">
+        <div class="flex items-center gap-2 min-w-0">
+            <i data-lucide="siren" class="w-5 h-5 flex-shrink-0"></i>
+            <span class="font-bold text-sm md:text-base font-display flex-shrink-0" id="sosCountLabel">0 حالة طوارئ نشطة</span>
+            <span class="text-xs opacity-90 truncate hidden md:inline" id="sosNamesPreview"></span>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <button id="viewSosBtn" class="bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-lg text-xs font-semibold">عرض التفاصيل</button>
+            <button id="muteAlarmBtn" class="bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
+                <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4"></i>
+                <span>كتم / تفعيل</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- SOS review modal: full scrollable list with per-case acknowledgement -->
+    <div id="sosModalOverlay" class="hidden">
+        <div id="sosModal">
+            <div class="flex justify-between items-center p-4 border-b" style="border-color: var(--border-soft);">
+                <h3 class="font-bold font-display text-sm" style="color: var(--text-primary);">حالات الطوارئ النشطة</h3>
+                <button id="closeSosModalBtn" class="p-1 rounded-lg hover:bg-slate-100" style="color: var(--text-muted);" aria-label="إغلاق">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="sosModalList" class="p-3 overflow-y-auto text-xs" style="color: var(--text-primary);"></div>
+        </div>
     </div>
 
     <!-- Header -->
@@ -188,7 +256,10 @@
         <div class="flex items-center gap-2.5 w-full md:w-auto overflow-x-auto">
             <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                 <i data-lucide="link" class="w-4 h-4" style="color: var(--text-muted);"></i>
-                <input type="text" id="apiUrlInput" class="bg-transparent outline-none w-40 md:w-64 text-xs" style="color: var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec">
+                <input type="password" id="apiUrlInput" class="bg-transparent outline-none w-40 md:w-64 text-xs" style="color: var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec">
+                <button id="toggleUrlVisibilityBtn" class="flex-shrink-0" style="color: var(--text-muted);" aria-label="إظهار الرابط" type="button">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                </button>
             </div>
 
             <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none" style="background: var(--bg-subtle); border-color: var(--border-soft);">
@@ -313,6 +384,11 @@
         const OFFLINE_THRESHOLD_MS = 60000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 60 ثانية
         const REFRESH_INTERVAL_MS = 3000;
         const SEARCH_DEBOUNCE_MS = 250;
+        const SOS_PREVIEW_COUNT = 2; // عدد الأسماء المعروضة في الشريط قبل الطي داخل نافذة الاستعراض
+
+        // ⚠️ رمز دخول أساسي على مستوى المتصفح فقط، لأغراض الفرز البصري لا الحماية الفعلية.
+        // يجب استبداله بتوثيق حقيقي (جلسة/رمز مصادقة) في الخادم الخلفي قبل أي استخدام إنتاجي فعلي.
+        const ACCESS_PIN = '1234';
 
         let state = {
             employees: [],
@@ -327,19 +403,49 @@
             audioContext: null,
             sirenIntervalId: null,
             fetchController: null,
-            searchDebounceId: null
+            searchDebounceId: null,
+            acknowledgedSos: new Set()
         };
 
         const mapMarkers = {};
         let map = null;
 
         document.addEventListener('DOMContentLoaded', () => {
+            initAccessGate();
             initMap();
             initEventListeners();
             lucide.createIcons();
             fetchTelemetryData();
             toggleAutoRefresh(true);
         });
+
+        // بوابة دخول بسيطة: تمنع عرض أي بيانات قبل التحقق، ولا تُبقي الرمز الفعلي مكشوفًا في الواجهة
+        function initAccessGate() {
+            const gate = document.getElementById('accessGate');
+            const input = document.getElementById('gatePinInput');
+            const submitBtn = document.getElementById('gateSubmitBtn');
+            const errorMsg = document.getElementById('gateError');
+
+            if (sessionStorage.getItem('soc_authed') === '1') {
+                gate.classList.add('hidden');
+                return;
+            }
+
+            const tryUnlock = () => {
+                if (input.value === ACCESS_PIN) {
+                    sessionStorage.setItem('soc_authed', '1');
+                    gate.classList.add('hidden');
+                } else {
+                    errorMsg.classList.remove('hidden');
+                    input.value = '';
+                    input.focus();
+                }
+            };
+
+            submitBtn.addEventListener('click', tryUnlock);
+            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+            input.focus();
+        }
 
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
@@ -386,6 +492,29 @@
                 state.statusFilter = btn.getAttribute('data-filter');
                 filterEmployees();
             });
+
+            // إظهار/إخفاء رابط الـ API؛ الرابط الحقيقي يمنح وصولاً مباشرًا غير موثّق لبيانات الموقع والصحة الحية
+            const urlInput = document.getElementById('apiUrlInput');
+            document.getElementById('toggleUrlVisibilityBtn').addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                const showing = urlInput.type === 'text';
+                urlInput.type = showing ? 'password' : 'text';
+                btn.innerHTML = showing
+                    ? '<i data-lucide="eye" class="w-4 h-4"></i>'
+                    : '<i data-lucide="eye-off" class="w-4 h-4"></i>';
+                lucide.createIcons();
+            });
+
+            document.getElementById('viewSosBtn').addEventListener('click', () => {
+                document.getElementById('sosModalOverlay').classList.remove('hidden');
+                renderSosModal();
+            });
+            document.getElementById('closeSosModalBtn').addEventListener('click', () => {
+                document.getElementById('sosModalOverlay').classList.add('hidden');
+            });
+            document.getElementById('sosModalOverlay').addEventListener('click', (e) => {
+                if (e.target.id === 'sosModalOverlay') e.currentTarget.classList.add('hidden');
+            });
         }
 
         // تحديد ما إذا كان الجهاز "غير متصل" بناءً على وقت آخر تحديث
@@ -402,6 +531,18 @@
             return emp.status;
         }
 
+        // يبقي فقط أحدث سجل لكل رقم موظف، بدل عرض كل الصفوف المكررة القادمة من المصدر كما هي
+        function dedupeByEmployeeId(list) {
+            const latestById = new Map();
+            list.forEach(emp => {
+                const existing = latestById.get(emp.emp_id);
+                if (!existing || new Date(emp.timestamp) >= new Date(existing.timestamp)) {
+                    latestById.set(emp.emp_id, emp);
+                }
+            });
+            return Array.from(latestById.values());
+        }
+
         async function fetchTelemetryData() {
             const indicator = document.getElementById('refreshIndicator');
             indicator.classList.add('refreshing');
@@ -416,7 +557,7 @@
 
                 const rawData = await response.json();
 
-                state.employees = rawData.filter(emp => {
+                const cleaned = rawData.filter(emp => {
                     const id = (emp.emp_id || '').toString().trim();
                     const name = (emp.emp_name || '').toString().trim();
                     if (!id && !name) return false;
@@ -426,20 +567,30 @@
                         return false;
                     }
                     return true;
-                }).map(emp => ({
-                    timestamp: emp.timestamp || new Date().toISOString(),
-                    emp_id: (emp.emp_id || 'N/A').toString(),
-                    emp_name: emp.emp_name || 'موظف غير معروف',
-                    lat: parseFloat(emp.lat) || 24.7136,
-                    lng: parseFloat(emp.lng) || 46.6753,
-                    speed: emp.speed !== '' ? parseFloat(emp.speed).toFixed(1) : '0.0',
-                    heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
-                    steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
-                    battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
-                    is_worn: emp.is_worn === 'YES' || emp.is_worn === true ? 'نعم' : 'لا',
-                    status: (emp.status || 'NORMAL').toUpperCase(),
-                    nearest_responder: emp.nearest_responder || 'لا يوجد'
-                }));
+                }).map(emp => {
+                    const latNum = parseFloat(emp.lat);
+                    const lngNum = parseFloat(emp.lng);
+                    return {
+                        timestamp: emp.timestamp || new Date().toISOString(),
+                        emp_id: (emp.emp_id || 'N/A').toString(),
+                        emp_name: emp.emp_name || 'موظف غير معروف',
+                        // نتحقق من كون الإحداثيات رقمًا فعليًا بدل الاعتماد على `|| قيمة افتراضية`،
+                        // لأن تلك الطريقة كانت تستبدل الإحداثي 0 الصحيح بالخطأ
+                        lat: Number.isFinite(latNum) ? latNum : 24.7136,
+                        lng: Number.isFinite(lngNum) ? lngNum : 46.6753,
+                        speed: emp.speed !== '' ? parseFloat(emp.speed).toFixed(1) : '0.0',
+                        heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
+                        steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
+                        battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
+                        is_worn: emp.is_worn === 'YES' || emp.is_worn === true ? 'نعم' : 'لا',
+                        status: (emp.status || 'NORMAL').toUpperCase(),
+                        nearest_responder: emp.nearest_responder || 'لا يوجد'
+                    };
+                });
+
+                // إزالة السجلات المكررة لنفس رقم الموظف (سبب انفجار شريط الطوارئ في اللقطة الأصلية):
+                // نُبقي فقط السجل الأحدث توقيتًا لكل emp_id
+                state.employees = dedupeByEmployeeId(cleaned);
 
                 filterEmployees();
                 updateStats();
@@ -659,15 +810,65 @@
             const sosEmployees = state.employees.filter(e => e.status === 'SOS');
             const banner = document.getElementById('sosBanner');
 
+            // تنظيف قائمة "تم الاطلاع" من أي رقم موظف لم يعد في حالة SOS حاليًا
+            const activeSosIds = new Set(sosEmployees.map(e => e.emp_id));
+            state.acknowledgedSos.forEach(id => { if (!activeSosIds.has(id)) state.acknowledgedSos.delete(id); });
+
             if (sosEmployees.length > 0) {
                 banner.classList.remove('hidden');
-                const details = sosEmployees.map(e => `${e.emp_name} (أقرب مستجيب: ${e.nearest_responder})`).join(' | ');
-                document.getElementById('sosBannerMessage').innerText = `طوارئ نشطة لـ: ${details}`;
+
+                document.getElementById('sosCountLabel').innerText = `${sosEmployees.length} حالة طوارئ نشطة`;
+
+                // معاينة مختصرة لأول اسمين فقط، مع عدّاد للباقي بدل تفريغ القائمة كاملة في الشريط
+                const previewNames = sosEmployees.slice(0, SOS_PREVIEW_COUNT).map(e => e.emp_name);
+                const remaining = sosEmployees.length - previewNames.length;
+                document.getElementById('sosNamesPreview').innerText =
+                    previewNames.join('، ') + (remaining > 0 ? ` +${remaining} أخرى` : '');
+
+                if (!document.getElementById('sosModalOverlay').classList.contains('hidden')) {
+                    renderSosModal();
+                }
+
                 playAlarmSiren();
             } else {
                 banner.classList.add('hidden');
+                document.getElementById('sosModalOverlay').classList.add('hidden');
                 stopAlarmSiren();
             }
+        }
+
+        // يبني القائمة الكاملة داخل النافذة المنبثقة، بحد أقصى للارتفاع وتمرير بدل التمدد اللانهائي
+        function renderSosModal() {
+            const container = document.getElementById('sosModalList');
+            const sosEmployees = state.employees.filter(e => e.status === 'SOS');
+
+            if (sosEmployees.length === 0) {
+                container.innerHTML = `<div class="text-center py-6" style="color: var(--text-muted);">لا توجد حالات طوارئ نشطة حاليًا.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            sosEmployees.forEach(emp => {
+                const acked = state.acknowledgedSos.has(emp.emp_id);
+                const row = document.createElement('div');
+                row.className = `sos-row ${acked ? 'acked' : ''}`;
+                row.innerHTML = `
+                    <div class="min-w-0">
+                        <div class="font-bold truncate">${escapeHTML(emp.emp_name)} <span class="font-normal" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span></div>
+                        <div class="text-[10px]" style="color: var(--text-secondary);">أقرب مستجيب: ${escapeHTML(emp.nearest_responder)}</div>
+                    </div>
+                    <button class="ack-btn ${acked ? 'done' : ''}" data-id="${escapeHTML(emp.emp_id)}">${acked ? 'تمت المتابعة' : 'تأكيد الاطلاع'}</button>
+                `;
+                row.querySelector('.ack-btn').addEventListener('click', () => {
+                    if (state.acknowledgedSos.has(emp.emp_id)) {
+                        state.acknowledgedSos.delete(emp.emp_id);
+                    } else {
+                        state.acknowledgedSos.add(emp.emp_id);
+                    }
+                    renderSosModal();
+                });
+                container.appendChild(row);
+            });
         }
 
         function playAlarmSiren() {
