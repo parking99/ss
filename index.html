@@ -152,17 +152,6 @@
             .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing { animation: none !important; }
         }
 
-        /* بوابة الدخول: طبقة كاملة الشاشة، تعمل قبل عرض أي بيانات حساسة */
-        #accessGate {
-            position: fixed; inset: 0; z-index: 200;
-            background: var(--bg-page);
-            display: flex; align-items: center; justify-content: center;
-        }
-        #accessGate .gate-card {
-            background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 1rem;
-            box-shadow: var(--shadow-md); padding: 2rem; width: 100%; max-width: 360px;
-        }
-
         /* نافذة استعراض حالات الطوارئ الكاملة، بدل تفريغها كلها داخل الشريط العلوي */
         #sosModalOverlay {
             position: fixed; inset: 0; z-index: 90;
@@ -188,23 +177,6 @@
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
-
-    <!-- Access gate: guards the live location/health data behind a basic PIN before anything renders -->
-    <div id="accessGate">
-        <div class="gate-card">
-            <div class="flex items-center gap-2 mb-1">
-                <div class="p-2 rounded-lg" style="background: var(--navy-soft); color: var(--navy);">
-                    <i data-lucide="lock" class="w-5 h-5"></i>
-                </div>
-                <h2 class="font-bold font-display text-base" style="color: var(--text-primary);">دخول غرفة العمليات</h2>
-            </div>
-            <p class="text-xs mb-4" style="color: var(--text-secondary);">هذه الشاشة تعرض مواقع وبيانات حيوية حية للموظفين. الرجاء إدخال رمز الدخول المصرح به.</p>
-            <input type="password" id="gatePinInput" class="w-full border rounded-xl px-3 py-2 text-sm outline-none mb-2" style="border-color: var(--border-soft);" placeholder="رمز الدخول" autocomplete="off">
-            <p id="gateError" class="hidden text-xs mb-2" style="color: var(--sos);">رمز غير صحيح، حاول مرة أخرى.</p>
-            <button id="gateSubmitBtn" class="w-full py-2 rounded-xl text-sm font-bold text-white" style="background: var(--navy);">دخول</button>
-            <p class="text-[10px] mt-3" style="color: var(--text-muted);">ملاحظة أمنية: هذا حاجز أساسي على مستوى المتصفح فقط، وليس بديلاً عن توثيق فعلي في الخادم الخلفي.</p>
-        </div>
-    </div>
 
     <!-- SOS Banner: مُلخّص ثابت الارتفاع بدل تفريغ كل الأسماء بشكل غير محدود -->
     <div id="sosBanner" class="hidden text-white px-4 py-2.5 flex justify-between items-center gap-3 shadow-lg z-50" style="background-color: var(--sos);">
@@ -386,10 +358,6 @@
         const SEARCH_DEBOUNCE_MS = 250;
         const SOS_PREVIEW_COUNT = 2; // عدد الأسماء المعروضة في الشريط قبل الطي داخل نافذة الاستعراض
 
-        // ⚠️ رمز دخول أساسي على مستوى المتصفح فقط، لأغراض الفرز البصري لا الحماية الفعلية.
-        // يجب استبداله بتوثيق حقيقي (جلسة/رمز مصادقة) في الخادم الخلفي قبل أي استخدام إنتاجي فعلي.
-        const ACCESS_PIN = '1234';
-
         let state = {
             employees: [],
             filteredEmployees: [],
@@ -411,41 +379,12 @@
         let map = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            initAccessGate();
             initMap();
             initEventListeners();
             lucide.createIcons();
             fetchTelemetryData();
             toggleAutoRefresh(true);
         });
-
-        // بوابة دخول بسيطة: تمنع عرض أي بيانات قبل التحقق، ولا تُبقي الرمز الفعلي مكشوفًا في الواجهة
-        function initAccessGate() {
-            const gate = document.getElementById('accessGate');
-            const input = document.getElementById('gatePinInput');
-            const submitBtn = document.getElementById('gateSubmitBtn');
-            const errorMsg = document.getElementById('gateError');
-
-            if (sessionStorage.getItem('soc_authed') === '1') {
-                gate.classList.add('hidden');
-                return;
-            }
-
-            const tryUnlock = () => {
-                if (input.value === ACCESS_PIN) {
-                    sessionStorage.setItem('soc_authed', '1');
-                    gate.classList.add('hidden');
-                } else {
-                    errorMsg.classList.remove('hidden');
-                    input.value = '';
-                    input.focus();
-                }
-            };
-
-            submitBtn.addEventListener('click', tryUnlock);
-            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
-            input.focus();
-        }
 
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
