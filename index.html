@@ -3,229 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم الأمنية المباشرة | Live Dashboard</title>
+    <title>لوحة التحكم الأمنية وتتبع المؤشرات - Wear OS</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- خط Cairo للمظهر العربي الاحترافي -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     
-    <style>
-        body { font-family: 'Cairo', sans-serif; }
-        #map { height: 530px; width: 100%; border-radius: 1rem; }
-        .sos-pulse {
-            animation: pulse-red 1.2s infinite;
-        }
-        @keyframes pulse-red {
-            0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); }
-            70% { transform: scale(1.02); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
-            100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-    </style>
+    <!-- مكتبة الخرائط Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- أيقونات Lucide المتميزة -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- ملف التنسيق المخصص -->
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen p-4 md:p-6">
-
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row justify-between items-center mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm gap-4">
-        <div class="flex items-center gap-3">
-            <div class="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 text-xl">
-                🛡️
-            </div>
-            <div>
-                <h1 class="text-xl md:text-2xl font-bold text-slate-900">غرفة العمليات والمراقبة الأمنية المباشرة</h1>
-                <p class="text-xs text-slate-500">تتبع حي ومباشر مع توجيه أقرب مستجيب للـ SOS</p>
-            </div>
-        </div>
-
-        <!-- KPIs -->
-        <div class="flex flex-wrap gap-3 w-full md:w-auto">
-            <div class="flex-1 md:flex-none bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center">
-                <span class="block text-[11px] text-slate-500">البث الحي</span>
-                <span class="font-bold text-emerald-600 text-sm flex items-center justify-center gap-1">
-                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span> مباشر 🟢
-                </span>
-            </div>
-            <div class="flex-1 md:flex-none bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center">
-                <span class="block text-[11px] text-slate-500">إجمالي الأجهزة</span>
-                <span id="activeCount" class="font-bold text-blue-600 text-sm">0</span>
-            </div>
-            <div id="sosBadgeCard" class="flex-1 md:flex-none bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center">
-                <span class="block text-[11px] text-slate-500">طوارئ SOS</span>
-                <span id="sosCount" class="font-bold text-slate-700 text-sm">0</span>
-            </div>
-        </div>
-    </header>
-
-    <!-- Content -->
-    <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<body>
+    <!-- تطبيق لوحة التحكم الرئيسي -->
+    <div class="app-container">
         
-        <!-- Map -->
-        <section class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                    📍 الخريطة المباشرة للمواقع واستجابة الطوارئ
-                </h2>
-                <span class="text-xs text-slate-400" id="lastUpdated">جاري جلب البيانات...</span>
+        <!-- التنبيهات العاجلة للطوارئ (مخفي افتراضياً ويظهر عند حدوث SOS) -->
+        <div id="sosBanner" class="sos-banner hidden">
+            <div class="banner-content">
+                <span class="pulse-red-ring"></span>
+                <i data-lucide="alert-triangle" class="banner-icon animate-bounce"></i>
+                <div class="banner-text">
+                    <h3 class="banner-title">حالة طوارئ نشطة (SOS)!</h3>
+                    <p id="sosBannerMessage" class="banner-desc">جاري حساب أقرب حارس أمن للاستجابة...</p>
+                </div>
             </div>
-            <div id="map" class="z-10 shadow-inner"></div>
-        </section>
+            <button id="muteAlarmBtn" class="mute-btn" title="كتم صوت الإنذار">
+                <i data-lucide="volume-2" id="muteIcon"></i>
+            </button>
+        </div>
 
-        <!-- Feed -->
-        <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[580px]">
-            <h2 class="text-base font-bold mb-3 text-slate-800 flex items-center gap-2">
-                📡 سجل الأجهزة المباشر والتنبيهات
-            </h2>
-            <div class="overflow-y-auto flex-1 pr-1 space-y-3" id="feedContainer">
-                <div class="text-center text-slate-400 py-20 text-sm">
-                    جاري التوصيل بـ Google Sheets...
+        <!-- الجزء العلوي: لوحة الإحصائيات والمعلومات الأساسية -->
+        <header class="dashboard-header">
+            <div class="header-title-container">
+                <i data-lucide="shield-alert" class="header-logo-icon"></i>
+                <div>
+                    <h1>نظام الأمان والمراقبة المباشر</h1>
+                    <p class="subtitle">مراقبة المؤشرات الحيوية وتتبع المواقع (Wear OS Telemetry)</p>
+                </div>
+            </div>
+            
+            <div class="header-controls">
+                <div class="api-url-wrapper">
+                    <span class="control-label">رابط السيرفر (API):</span>
+                    <input type="text" id="apiUrlInput" class="api-input" 
+                           value="https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec" 
+                           placeholder="أدخل رابط Apps Script هنا">
+                </div>
+                <div class="auto-refresh-control">
+                    <label class="switch">
+                        <input type="checkbox" id="autoRefreshToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span class="refresh-text">تحديث تلقائي (3 ثوانٍ)</span>
+                    <span id="refreshIndicator" class="refresh-indicator"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- الإحصائيات السريعة (Stats Grid) -->
+        <section class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="users"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">إجمالي الكادر</span>
+                    <span id="statTotal" class="stat-value">0</span>
+                </div>
+            </div>
+            <div class="stat-card normal">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="shield-check"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">مستقر (Normal)</span>
+                    <span id="statNormal" class="stat-value">0</span>
+                </div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="alert-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">تحذيرات (Warning)</span>
+                    <span id="statWarning" class="stat-value">0</span>
+                </div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="heart-pulse"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">طوارئ (SOS)</span>
+                    <span id="statSos" class="stat-value">0</span>
                 </div>
             </div>
         </section>
 
-    </main>
-
-    <script>
-        // الرابط الجديد الذي زودتني به
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec";
-
-        const map = L.map('map').setView([24.7136, 46.6753], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        let employeeMarkers = {};
-        const mapBoundsGroup = L.featureGroup();
-
-        async function fetchTelemetryData() {
-            try {
-                const response = await fetch(WEB_APP_URL);
-                const data = await response.json();
-                
-                if (data && Array.isArray(data) && data.length > 0) {
-                    renderDashboard(data);
-                }
-            } catch (error) {
-                console.log("استمرار الاتصال الحي...");
-            } finally {
-                document.getElementById('lastUpdated').innerText = "آخر تحديث: " + new Date().toLocaleTimeString('ar-SA');
-            }
-        }
-
-        function checkIsSOS(statusStr) {
-            if (!statusStr) return false;
-            const s = statusStr.toString().toUpperCase();
-            return s.includes('SOS') || s.includes('EMERGENCY') || s.includes('DANGER') || s.includes('ALERT');
-        }
-
-        function renderDashboard(telemetryList) {
-            const feedContainer = document.getElementById('feedContainer');
-            feedContainer.innerHTML = '';
+        <!-- مساحة العمل الرئيسية: الخريطة والقائمة الجانبية -->
+        <main class="main-layout">
             
-            let sosCount = 0;
-            const uniqueEmployees = new Map();
-
-            telemetryList.forEach((item) => {
-                if (item.emp_id) {
-                    uniqueEmployees.set(item.emp_id, item);
-                }
-            });
-
-            let isFirstLoad = Object.keys(employeeMarkers).length === 0;
-
-            uniqueEmployees.forEach((item) => {
-                const isSOS = checkIsSOS(item.status);
-                const isWarning = item.status && item.status.toString().toUpperCase().includes('WARN');
-                if (isSOS) sosCount++;
-
-                // 1. الخريطة المباشرة
-                if (item.lat && item.lng && item.lat !== 0) {
-                    const latLng = [parseFloat(item.lat), parseFloat(item.lng)];
-                    const markerColor = isSOS ? '#ef4444' : (isWarning ? '#f59e0b' : '#10b981');
-
-                    if (!employeeMarkers[item.emp_id]) {
-                        const marker = L.circleMarker(latLng, {
-                            radius: 10,
-                            fillColor: markerColor,
-                            color: '#ffffff',
-                            weight: 2,
-                            fillOpacity: 0.95
-                        }).addTo(map);
-
-                        marker.bindPopup(`
-                            <div dir="rtl" class="p-1 font-sans text-xs">
-                                <b class="text-sm text-slate-900">${item.emp_name || item.emp_id}</b><br>
-                                <b>المعرف:</b> ${item.emp_id}<br>
-                                <b>النبض:</b> ${item.heart_rate || '0'} BPM<br>
-                                <b>الحالة:</b> <b style="color:${markerColor}">${item.status}</b><br>
-                                ${isSOS ? `<b class="text-red-600 block mt-1">🚨 أقرب حارس: ${item.nearest_responder || 'جاري التحديد'}</b>` : ''}
-                            </div>
-                        `);
-                        employeeMarkers[item.emp_id] = marker;
-                        mapBoundsGroup.addLayer(marker);
-                    } else {
-                        employeeMarkers[item.emp_id].setLatLng(latLng);
-                        employeeMarkers[item.emp_id].setStyle({ fillColor: markerColor });
-                    }
-                }
-
-                // 2. الكروت الجانبية وتفاصيل أقرب مستجيب
-                const card = document.createElement('div');
-                let cardBg = 'bg-slate-50 border-slate-200 hover:bg-slate-100';
-                let badgeStyle = 'bg-emerald-100 text-emerald-700 border-emerald-200';
-
-                if (isSOS) {
-                    cardBg = 'bg-red-50 border-red-400 sos-pulse';
-                    badgeStyle = 'bg-red-600 text-white font-bold animate-bounce';
-                } else if (isWarning) {
-                    cardBg = 'bg-amber-50 border-amber-200';
-                    badgeStyle = 'bg-amber-100 text-amber-800 border-amber-200';
-                }
-
-                card.className = `p-3.5 rounded-xl border transition-all ${cardBg}`;
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-1.5">
-                        <div>
-                            <span class="font-bold text-sm ${isSOS ? 'text-red-600 font-black' : 'text-slate-800'}">
-                                ${item.emp_name || 'موظف'}
-                            </span>
-                            <span class="text-xs text-slate-400 block">ID: ${item.emp_id}</span>
-                        </div>
-                        <span class="px-2.5 py-1 text-[10px] rounded-lg border ${badgeStyle}">
-                            ${item.status || 'NORMAL'}
-                        </span>
+            <!-- الخريطة التفاعلية -->
+            <div class="map-wrapper">
+                <div id="map"></div>
+                
+                <!-- لوحة تفاصيل الموظف المحدد (تظهر عند النقر على مؤشر أو عنصر قائمة) -->
+                <div id="detailPanel" class="detail-panel hidden">
+                    <button id="closeDetailBtn" class="close-detail-btn">&times;</button>
+                    <div class="detail-header">
+                        <div id="detailStatusDot" class="status-dot"></div>
+                        <h4 id="detailName">الموظف</h4>
+                        <span id="detailId" class="detail-id">#ID</span>
                     </div>
-                    ${isSOS && item.nearest_responder ? `
-                        <div class="my-2 p-2 bg-red-100/80 border border-red-300 rounded-lg text-xs text-red-800 font-semibold flex items-center gap-1">
-                            🚑 تم توجيه البلاغ لأقرب حارس: <span class="font-bold text-red-950">${item.nearest_responder}</span>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="item-label"><i data-lucide="heart"></i> نبض القلب</span>
+                            <span id="detailHeartRate" class="item-value">-- BPM</span>
                         </div>
-                    ` : ''}
-                    <div class="flex justify-between items-center text-xs text-slate-500 mt-2 pt-2 border-t border-slate-200">
-                        <span>❤️ ${item.heart_rate || 0} BPM</span>
-                        <span>👟 ${item.steps || 0} خطوة</span>
-                        <span>🔋 ${item.battery || '100%'}</span>
+                        <div class="detail-item">
+                            <span class="item-label"><i data-lucide="footprints"></i> الخطوات</span>
+                            <span id="detailSteps" class="item-value">-- خطوة</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="item-label"><i data-lucide="battery"></i> البطارية</span>
+                            <span id="detailBattery" class="item-value">--%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="item-label"><i data-lucide="activity"></i> السرعة</span>
+                            <span id="detailSpeed" class="item-value">-- م/ث</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="item-label"><i data-lucide="watch"></i> ارتداء الساعة</span>
+                            <span id="detailWorn" class="item-value">--</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="item-label"><i data-lucide="clock"></i> آخر تحديث</span>
+                            <span id="detailTime" class="item-value">--:--:--</span>
+                        </div>
                     </div>
-                `;
-                feedContainer.appendChild(card);
-            });
+                    <div class="responder-box hidden" id="responderBox">
+                        <div class="responder-title"><i data-lucide="navigation"></i> أقرب مستجيب للطوارئ:</div>
+                        <div class="responder-info">
+                            <span id="detailResponder" class="responder-name">لا يوجد في الجوار</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            if (isFirstLoad && mapBoundsGroup.getLayers().length > 0) {
-                map.fitBounds(mapBoundsGroup.getBounds().pad(0.15));
-            }
+            <!-- القائمة الجانبية: قائمة المراقبة والبحث -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="searchInput" placeholder="ابحث باسم الموظف أو الرقم الوظيفي...">
+                    </div>
+                </div>
+                
+                <div class="employee-list-container">
+                    <h3 class="list-title">قائمة المراقبة والنشاط</h3>
+                    <div id="employeeList" class="employee-list">
+                        <div class="list-placeholder">جاري تحميل البيانات الحية...</div>
+                    </div>
+                </div>
+            </aside>
+            
+        </main>
+    </div>
 
-            document.getElementById('activeCount').innerText = uniqueEmployees.size;
-            document.getElementById('sosCount').innerText = sosCount;
-
-            const sosBadgeCard = document.getElementById('sosBadgeCard');
-            if (sosCount > 0) {
-                sosBadgeCard.className = "flex-1 md:flex-none bg-red-100 border border-red-400 px-4 py-2 rounded-xl text-center sos-pulse text-red-700 font-bold";
-            } else {
-                sosBadgeCard.className = "flex-1 md:flex-none bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-center";
-            }
-        }
-
-        setInterval(fetchTelemetryData, 3000);
-        fetchTelemetryData();
-    </script>
+    <!-- كود المنطق والربط الرئيسي -->
+    <script src="app.js"></script>
 </body>
 </html>
