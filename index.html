@@ -71,7 +71,7 @@
         }
         .leaflet-popup-tip { background-color: var(--bg-panel) !important; }
 
-        /* Map marker pins: two-tone badge with white ring, easier to spot on a light basemap */
+        /* Map marker pins */
         .gps-pin {
             width: 26px; height: 26px;
             border-radius: 50% 50% 50% 0;
@@ -129,7 +129,6 @@
         .refreshing { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Signature element: a small live pulse next to the title */
         .live-pulse { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--normal); }
         .live-pulse::after {
             content: ''; position: absolute; inset: 0; border-radius: 50%;
@@ -166,9 +165,10 @@
                     <span id="headerPulse" class="live-pulse"></span>
                     مركز المراقبة والأمان المباشر
                 </h1>
-                <p class="text-xs" style="color: var(--text-secondary);">
+                <p class="text-xs flex items-center gap-1.5" style="color: var(--text-secondary);">
                     تتبع حي عبر أجهزة الرصد الميدانية · آخر تحديث
                     <span id="lastUpdateTime" class="font-semibold" style="color: var(--text-primary);">--:--:--</span>
+                    <span id="connectionErrorBadge" class="hidden bg-rose-100 text-rose-600 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">اتصال غير مستقر</span>
                 </p>
             </div>
         </div>
@@ -190,7 +190,13 @@
 
             <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                 <input type="checkbox" id="autoRefreshToggle" checked class="rounded" style="accent-color: var(--accent);">
-                <span>تحديث تلقائي</span>
+                <span>تحديث تلقائي كل:</span>
+                <select id="refreshRateSelect" class="bg-transparent border-0 font-bold focus:outline-none cursor-pointer text-xs" style="color: var(--text-primary);">
+                    <option value="3000">3 ثوانٍ</option>
+                    <option value="10000">10 ثوانٍ</option>
+                    <option value="15000" selected>15 ثانية</option>
+                    <option value="30000">30 ثانية</option>
+                </select>
             </label>
 
             <!-- زر تحديث يدوي فوري -->
@@ -232,7 +238,7 @@
                 <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full bg-white border rounded-xl pr-9 pl-3 py-2 text-xs outline-none" style="border-color: var(--border-soft); color: var(--text-primary);">
             </div>
 
-            <!-- Status filter chips -->
+            <!-- Chips -->
             <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5" id="filterChips">
                 <button class="chip active" data-filter="ALL">الكل</button>
                 <button class="chip" data-filter="SOS">SOS</button>
@@ -266,13 +272,13 @@
                     </button>
                 </div>
 
-                <!-- صندوق الاستجابة والأمر بالطوارئ (مدمج به زر الإغلاق) -->
+                <!-- صندوق الاستجابة والأمر بالطوارئ -->
                 <div id="responderBox" class="hidden mb-3 p-3 rounded-xl text-xs flex flex-col gap-2.5" style="background: var(--sos-soft); border: 1px solid #F3B9B9; color: var(--sos);">
                     <div class="flex items-center gap-2">
                         <i data-lucide="ambulance" class="w-5 h-5 flex-shrink-0 animate-pulse"></i>
-                        <div>
-                            <span class="block text-[10px]" style="color: #B94545;">أقرب حارس أمن موجه للموقع:</span>
-                            <strong id="detailResponder" style="color: var(--text-primary);">لا يوجد</strong>
+                        <div class="flex-1">
+                            <span class="block text-[10px]" style="color: #B94545;">المستجيب الأقرب طوارئ (حسب المسافة الحالية):</span>
+                            <strong id="detailResponder" class="block mt-0.5 text-sm" style="color: var(--text-primary);">حساب المستجيب القريب...</strong>
                         </div>
                     </div>
                     <button id="resolveEmergencyBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm" type="button">
@@ -317,8 +323,8 @@
     </div>
 
     <script>
-        const OFFLINE_THRESHOLD_MS = 60000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 60 ثانية
-        const REFRESH_INTERVAL_MS = 3000;
+        const OFFLINE_THRESHOLD_MS = 60000;
+        let REFRESH_INTERVAL_MS = 15000;
         const SEARCH_DEBOUNCE_MS = 250;
 
         let state = {
@@ -339,12 +345,12 @@
 
         const mapMarkers = {};
         let map = null;
+        let refreshTimeoutId = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             initMap();
             initEventListeners();
             lucide.createIcons();
-            fetchTelemetryData();
             toggleAutoRefresh(true);
             startRelativeTimeUpdater();
         });
@@ -353,9 +359,8 @@
             map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
             L.control.zoom({ position: 'topleft' }).addTo(map);
 
-            // خريطة فاتحة تناسب الواجهة البيضاء الجديدة
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
                 subdomains: 'abcd',
                 maxZoom: 20
             }).addTo(map);
@@ -373,6 +378,14 @@
 
             document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
                 toggleAutoRefresh(e.target.checked);
+            });
+
+            document.getElementById('refreshRateSelect').addEventListener('change', (e) => {
+                REFRESH_INTERVAL_MS = parseInt(e.target.value);
+                if (state.autoRefresh) {
+                    toggleAutoRefresh(false);
+                    toggleAutoRefresh(true);
+                }
             });
 
             document.getElementById('manualRefreshBtn').addEventListener('click', () => {
@@ -408,7 +421,6 @@
                 }
             });
 
-            // إظهار/إخفاء رابط الـ API
             const urlInput = document.getElementById('apiUrlInput');
             document.getElementById('toggleUrlVisibilityBtn').addEventListener('click', (e) => {
                 const btn = e.currentTarget;
@@ -421,7 +433,6 @@
             });
         }
 
-        // تحديد ما إذا كان الجهاز "غير متصل" بناءً على وقت آخر تحديث
         function isDeviceOffline(emp) {
             const ts = new Date(emp.timestamp).getTime();
             if (isNaN(ts)) return false;
@@ -429,25 +440,54 @@
         }
 
         function effectiveStatus(emp) {
-            // SOS تبقى أولوية قصوى حتى لو كان آخر تحديث قديمًا قليلاً
             if (emp.status === 'SOS') return 'SOS';
             if (isDeviceOffline(emp)) return 'OFFLINE';
             return emp.status;
         }
 
-        // يبقي فقط أحدث سجل لكل رقم موظف
-        function dedupeByEmployeeId(list) {
-            const latestById = new Map();
-            list.forEach(emp => {
-                const existing = latestById.get(emp.emp_id);
-                if (!existing || new Date(emp.timestamp) >= new Date(existing.timestamp)) {
-                    latestById.set(emp.emp_id, emp);
-                }
-            });
-            return Array.from(latestById.values());
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const phi1 = lat1 * Math.PI / 180;
+            const phi2 = lat2 * Math.PI / 180;
+            const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+            const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                      Math.cos(phi1) * Math.cos(phi2) *
+                      Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c;
         }
 
-        // دالة تحويل الوقت إلى وقت نسبي باللغة العربية
+        function findNearestResponder(sosEmp, allEmployees) {
+            let nearest = null;
+            let minDistance = Infinity;
+
+            allEmployees.forEach(other => {
+                if (other.emp_id === sosEmp.emp_id) return;
+                if (other.status === 'SOS') return;
+
+                const dist = calculateDistance(sosEmp.lat, sosEmp.lng, other.lat, other.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearest = {
+                        emp_name: other.emp_name,
+                        emp_id: other.emp_id,
+                        distance: dist
+                    };
+                }
+            });
+
+            if (nearest) {
+                const distStr = nearest.distance < 1000 
+                    ? `${Math.round(nearest.distance)} متر` 
+                    : `${(nearest.distance / 1000).toFixed(1)} كم`;
+                return `${nearest.emp_name} (#${nearest.emp_id}) · على بعد ${distStr}`;
+            }
+            return 'لا يوجد مستجيب قريب متاح حالياً';
+        }
+
         function getRelativeTimeString(isoString) {
             const date = new Date(isoString);
             const now = new Date();
@@ -470,30 +510,24 @@
             return `منذ ${hoursDiff} ساعة`;
         }
 
-        // مشغل الوقت النسبي التلقائي
         function startRelativeTimeUpdater() {
             setInterval(() => {
                 document.querySelectorAll('.relative-time-update').forEach(el => {
                     const ts = el.getAttribute('data-timestamp');
-                    if (ts) {
-                        el.innerText = getRelativeTimeString(ts);
-                    }
+                    if (ts) el.innerText = getRelativeTimeString(ts);
                 });
                 const detailTimeEl = document.getElementById('detailTime');
                 if (detailTimeEl) {
                     const ts = detailTimeEl.getAttribute('data-timestamp');
-                    if (ts) {
-                        detailTimeEl.innerText = getRelativeTimeString(ts);
-                    }
+                    if (ts) detailTimeEl.innerText = getRelativeTimeString(ts);
                 }
             }, 5000);
         }
 
         async function fetchTelemetryData() {
             const indicator = document.getElementById('refreshIndicator');
-            indicator.classList.add('refreshing');
+            if (indicator) indicator.classList.add('refreshing');
 
-            // إلغاء أي طلب سابق لم يكتمل بعد
             if (state.fetchController) state.fetchController.abort();
             state.fetchController = new AbortController();
 
@@ -507,11 +541,6 @@
                     const id = (emp.emp_id || '').toString().trim();
                     const name = (emp.emp_name || '').toString().trim();
                     if (!id && !name) return false;
-                    if (id.startsWith('//') || name.startsWith('//') || id.startsWith('/*') || name.startsWith('/*') ||
-                        id.includes('package ') || name.includes('package ') || id.includes('import ') || name.includes('import ') ||
-                        id.length > 30 || name.length > 80) {
-                        return false;
-                    }
                     return true;
                 }).map(emp => {
                     const latNum = parseFloat(emp.lat);
@@ -532,13 +561,19 @@
                     };
                 });
 
-                state.employees = dedupeByEmployeeId(cleaned);
+                cleaned.forEach(emp => {
+                    if (emp.status === 'SOS') {
+                        emp.nearest_responder = findNearestResponder(emp, cleaned);
+                    }
+                });
 
+                state.employees = cleaned;
                 filterEmployees();
                 updateStats();
                 checkSosAlerts();
                 updateHeaderPulse();
                 document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
+                document.getElementById('connectionErrorBadge').classList.add('hidden');
 
                 if (state.selectedEmployeeId) {
                     const currentEmp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
@@ -552,10 +587,9 @@
             } catch (error) {
                 if (error.name === 'AbortError') return;
                 console.error('حدث خطأ أثناء جلب البيانات:', error);
-                document.getElementById('employeeList').innerHTML =
-                    `<div class="text-center p-4 text-xs" style="color: var(--sos);">فشل الاتصال بالسيرفر. تأكد من إعدادات الرابط والإنترنت.</div>`;
+                document.getElementById('connectionErrorBadge').classList.remove('hidden');
             } finally {
-                setTimeout(() => indicator.classList.remove('refreshing'), 500);
+                if (indicator) setTimeout(() => indicator.classList.remove('refreshing'), 500);
             }
         }
 
@@ -576,7 +610,7 @@
             });
 
             renderEmployeeList();
-            updateMapMarkers(); // مزامنة الخريطة فورياً مع عناصر القائمة المفلترة
+            updateMapMarkers();
         }
 
         function renderEmployeeList() {
@@ -628,7 +662,11 @@
             document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS').length;
         }
 
-        // تحديث وتصفية مواقع الخريطة لتتطابق تماماً مع الفلاتر الفعالة
+        function updateHeaderPulse() {
+            const hasSos = state.employees.some(e => e.status === 'SOS');
+            document.getElementById('headerPulse').classList.toggle('sos', hasSos);
+        }
+
         function updateMapMarkers() {
             const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
 
@@ -713,7 +751,6 @@
             document.getElementById('detailSpeed').innerText = `${emp.speed} م/ث`;
             document.getElementById('detailWorn').innerText = emp.is_worn;
 
-            // ضبط الوقت النسبي وتخزين التوقيت الفعلي للتحديث التلقائي
             document.getElementById('detailTime').innerText = getRelativeTimeString(emp.timestamp);
             document.getElementById('detailTime').setAttribute('data-timestamp', emp.timestamp);
 
@@ -721,7 +758,9 @@
             document.getElementById('detailStatusDot').className = `status-dot ${status.toLowerCase()}`;
 
             document.getElementById('responderBox').classList.toggle('hidden', emp.status !== 'SOS');
-            if (emp.status === 'SOS') document.getElementById('detailResponder').innerText = emp.nearest_responder;
+            if (emp.status === 'SOS') {
+                document.getElementById('detailResponder').innerText = emp.nearest_responder;
+            }
 
             document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
         }
@@ -732,15 +771,25 @@
             document.querySelectorAll('.employee-card').forEach(card => card.classList.remove('active-focus'));
         }
 
+        async function performAutoRefresh() {
+            if (!state.autoRefresh) return;
+            await fetchTelemetryData();
+            if (state.autoRefresh) {
+                refreshTimeoutId = setTimeout(performAutoRefresh, REFRESH_INTERVAL_MS);
+            }
+        }
+
         function toggleAutoRefresh(enable) {
             state.autoRefresh = enable;
             if (enable) {
-                if (!state.refreshIntervalId) {
-                    state.refreshIntervalId = setInterval(fetchTelemetryData, REFRESH_INTERVAL_MS);
+                if (!refreshTimeoutId) {
+                    performAutoRefresh();
                 }
-            } else if (state.refreshIntervalId) {
-                clearInterval(state.refreshIntervalId);
-                state.refreshIntervalId = null;
+            } else {
+                if (refreshTimeoutId) {
+                    clearTimeout(refreshTimeoutId);
+                    refreshTimeoutId = null;
+                }
             }
         }
 
@@ -753,7 +802,6 @@
             }
         }
 
-        // إغلاق حالة الطوارئ وإرسال طلب POST
         async function resolveEmergencyRemote(empId) {
             try {
                 await fetch(state.apiUrl, {
