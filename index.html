@@ -129,7 +129,7 @@
         .refreshing { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Signature element: a small live pulse next to the title, echoing the wearable heart-rate signal this room exists to watch */
+        /* Signature element: a small live pulse next to the title */
         .live-pulse { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--normal); }
         .live-pulse::after {
             content: ''; position: absolute; inset: 0; border-radius: 50%;
@@ -151,61 +151,9 @@
         @media (prefers-reduced-motion: reduce) {
             .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing { animation: none !important; }
         }
-
-        /* نافذة استعراض حالات الطوارئ الكاملة، بدل تفريغها كلها داخل الشريط العلوي */
-        #sosModalOverlay {
-            position: fixed; inset: 0; z-index: 90;
-            background: rgba(16,24,43,0.35);
-            display: flex; align-items: center; justify-content: center; padding: 1rem;
-        }
-        #sosModal {
-            background: var(--bg-panel); border-radius: 1rem; width: 100%; max-width: 480px;
-            max-height: 80vh; display: flex; flex-direction: column; box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-soft);
-        }
-        .sos-row {
-            display: flex; justify-content: space-between; align-items: center; gap: 8px;
-            padding: 10px 12px; border-radius: 0.65rem; background: var(--sos-soft);
-            border: 1px solid #F3B9B9; margin-bottom: 6px;
-        }
-        .sos-row.acked { background: var(--bg-subtle); border-color: var(--border-soft); opacity: 0.75; }
-        .ack-btn {
-            font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
-            background: var(--navy); color: #fff; flex-shrink: 0;
-        }
-        .ack-btn.done { background: var(--normal); }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
-
-    <!-- SOS Banner: مُلخّص ثابت الارتفاع بدل تفريغ كل الأسماء بشكل غير محدود -->
-    <div id="sosBanner" class="hidden text-white px-4 py-2.5 flex justify-between items-center gap-3 shadow-lg z-50" style="background-color: var(--sos);">
-        <div class="flex items-center gap-2 min-w-0">
-            <i data-lucide="siren" class="w-5 h-5 flex-shrink-0"></i>
-            <span class="font-bold text-sm md:text-base font-display flex-shrink-0" id="sosCountLabel">0 حالة طوارئ نشطة</span>
-            <span class="text-xs opacity-90 truncate hidden md:inline" id="sosNamesPreview"></span>
-        </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-            <button id="viewSosBtn" class="bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-lg text-xs font-semibold">عرض التفاصيل</button>
-            <button id="muteAlarmBtn" class="bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
-                <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4"></i>
-                <span>كتم / تفعيل</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- SOS review modal: full scrollable list with per-case acknowledgement -->
-    <div id="sosModalOverlay" class="hidden">
-        <div id="sosModal">
-            <div class="flex justify-between items-center p-4 border-b" style="border-color: var(--border-soft);">
-                <h3 class="font-bold font-display text-sm" style="color: var(--text-primary);">حالات الطوارئ النشطة</h3>
-                <button id="closeSosModalBtn" class="p-1 rounded-lg hover:bg-slate-100" style="color: var(--text-muted);" aria-label="إغلاق">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
-            </div>
-            <div id="sosModalList" class="p-3 overflow-y-auto text-xs" style="color: var(--text-primary);"></div>
-        </div>
-    </div>
 
     <!-- Header -->
     <header class="bg-white border-b flex flex-col md:flex-row justify-between items-center gap-3 px-4 py-3.5 z-40" style="border-color: var(--border-soft);">
@@ -228,18 +176,27 @@
         <div class="flex items-center gap-2.5 w-full md:w-auto overflow-x-auto">
             <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                 <i data-lucide="link" class="w-4 h-4" style="color: var(--text-muted);"></i>
-                <input type="password" id="apiUrlInput" class="bg-transparent outline-none w-40 md:w-64 text-xs" style="color: var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec">
+                <input type="password" id="apiUrlInput" class="bg-transparent outline-none w-40 md:w-64 text-xs" style="color: var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbxQO7RjW_Wxqviuizlk2bOJyqNxvbIuiTPFJhiAHgiIFgQikS7mOHfFQJW0lZhqsuGjwg/exec">
                 <button id="toggleUrlVisibilityBtn" class="flex-shrink-0" style="color: var(--text-muted);" aria-label="إظهار الرابط" type="button">
                     <i data-lucide="eye" class="w-4 h-4"></i>
                 </button>
             </div>
+
+            <!-- التحكم بالصوت للمشغل -->
+            <button id="muteAlarmBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none hover:bg-slate-100 transition-colors" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-primary);" title="كتم / تفعيل التنبيه الصوتي للمركز">
+                <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
+                <span id="muteText" class="font-medium">التنبيه الصوتي نشط</span>
+            </button>
 
             <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                 <input type="checkbox" id="autoRefreshToggle" checked class="rounded" style="accent-color: var(--accent);">
                 <span>تحديث تلقائي</span>
             </label>
 
-            <i id="refreshIndicator" data-lucide="rotate-cw" class="w-4 h-4 flex-shrink-0" style="color: var(--text-muted);"></i>
+            <!-- زر تحديث يدوي فوري -->
+            <button id="manualRefreshBtn" class="p-1.5 rounded-lg border hover:bg-slate-100 transition-colors flex-shrink-0" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-secondary);" title="تحديث يدوي الآن">
+                <i id="refreshIndicator" data-lucide="rotate-cw" class="w-4 h-4 flex-shrink-0"></i>
+            </button>
         </div>
     </header>
 
@@ -309,12 +266,19 @@
                     </button>
                 </div>
 
-                <div id="responderBox" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--sos-soft); border: 1px solid #F3B9B9; color: var(--sos);">
-                    <i data-lucide="ambulance" class="w-5 h-5 flex-shrink-0"></i>
-                    <div>
-                        <span class="block text-[10px]" style="color: #B94545;">أقرب حارس أمن موجه للموقع:</span>
-                        <strong id="detailResponder" style="color: var(--text-primary);">لا يوجد</strong>
+                <!-- صندوق الاستجابة والأمر بالطوارئ (مدمج به زر الإغلاق) -->
+                <div id="responderBox" class="hidden mb-3 p-3 rounded-xl text-xs flex flex-col gap-2.5" style="background: var(--sos-soft); border: 1px solid #F3B9B9; color: var(--sos);">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="ambulance" class="w-5 h-5 flex-shrink-0 animate-pulse"></i>
+                        <div>
+                            <span class="block text-[10px]" style="color: #B94545;">أقرب حارس أمن موجه للموقع:</span>
+                            <strong id="detailResponder" style="color: var(--text-primary);">لا يوجد</strong>
+                        </div>
                     </div>
+                    <button id="resolveEmergencyBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm" type="button">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        <span>إنهاء حالة الطوارئ وإغلاقها</span>
+                    </button>
                 </div>
 
                 <div id="offlineNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--offline-soft); color: var(--offline);">
@@ -356,7 +320,6 @@
         const OFFLINE_THRESHOLD_MS = 60000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 60 ثانية
         const REFRESH_INTERVAL_MS = 3000;
         const SEARCH_DEBOUNCE_MS = 250;
-        const SOS_PREVIEW_COUNT = 2; // عدد الأسماء المعروضة في الشريط قبل الطي داخل نافذة الاستعراض
 
         let state = {
             employees: [],
@@ -371,8 +334,7 @@
             audioContext: null,
             sirenIntervalId: null,
             fetchController: null,
-            searchDebounceId: null,
-            acknowledgedSos: new Set()
+            searchDebounceId: null
         };
 
         const mapMarkers = {};
@@ -384,6 +346,7 @@
             lucide.createIcons();
             fetchTelemetryData();
             toggleAutoRefresh(true);
+            startRelativeTimeUpdater();
         });
 
         function initMap() {
@@ -412,6 +375,10 @@
                 toggleAutoRefresh(e.target.checked);
             });
 
+            document.getElementById('manualRefreshBtn').addEventListener('click', () => {
+                fetchTelemetryData();
+            });
+
             document.getElementById('muteAlarmBtn').addEventListener('click', toggleMute);
             document.getElementById('closeDetailBtn').addEventListener('click', deselectEmployee);
 
@@ -432,7 +399,16 @@
                 filterEmployees();
             });
 
-            // إظهار/إخفاء رابط الـ API؛ الرابط الحقيقي يمنح وصولاً مباشرًا غير موثّق لبيانات الموقع والصحة الحية
+            document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
+                if (state.selectedEmployeeId) {
+                    const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+                    if (emp && confirm(`هل تم التعامل مع حالة الموظف ${emp.emp_name} وترغب بإغلاق حالة الطوارئ؟`)) {
+                        resolveEmergencyRemote(emp.emp_id);
+                    }
+                }
+            });
+
+            // إظهار/إخفاء رابط الـ API
             const urlInput = document.getElementById('apiUrlInput');
             document.getElementById('toggleUrlVisibilityBtn').addEventListener('click', (e) => {
                 const btn = e.currentTarget;
@@ -442,17 +418,6 @@
                     ? '<i data-lucide="eye" class="w-4 h-4"></i>'
                     : '<i data-lucide="eye-off" class="w-4 h-4"></i>';
                 lucide.createIcons();
-            });
-
-            document.getElementById('viewSosBtn').addEventListener('click', () => {
-                document.getElementById('sosModalOverlay').classList.remove('hidden');
-                renderSosModal();
-            });
-            document.getElementById('closeSosModalBtn').addEventListener('click', () => {
-                document.getElementById('sosModalOverlay').classList.add('hidden');
-            });
-            document.getElementById('sosModalOverlay').addEventListener('click', (e) => {
-                if (e.target.id === 'sosModalOverlay') e.currentTarget.classList.add('hidden');
             });
         }
 
@@ -470,7 +435,7 @@
             return emp.status;
         }
 
-        // يبقي فقط أحدث سجل لكل رقم موظف، بدل عرض كل الصفوف المكررة القادمة من المصدر كما هي
+        // يبقي فقط أحدث سجل لكل رقم موظف
         function dedupeByEmployeeId(list) {
             const latestById = new Map();
             list.forEach(emp => {
@@ -482,11 +447,53 @@
             return Array.from(latestById.values());
         }
 
+        // دالة تحويل الوقت إلى وقت نسبي باللغة العربية
+        function getRelativeTimeString(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const secondsDiff = Math.floor((now - date) / 1000);
+            
+            if (isNaN(secondsDiff) || secondsDiff < 0) return 'الآن';
+            if (secondsDiff < 5) return 'الآن';
+            if (secondsDiff < 60) return `منذ ${secondsDiff} ثانية`;
+            
+            const minutesDiff = Math.floor(secondsDiff / 60);
+            if (minutesDiff === 1) return 'منذ دقيقة';
+            if (minutesDiff === 2) return 'منذ دقيقتين';
+            if (minutesDiff <= 10) return `منذ ${minutesDiff} دقائق`;
+            if (minutesDiff < 60) return `منذ ${minutesDiff} دقيقة`;
+            
+            const hoursDiff = Math.floor(minutesDiff / 60);
+            if (hoursDiff === 1) return 'منذ ساعة';
+            if (hoursDiff === 2) return 'منذ ساعتين';
+            if (hoursDiff <= 10) return `منذ ${hoursDiff} ساعات`;
+            return `منذ ${hoursDiff} ساعة`;
+        }
+
+        // مشغل الوقت النسبي التلقائي
+        function startRelativeTimeUpdater() {
+            setInterval(() => {
+                document.querySelectorAll('.relative-time-update').forEach(el => {
+                    const ts = el.getAttribute('data-timestamp');
+                    if (ts) {
+                        el.innerText = getRelativeTimeString(ts);
+                    }
+                });
+                const detailTimeEl = document.getElementById('detailTime');
+                if (detailTimeEl) {
+                    const ts = detailTimeEl.getAttribute('data-timestamp');
+                    if (ts) {
+                        detailTimeEl.innerText = getRelativeTimeString(ts);
+                    }
+                }
+            }, 5000);
+        }
+
         async function fetchTelemetryData() {
             const indicator = document.getElementById('refreshIndicator');
             indicator.classList.add('refreshing');
 
-            // إلغاء أي طلب سابق لم يكتمل بعد لتفادي تضارب البيانات (سباق الطلبات)
+            // إلغاء أي طلب سابق لم يكتمل بعد
             if (state.fetchController) state.fetchController.abort();
             state.fetchController = new AbortController();
 
@@ -513,8 +520,6 @@
                         timestamp: emp.timestamp || new Date().toISOString(),
                         emp_id: (emp.emp_id || 'N/A').toString(),
                         emp_name: emp.emp_name || 'موظف غير معروف',
-                        // نتحقق من كون الإحداثيات رقمًا فعليًا بدل الاعتماد على `|| قيمة افتراضية`،
-                        // لأن تلك الطريقة كانت تستبدل الإحداثي 0 الصحيح بالخطأ
                         lat: Number.isFinite(latNum) ? latNum : 24.7136,
                         lng: Number.isFinite(lngNum) ? lngNum : 46.6753,
                         speed: emp.speed !== '' ? parseFloat(emp.speed).toFixed(1) : '0.0',
@@ -527,13 +532,10 @@
                     };
                 });
 
-                // إزالة السجلات المكررة لنفس رقم الموظف (سبب انفجار شريط الطوارئ في اللقطة الأصلية):
-                // نُبقي فقط السجل الأحدث توقيتًا لكل emp_id
                 state.employees = dedupeByEmployeeId(cleaned);
 
                 filterEmployees();
                 updateStats();
-                updateMapMarkers();
                 checkSosAlerts();
                 updateHeaderPulse();
                 document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
@@ -543,7 +545,6 @@
                     if (currentEmp) {
                         showEmployeeDetails(currentEmp);
                     } else {
-                        // الموظف لم يعد ضمن البيانات الحالية، أغلق اللوحة بدلًا من إبقاء بيانات قديمة
                         deselectEmployee();
                     }
                 }
@@ -575,6 +576,7 @@
             });
 
             renderEmployeeList();
+            updateMapMarkers(); // مزامنة الخريطة فورياً مع عناصر القائمة المفلترة
         }
 
         function renderEmployeeList() {
@@ -605,7 +607,10 @@
                     <div class="flex justify-between items-center text-xs mt-2" style="color: var(--text-secondary);">
                         <span class="flex items-center gap-1">❤️ ${emp.heart_rate} BPM</span>
                         <span class="flex items-center gap-1 ${lowBattery ? 'font-bold' : ''}" style="${lowBattery ? 'color: var(--warning);' : ''}">🔋 ${escapeHTML(emp.battery)}</span>
-                        <span class="text-[10px]" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
+                        <div class="flex flex-col items-end gap-0.5">
+                            <span class="text-[10px]" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
+                            <span class="text-[9px] font-semibold text-slate-400 relative-time-update" data-timestamp="${emp.timestamp}">${getRelativeTimeString(emp.timestamp)}</span>
+                        </div>
                     </div>
                 `;
 
@@ -623,13 +628,9 @@
             document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS').length;
         }
 
-        function updateHeaderPulse() {
-            const hasSos = state.employees.some(e => e.status === 'SOS');
-            document.getElementById('headerPulse').classList.toggle('sos', hasSos);
-        }
-
+        // تحديث وتصفية مواقع الخريطة لتتطابق تماماً مع الفلاتر الفعالة
         function updateMapMarkers() {
-            const activeIds = new Set(state.employees.map(e => e.emp_id));
+            const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
 
             for (const empId in mapMarkers) {
                 if (!activeIds.has(empId)) {
@@ -638,7 +639,7 @@
                 }
             }
 
-            state.employees.forEach(emp => {
+            state.filteredEmployees.forEach(emp => {
                 const latLng = [emp.lat, emp.lng];
                 const status = effectiveStatus(emp);
 
@@ -712,11 +713,9 @@
             document.getElementById('detailSpeed').innerText = `${emp.speed} م/ث`;
             document.getElementById('detailWorn').innerText = emp.is_worn;
 
-            let timeString = '--:--:--';
-            try {
-                timeString = new Date(emp.timestamp).toLocaleTimeString('ar-SA', { hour12: false });
-            } catch (e) {}
-            document.getElementById('detailTime').innerText = timeString;
+            // ضبط الوقت النسبي وتخزين التوقيت الفعلي للتحديث التلقائي
+            document.getElementById('detailTime').innerText = getRelativeTimeString(emp.timestamp);
+            document.getElementById('detailTime').setAttribute('data-timestamp', emp.timestamp);
 
             const status = effectiveStatus(emp);
             document.getElementById('detailStatusDot').className = `status-dot ${status.toLowerCase()}`;
@@ -747,87 +746,21 @@
 
         function checkSosAlerts() {
             const sosEmployees = state.employees.filter(e => e.status === 'SOS');
-            const banner = document.getElementById('sosBanner');
-
-            // تنظيف قائمة "تم الاطلاع" من أي رقم موظف لم يعد في حالة SOS حاليًا
-            const activeSosIds = new Set(sosEmployees.map(e => e.emp_id));
-            state.acknowledgedSos.forEach(id => { if (!activeSosIds.has(id)) state.acknowledgedSos.delete(id); });
-
             if (sosEmployees.length > 0) {
-                banner.classList.remove('hidden');
-
-                document.getElementById('sosCountLabel').innerText = `${sosEmployees.length} حالة طوارئ نشطة`;
-
-                // معاينة مختصرة لأول اسمين فقط، مع عدّاد للباقي بدل تفريغ القائمة كاملة في الشريط
-                const previewNames = sosEmployees.slice(0, SOS_PREVIEW_COUNT).map(e => e.emp_name);
-                const remaining = sosEmployees.length - previewNames.length;
-                document.getElementById('sosNamesPreview').innerText =
-                    previewNames.join('، ') + (remaining > 0 ? ` +${remaining} أخرى` : '');
-
-                if (!document.getElementById('sosModalOverlay').classList.contains('hidden')) {
-                    renderSosModal();
-                }
-
                 playAlarmSiren();
             } else {
-                banner.classList.add('hidden');
-                document.getElementById('sosModalOverlay').classList.add('hidden');
                 stopAlarmSiren();
             }
         }
 
-        // يبني القائمة الكاملة داخل النافذة المنبثقة، بحد أقصى للارتفاع وتمرير بدل التمدد اللانهائي
-        function renderSosModal() {
-            const container = document.getElementById('sosModalList');
-            const sosEmployees = state.employees.filter(e => e.status === 'SOS');
-
-            if (sosEmployees.length === 0) {
-                container.innerHTML = `<div class="text-center py-6" style="color: var(--text-muted);">لا توجد حالات طوارئ نشطة حاليًا.</div>`;
-                return;
-            }
-
-            container.innerHTML = '';
-            sosEmployees.forEach(emp => {
-                const acked = state.acknowledgedSos.has(emp.emp_id);
-                const row = document.createElement('div');
-                row.className = `sos-row ${acked ? 'acked' : ''}`;
-                row.innerHTML = `
-                    <div class="min-w-0">
-                        <div class="font-bold truncate">${escapeHTML(emp.emp_name)} <span class="font-normal" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span></div>
-                        <div class="text-[10px]" style="color: var(--text-secondary);">أقرب مستجيب: ${escapeHTML(emp.nearest_responder)}</div>
-                    </div>
-                    <div class="flex items-center gap-1.5 flex-shrink-0">
-                        <button class="ack-btn ${acked ? 'done' : ''}" data-action="ack">${acked ? 'تمت المتابعة' : 'تأكيد الاطلاع'}</button>
-                        <button class="ack-btn" style="background: var(--normal);" data-action="resolve">إغلاق الحالة</button>
-                    </div>
-                `;
-                row.querySelector('[data-action="ack"]').addEventListener('click', () => {
-                    if (state.acknowledgedSos.has(emp.emp_id)) {
-                        state.acknowledgedSos.delete(emp.emp_id);
-                    } else {
-                        state.acknowledgedSos.add(emp.emp_id);
-                    }
-                    renderSosModal();
-                });
-                row.querySelector('[data-action="resolve"]').addEventListener('click', () => {
-                    if (confirm(`هل تم التعامل مع حالة ${emp.emp_name} وترغب بإغلاقها؟`)) {
-                        resolveEmergencyRemote(emp.emp_id);
-                    }
-                });
-                container.appendChild(row);
-            });
-        }
-
-        // يرسل طلب إغلاق حالة الطوارئ إلى السكربت الخلفي (action=resolve)، ثم يحدّث البيانات فوراً
+        // إغلاق حالة الطوارئ وإرسال طلب POST
         async function resolveEmergencyRemote(empId) {
             try {
                 await fetch(state.apiUrl, {
                     method: 'POST',
-                    // نستخدم text/plain لتفادي طلب preflight (OPTIONS) الذي لا يتعامل معه Apps Script بشكل جيد
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: 'resolve', emp_id: empId })
                 });
-                state.acknowledgedSos.delete(empId);
                 await fetchTelemetryData();
             } catch (err) {
                 console.error('فشل إغلاق حالة الطوارئ:', err);
@@ -872,11 +805,19 @@
         function toggleMute() {
             state.isMuted = !state.isMuted;
             const muteIcon = document.getElementById('muteIcon');
+            const muteText = document.getElementById('muteText');
+            
             if (state.isMuted) {
                 muteIcon.setAttribute('data-lucide', 'volume-x');
+                muteIcon.classList.remove('text-emerald-600');
+                muteIcon.classList.add('text-rose-500');
+                muteText.innerText = 'التنبيه الصوتي مكتوم';
                 stopAlarmSiren();
             } else {
                 muteIcon.setAttribute('data-lucide', 'volume-2');
+                muteIcon.classList.remove('text-rose-500');
+                muteIcon.classList.add('text-emerald-600');
+                muteText.innerText = 'التنبيه الصوتي نشط';
                 checkSosAlerts();
             }
             lucide.createIcons();
