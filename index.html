@@ -796,9 +796,12 @@
                         <div class="font-bold truncate">${escapeHTML(emp.emp_name)} <span class="font-normal" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span></div>
                         <div class="text-[10px]" style="color: var(--text-secondary);">أقرب مستجيب: ${escapeHTML(emp.nearest_responder)}</div>
                     </div>
-                    <button class="ack-btn ${acked ? 'done' : ''}" data-id="${escapeHTML(emp.emp_id)}">${acked ? 'تمت المتابعة' : 'تأكيد الاطلاع'}</button>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <button class="ack-btn ${acked ? 'done' : ''}" data-action="ack">${acked ? 'تمت المتابعة' : 'تأكيد الاطلاع'}</button>
+                        <button class="ack-btn" style="background: var(--normal);" data-action="resolve">إغلاق الحالة</button>
+                    </div>
                 `;
-                row.querySelector('.ack-btn').addEventListener('click', () => {
+                row.querySelector('[data-action="ack"]').addEventListener('click', () => {
                     if (state.acknowledgedSos.has(emp.emp_id)) {
                         state.acknowledgedSos.delete(emp.emp_id);
                     } else {
@@ -806,8 +809,30 @@
                     }
                     renderSosModal();
                 });
+                row.querySelector('[data-action="resolve"]').addEventListener('click', () => {
+                    if (confirm(`هل تم التعامل مع حالة ${emp.emp_name} وترغب بإغلاقها؟`)) {
+                        resolveEmergencyRemote(emp.emp_id);
+                    }
+                });
                 container.appendChild(row);
             });
+        }
+
+        // يرسل طلب إغلاق حالة الطوارئ إلى السكربت الخلفي (action=resolve)، ثم يحدّث البيانات فوراً
+        async function resolveEmergencyRemote(empId) {
+            try {
+                await fetch(state.apiUrl, {
+                    method: 'POST',
+                    // نستخدم text/plain لتفادي طلب preflight (OPTIONS) الذي لا يتعامل معه Apps Script بشكل جيد
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'resolve', emp_id: empId })
+                });
+                state.acknowledgedSos.delete(empId);
+                await fetchTelemetryData();
+            } catch (err) {
+                console.error('فشل إغلاق حالة الطوارئ:', err);
+                alert('تعذر إغلاق الحالة. تحقق من الاتصال بالسيرفر وحاول مرة أخرى.');
+            }
         }
 
         function playAlarmSiren() {
