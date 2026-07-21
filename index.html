@@ -1,1344 +1,514 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صيانة+ | المنصة الشاملة</title>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <!-- Leaflet JS & CSS for Interactive Map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+// إدارة حالة التطبيق (State Management)
+let state = {
+    employees: [],
+    filteredEmployees: [],
+    selectedEmployeeId: null,
+    searchQuery: '',
+    isMuted: false,
+    apiUrl: 'https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec',
+    autoRefresh: true,
+    refreshIntervalId: null,
+    audioContext: null,
+    sirenIntervalId: null
+};
+
+// حاوية معرّفات الدبابيس على الخريطة لمنع إعادة إنشائها وتفادي الوميض
+const mapMarkers = {};
+let map = null;
+
+// تهيئة التطبيق عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+    initMap();
+    initEventListeners();
+    lucide.createIcons();
     
-    <!-- Supabase JS Client SDK for Free Cloud Database, Storage & Email OTP -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root { --primary: #1e3a8a; --secondary: #f59e0b; --bg: #f8fafc; --white: #ffffff; --text-main: #1f2937; --border: #e2e8f0; --success: #10b981; }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
-        body { background-color: var(--bg); color: var(--text-main); line-height: 1.6; }
-        nav { background-color: var(--white); padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
-        .logo { font-size: 28px; font-weight: 800; color: var(--primary); cursor: pointer;}
-        .logo span { color: var(--secondary); }
-        .nav-links { display: flex; gap: 15px; align-items: center; }
-        .btn { padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 16px; transition: 0.3s; text-align: center; }
-        .btn-primary { background: var(--primary); color: var(--white); }
-        .btn-secondary { background: var(--secondary); color: var(--white); }
-        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-        .page-view { display: none; animation: fadeIn 0.4s ease-in-out; }
-        .page-view.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .hero { background: linear-gradient(to left, rgba(30, 58, 138, 0.9), rgba(30, 58, 138, 0.7)), url('https://images.unsplash.com/photo-1581094288338-2314dddb7ece?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') center/cover; color: var(--white); text-align: center; padding: 80px 20px; }
-        .hero h1 { font-size: 3.5rem; margin-bottom: 20px; }
-        .services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; padding: 20px 5%; max-width: 1200px; margin: auto;}
-        .service-card { background: var(--white); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border); text-align: center;}
-        .service-card h3 { color: var(--primary); margin-bottom: 10px;}
-        .service-card .price { color: var(--secondary); font-weight: 800; font-size: 18px; }
-        
-        .auth-container { max-width: 450px; margin: 40px auto; background: var(--white); padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .form-group { margin-bottom: 20px; text-align: right;}
-        label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px; }
-        input, select, textarea { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; outline: none;}
-        
-        /* مخصص لأزرار رفع الملفات وتنسيق الصور */
-        input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            background: var(--bg);
-            cursor: pointer;
-            font-size: 14px;
+    // جلب أول دفعة بيانات
+    fetchTelemetryData();
+    
+    // بدء التحديث التلقائي
+    toggleAutoRefresh(true);
+});
+
+// تهيئة خريطة Leaflet
+function initMap() {
+    // الرياض كإحداثيات افتراضية للمركز
+    map = L.map('map', {
+        zoomControl: false // سنضيفه لاحقاً في مكان مخصص
+    }).setView([24.7136, 46.6753], 12);
+
+    // إضافة أزرار التحكم بالتقريب في موقع مناسب
+    L.control.zoom({
+        position: 'topleft'
+    }).addTo(map);
+
+    // استخدام طبقة خريطة داكنة احترافية مناسبة لغرف العمليات الأمنية (CartoDB Dark Matter)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(map);
+}
+
+// تهيئة مستمعي الأحداث (Event Listeners)
+function initEventListeners() {
+    // البحث
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', (e) => {
+        state.searchQuery = e.target.value.trim().toLowerCase();
+        filterEmployees();
+    });
+
+    // تبديل التحديث التلقائي
+    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+    autoRefreshToggle.addEventListener('change', (e) => {
+        toggleAutoRefresh(e.target.checked);
+    });
+
+    // كتم/تفعيل صوت الإنذار
+    const muteAlarmBtn = document.getElementById('muteAlarmBtn');
+    muteAlarmBtn.addEventListener('click', toggleMute);
+
+    // إغلاق لوحة التفاصيل
+    const closeDetailBtn = document.getElementById('closeDetailBtn');
+    closeDetailBtn.addEventListener('click', deselectEmployee);
+
+    // تحديث رابط الـ API يدوياً
+    const apiUrlInput = document.getElementById('apiUrlInput');
+    apiUrlInput.addEventListener('change', (e) => {
+        const val = e.target.value.trim();
+        if (val) {
+            state.apiUrl = val;
+            fetchTelemetryData();
         }
-        input[type="file"]:hover {
-            border-color: var(--primary);
+    });
+}
+
+// جلب البيانات الحية من Google Apps Script Web App
+async function fetchTelemetryData() {
+    const indicator = document.getElementById('refreshIndicator');
+    indicator.classList.add('refreshing');
+    
+    try {
+        const response = await fetch(state.apiUrl);
+        if (!response.ok) {
+            throw new Error(`خطأ في خادم البيانات: ${response.status}`);
         }
-        .preview-img {
-            max-width: 100%;
-            max-height: 150px;
-            border-radius: 8px;
-            margin-top: 10px;
-            border: 1px solid var(--border);
-            display: none;
-        }
         
-        .payment-methods { display: flex; gap: 10px; margin-bottom: 20px; }
-        .payment-tab { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .payment-tab.active { border-color: var(--primary); background: #eff6ff; color: var(--primary); }
-        .payment-form { display: none; }
-        .payment-form.active { display: block; }
-        .btn-apple-pay { background: #000; color: #fff; width: 100%; padding: 15px; border-radius: 8px; font-size: 18px; cursor: pointer; border: none; margin-bottom: 15px;}
+        const rawData = await response.json();
         
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: var(--white); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; }
-        .otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 20px 0; direction: ltr; }
-        .otp-inputs input { width: 50px; height: 50px; text-align: center; font-size: 24px; font-weight: bold; border: 2px solid var(--border); border-radius: 8px;}
-        
-        .dashboard-container { padding: 40px 5%; max-width: 1200px; margin: auto; }
-        .card { background: var(--white); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 25px; border: 1px solid var(--border); overflow-x: auto;}
-        .card-header { font-size: 20px; font-weight: 800; color: var(--primary); margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; min-width: 800px;}
-        th, td { padding: 15px 10px; text-align: right; border-bottom: 1px solid var(--border); }
-        th { background: var(--bg); color: #6b7280; }
-        .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-        .badge-pending { background: #fef3c7; color: #d97706; }
-        .badge-working { background: #dbeafe; color: #1d4ed8; }
-        .badge-success { background: #d1fae5; color: var(--success); }
-        
-        /* Stats Dashboard Styling */
-        .stats-grid { display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;}
-        .stat-box { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; flex: 1; min-width: 200px; border: 1px solid rgba(255,255,255,0.2);}
-        .stat-title { font-size: 14px; opacity: 0.9; margin-bottom: 5px;}
-        .stat-val { font-size: 20px; font-weight: bold; }
-        
-        .dev-tools { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1f2937; padding: 10px 20px; border-radius: 30px; display: flex; gap: 10px; z-index: 1000;}
-        .dev-tools button { background: #4b5563; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold;}
-    </style>
-</head>
-<body>
-
-    <!-- نافذة عرض الصور المكبرة -->
-    <div id="image-modal" class="modal-overlay" onclick="closeImageModal()">
-        <div class="modal-content" style="max-width: 600px; padding: 20px; position: relative;" onclick="event.stopPropagation()">
-            <span style="position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: var(--primary);" onclick="closeImageModal()">&times;</span>
-            <h4 style="margin-bottom: 15px; color: var(--primary);">معاينة الصورة المرفقة</h4>
-            <img id="modal-viewer-img" src="" alt="صورة مكبرة" style="max-width: 100%; max-height: 450px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-        </div>
-    </div>
-
-    <!-- نافذة الدفع والتحقق بخطوتين -->
-    <div id="otp-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h3 style="color: var(--primary);">التحقق بخطوتين 🔒</h3>
-            <p style="font-size: 13px; color: #6b7280; margin-top: 5px;">يرجى إدخال رمز التحقق المكون من 6 أرقام المرسل لبريدك الإلكتروني</p>
-            <div class="otp-inputs">
-                <input type="text" maxlength="1" id="otp1" onkeyup="moveToNext(this, 'otp2')">
-                <input type="text" maxlength="1" id="otp2" onkeyup="moveToNext(this, 'otp3')">
-                <input type="text" maxlength="1" id="otp3" onkeyup="moveToNext(this, 'otp4')">
-                <input type="text" maxlength="1" id="otp4" onkeyup="moveToNext(this, 'otp5')">
-                <input type="text" maxlength="1" id="otp5" onkeyup="moveToNext(this, 'otp6')">
-                <input type="text" maxlength="1" id="otp6">
-            </div>
-            <button class="btn btn-primary" style="width: 100%;" id="btn-verify-otp" onclick="verifyPaymentAndRegister()">تأكيد</button>
-            <button class="btn" style="background: transparent; margin-top: 10px; width: 100%;" onclick="document.getElementById('otp-modal').style.display='none'">إلغاء</button>
-        </div>
-    </div>
-
-    <!-- القائمة العلوية -->
-    <nav>
-        <div class="logo" onclick="navigate('home')">صيانة<span>+</span></div>
-        <div class="nav-links" id="nav-links-container"></div>
-    </nav>
-
-    <!-- 1. الرئيسية -->
-    <div id="page-home" class="page-view active">
-        <section class="hero">
-            <h1>راحة بالك.. طوال العام</h1>
-            <p style="font-size: 1.3rem; margin-bottom: 30px;">اشترك الآن في باقة السباكة والكهرباء وتمتع بالصيانة الفورية.</p>
-            <button class="btn btn-secondary" style="padding: 15px 40px; font-size: 1.5rem;" onclick="navigate('register')">اشترك بـ 500 ريال سنوياً</button>
-        </section>
-        <div class="services-grid" id="home-products-grid"></div>
-        
-        <!-- قسم الشكاوى والاقتراحات -->
-        <section style="max-width: 800px; margin: 40px auto; padding: 25px; background: var(--white); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border);">
-            <h3 style="color: var(--primary); text-align: center; margin-bottom: 15px; font-weight: 800; font-size: 24px;">الشكاوى والاقتراحات ✉️</h3>
-            <p style="text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 20px;">نسعى دوماً لتقديم أفضل تجربة صيانة. اترك لنا رأيك أو شكواك هنا وسيتواصل معك الدعم الفني فوراً.</p>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <div class="form-group" style="flex: 1; min-width: 200px;">
-                    <label>الاسم الكامل</label>
-                    <input type="text" id="feedback-name" placeholder="مثال: عبدالله محمد">
-                </div>
-                <div class="form-group" style="flex: 1; min-width: 200px;">
-                    <label>رقم الجوال</label>
-                    <input type="tel" id="feedback-phone" placeholder="05XXXXXXXX">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>نوع الرسالة</label>
-                <select id="feedback-type">
-                    <option value="اقتراح">اقتراح</option>
-                    <option value="شكوى">شكوى</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>تفاصيل الرسالة</label>
-                <textarea id="feedback-desc" rows="4" placeholder="اكتب تفاصيل الشكوى أو الاقتراح هنا..."></textarea>
-            </div>
-            <button class="btn btn-primary" style="width: 100%; font-size: 16px;" onclick="submitFeedback()">إرسال الرسالة</button>
-        </section>
-    </div>
-
-    <!-- 2. التسجيل -->
-    <div id="page-register" class="page-view">
-        <div class="auth-container">
-            <h2 style="text-align: center; margin-bottom: 20px; color: var(--primary);">تسجيل المشترك الجديد</h2>
-            <div class="form-group"><label>الاسم الكامل</label><input type="text" id="reg-name" placeholder="مثال: عبدالله محمد"></div>
-            <div class="form-group"><label>رقم الجوال</label><input type="tel" id="reg-phone" placeholder="05XXXXXXXX"></div>
-            <button class="btn btn-primary" style="width: 100%;" onclick="proceedToPayment()">المتابعة للدفع</button>
-            <p style="text-align: center; margin-top: 20px; font-size: 14px;">مشترك حالي؟ <a style="color:var(--primary); cursor:pointer; font-weight:bold;" onclick="navigate('login')">تسجيل الدخول هنا</a></p>
-        </div>
-    </div>
-
-    <!-- 3. تسجيل الدخول -->
-    <div id="page-login" class="page-view">
-        <div class="auth-container">
-            <h2 style="text-align: center; margin-bottom: 20px; color: var(--primary);">تسجيل الدخول للمشتركين</h2>
-            <p style="text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 20px;">أدخل رقم جوالك المسجل للدخول للوحة التحكم</p>
-            <div class="form-group"><label>رقم الجوال المسجل</label><input type="tel" id="login-phone" placeholder="05XXXXXXXX"></div>
-            <button class="btn btn-primary" style="width: 100%;" onclick="loginUser()">دخول</button>
-        </div>
-    </div>
-
-    <!-- 4. الدفع -->
-    <div id="page-payment" class="page-view">
-        <div class="auth-container">
-            <h2 style="text-align: center; margin-bottom: 20px; color: var(--primary);">إتمام الدفع (500 ر.س / 12 شهر)</h2>
-            <div class="payment-methods">
-                <div class="payment-tab active" onclick="switchPayment('card')">البطاقة / مدى</div>
-                <div class="payment-tab" onclick="switchPayment('apple')">Apple Pay</div>
-            </div>
-            <div id="form-card" class="payment-form active">
-                <div class="form-group"><label>رقم البطاقة</label><input type="text" placeholder="XXXX XXXX XXXX XXXX"></div>
-                <button class="btn btn-primary" style="width: 100%; font-size: 18px;" onclick="showOTP()">ادفع الآن</button>
-            </div>
-            <div id="form-apple" class="payment-form">
-                <button class="btn-apple-pay" onclick="showOTP()"> Pay</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 4.1 صفحة إكمال بيانات التفعيل (بعد الدفع) -->
-    <div id="page-complete-reg" class="page-view">
-        <div class="auth-container">
-            <h2 style="text-align: center; margin-bottom: 20px; color: var(--primary);">إكمال تفعيل الاشتراك 🏡</h2>
-            <p style="text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 20px;">الرجاء إضافة البيانات التالية لتفعيل حسابك بشكل كامل</p>
+        // تصفية السجلات الفارغة والتأكد من وجود اسم للموظف ومعرّف، ومنع البيانات التالفة
+        state.employees = rawData.filter(emp => {
+            const id = (emp.emp_id || '').toString().trim();
+            const name = (emp.emp_name || '').toString().trim();
             
-            <div class="form-group">
-                <label>الاسم الكامل (مسجل تلقائياً)</label>
-                <input type="text" id="comp-name" readonly style="background: #eff6ff; font-weight: bold;">
-            </div>
-            <div class="form-group">
-                <label>رقم الجوال (مسجل تلقائياً)</label>
-                <input type="tel" id="comp-phone" readonly style="background: #eff6ff; font-weight: bold;">
-            </div>
-            <div class="form-group">
-                <label>حدد موقع منزلك على الخريطة لتعبئة العنوان الوطني تلقائياً 📍</label>
-                <button type="button" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px; font-size: 14px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold;" onclick="locateUser()">
-                    📍 حدد موقعي الحالي تلقائياً
-                </button>
-                <div id="map" style="width: 100%; height: 220px; border-radius: 8px; border: 1px solid var(--border); z-index: 1;"></div>
-                <p style="font-size: 11px; color: #6b7280; margin-top: 4px;">* اسحب الدبوس أو انقر على الخريطة لتحديد الموقع بدقة وسنقوم بتحديث العنوان الوطني تلقائياً.</p>
-            </div>
-            <div class="form-group">
-                <label>العنوان الوطني السعودي</label>
-                <input type="text" id="comp-national-address" placeholder="مثال: 1234 الرياض 12345 - 6789">
-            </div>
-            <div class="form-group">
-                <label>صورة المنزل</label>
-                <input type="file" id="comp-house-image" accept="image/*" onchange="previewImage(this, 'house-preview')">
-                <img id="house-preview" class="preview-img" alt="معاينة صورة المنزل">
-            </div>
+            // يجب أن يحتوي السجل على معرف أو اسم
+            if (!id && !name) return false;
             
-            <button class="btn btn-primary" style="width: 100%; font-size: 18px; margin-top: 10px;" id="btn-save-complete-reg" onclick="saveCompleteRegistration()">حفظ وتفعيل الاشتراك</button>
-        </div>
-    </div>
-
-    <!-- 5. لوحة العميل (بها تفاصيل الاشتراك والعدادات) -->
-    <div id="page-client" class="page-view">
-        <div class="dashboard-container">
-            <!-- كرت الاشتراك الشامل -->
-            <div class="card" style="background: linear-gradient(135deg, var(--primary), #3b82f6); color: white; border: none;">
-                <h2 id="welcome-msg" style="margin-bottom: 10px;">أهلاً بك!</h2>
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-title">الباقة الحالية</div>
-                        <div class="stat-val">سباكة وكهرباء <span class="badge badge-success" style="background:rgba(255,255,255,0.2); font-size:12px;">مُفعل</span></div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-title">تاريخ الانتهاء</div>
-                        <div class="stat-val" id="sub-end-date">-</div>
-                    </div>
-                    <div class="stat-box" style="background: rgba(245, 158, 11, 0.8);">
-                        <div class="stat-title">طلباتك السابقة</div>
-                        <div class="stat-val"><span id="sub-req-count">0</span> طلب منفذ</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- تفاصيل اشتراك العميل الإضافية -->
-            <div class="card" id="client-sub-details" style="display: none;">
-                <div class="card-header">بيانات اشتراكك المفعلة 🏡</div>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-                    <div style="flex: 1; min-width: 250px;">
-                        <p style="margin-bottom: 8px;"><strong>الاسم المشترك:</strong> <span id="client-detail-name">-</span></p>
-                        <p style="margin-bottom: 8px;"><strong>رقم الجوال:</strong> <span id="client-detail-phone">-</span></p>
-                        <p style="margin-bottom: 8px;"><strong>العنوان الوطني السعودي:</strong> <span id="client-detail-address">-</span></p>
-                    </div>
-                    <div style="flex: 1; min-width: 250px; text-align: center;">
-                        <p style="font-weight: bold; margin-bottom: 8px; color: var(--primary);">صورة المنزل المرفقة:</p>
-                        <img id="client-detail-house-img" src="" alt="صورة المنزل" style="max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer;" onclick="openImageModal(this.src)">
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">طلب صيانة جديد 🛠️ <span id="sync-status" style="font-size:12px; color:var(--success); font-weight:normal; display:none;">● متصل بالخادم</span></div>
-                <div class="form-group"><label>الخدمة المطلوبة:</label><select id="c-service"></select></div>
-                <div class="form-group"><label>وصف المشكلة:</label><textarea id="c-desc" rows="3" placeholder="اشرح العطل هنا..."></textarea></div>
-                <div class="form-group">
-                    <label>إرفاق صورة العطل (اختياري):</label>
-                    <input type="file" id="c-image" accept="image/*" onchange="previewImage(this, 'request-preview')">
-                    <img id="request-preview" class="preview-img" alt="معاينة صورة العطل">
-                </div>
-                <button class="btn btn-secondary" id="btn-submit" onclick="submitRequest()">إرسال الطلب</button>
-            </div>
-            <div class="card">
-                <div class="card-header">سجل طلباتي</div>
-                <table>
-                    <tr>
-                        <th>التاريخ</th>
-                        <th>الخدمة</th>
-                        <th>الوصف</th>
-                        <th>الصورة</th>
-                        <th>الفني</th>
-                        <th>الحالة</th>
-                    </tr>
-                    <tbody id="client-list"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- 6. لوحة الفني -->
-    <div id="page-tech" class="page-view">
-        <div class="dashboard-container">
-            <div class="card" style="background: linear-gradient(135deg, var(--secondary), #d97706); color: white; border: none;">
-                <h2>لوحة الفني 👨🔧</h2>
-            </div>
-            <div class="card">
-                <div class="card-header">المهام المسندة</div>
-                <table>
-                    <tr>
-                        <th>العميل</th>
-                        <th>الجوال</th>
-                        <th>الخدمة</th>
-                        <th>التفاصيل</th>
-                        <th>صورة العطل</th>
-                        <th>العنوان الوطني</th>
-                        <th>صورة المنزل</th>
-                        <th>الموقع الجغرافي</th>
-                        <th>الحالة</th>
-                        <th>إجراء</th>
-                    </tr>
-                    <tbody id="tech-active-list"></tbody>
-                </table>
-            </div>
-            <div class="card">
-                <div class="card-header">أعمالك المكتملة 🏅</div>
-                <table>
-                    <tr>
-                        <th>العميل</th>
-                        <th>الخدمة</th>
-                        <th>الصورة</th>
-                        <th>بدء العمل</th>
-                        <th>انتهاء العمل</th>
-                        <th>الحالة</th>
-                    </tr>
-                    <tbody id="tech-completed-list"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- 7. لوحة الإدارة -->
-    <div id="page-admin" class="page-view">
-        <div class="dashboard-container">
-            <div class="card" style="background: linear-gradient(135deg, #1f2937, #111827); color: white; border: none;">
-                <h2>لوحة الإدارة الشاملة 📊</h2>
-            </div>
-            <div class="card">
-                <div class="card-header">إضافة منتجات للرئيسية ➕</div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex:1"><label>اسم الخدمة</label><input type="text" id="a-prod-name"></div>
-                    <div class="form-group" style="flex:1"><label>السعر</label><input type="text" id="a-prod-price"></div>
-                </div>
-                <button class="btn btn-secondary" id="btn-add-prod" onclick="addProduct()">إضافة ونشر للموقع</button>
-            </div>
-            <div class="card">
-                <div class="card-header">الطلبات النشطة 🔄</div>
-                <table>
-                    <tr>
-                        <th>العميل</th>
-                        <th>الجوال</th>
-                        <th>الخدمة</th>
-                        <th>الوصف</th>
-                        <th>الصورة</th>
-                        <th>الفني الحالي</th>
-                        <th>الحالة</th>
-                    </tr>
-                    <tbody id="admin-active-list"></tbody>
-                </table>
-            </div>
-            <div class="card">
-                <div class="card-header">سجل المشتركين (العملاء) 👥</div>
-                <table>
-                    <tr>
-                        <th>تاريخ التسجيل</th>
-                        <th>اسم العميل</th>
-                        <th>رقم الجوال</th>
-                        <th>العنوان الوطني</th>
-                        <th>صورة المنزل</th>
-                        <th>حالة الاشتراك</th>
-                    </tr>
-                    <tbody id="admin-users-list"></tbody>
-                </table>
-            </div>
-            <!-- كرت الشكاوى والاقتراحات المستلمة -->
-            <div class="card">
-                <div class="card-header">الشكاوى والاقتراحات المستلمة 📬</div>
-                <table>
-                    <tr>
-                        <th>التاريخ</th>
-                        <th>الاسم</th>
-                        <th>رقم الجوال</th>
-                        <th>النوع</th>
-                        <th>تفاصيل الرسالة</th>
-                    </tr>
-                    <tbody id="admin-feedbacks-list"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- أدوات التجربة -->
-    <div class="dev-tools">
-        <button onclick="navigate('home')">الرئيسية</button>
-        <button onclick="navigate('client')">لوحة العميل</button>
-        <button onclick="navigate('tech')">لوحة الفني</button>
-        <button onclick="navigate('admin')">لوحة الإدارة</button>
-    </div>
-
-    <script>
-        // تكوين مشروع سوبابيز (Supabase) الخاص بك للاستخدام الفعلي السحابي والمجاني 100%
-        // بعد إنشاء مشروعك في منصة Supabase Console، انسخ قيم التكوين وضعها هنا
-        const supabaseConfig = {
-            supabaseUrl: "https://chfdcejecmuxyxwtklep.supabase.co",
-            supabaseKey: "sb_publishable_3Z2JjiNijyu_vwn3HAAoLg_q5B00qxC"
-        };
-
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbztr9wKILJqypnVXW_LMmKtVlnWvg23oNQDv3-Fii4DO1Kc1VtyQSx-b1gqvQyRuYMJ/exec";
-
-        // التحقق مما إذا كان سوبابيز مهيأً للاستخدام الفعلي أو يعمل بنظام المحاكاة المحلي
-        const isSupabaseConfigured = supabaseConfig.supabaseUrl !== "YOUR_SUPABASE_URL";
-
-        let db = {
-            user: localStorage.getItem('user') || '',
-            phone: localStorage.getItem('phone') || '',
-            regDate: localStorage.getItem('regDate') || '',
-            products: JSON.parse(localStorage.getItem('products')) || [],
-            requests: JSON.parse(localStorage.getItem('requests')) || [],
-            users: JSON.parse(localStorage.getItem('users')) || [],
-            feedbacks: JSON.parse(localStorage.getItem('feedbacks')) || []
-        };
-
-        // متغيرات مؤقتة لحفظ الصور بصيغة Base64
-        let tempHouseImageBase64 = "";
-        let tempRequestImageBase64 = "";
-        
-        // متغير سوبابيز كلينت
-        let supabaseClient = null;
-        let otpFlowType = 'register'; // register or login
-        let tempEmail = "";
-
-        // --- المزامنة الصامتة في الخلفية (Background Sync) ---
-        // تعمل فقط في حال عدم تهيئة سوبابيز (Local Mode)
-        if (!isSupabaseConfigured) {
-            setInterval(silentBackgroundSync, 5000);
-        }
-
-        function silentBackgroundSync() {
-            if (isSupabaseConfigured) return;
-            let syncIndicator = document.getElementById('sync-status');
-            if(syncIndicator) syncIndicator.style.display = 'inline';
-
-            fetch(GOOGLE_SCRIPT_URL + "?action=getData", { cache: "no-cache" })
-            .then(res => res.json())
-            .then(data => {
-                let dataChanged = false;
-                
-                if(JSON.stringify(db.products) !== JSON.stringify(data.products)) { 
-                    db.products = data.products; 
-                    dataChanged = true; 
-                }
-                
-                let mergedRequests = data.requests.map(remoteReq => {
-                    let localReq = db.requests.find(r => r.id.toString() === remoteReq.id.toString());
-                    if (localReq) {
-                        return { ...remoteReq, image: remoteReq.image || localReq.image || "" };
-                    }
-                    return remoteReq;
-                });
-                if(JSON.stringify(db.requests) !== JSON.stringify(mergedRequests)) {
-                    db.requests = mergedRequests;
-                    dataChanged = true;
-                }
-                
-                let mergedUsers = data.users.map(remoteUser => {
-                    let localUser = db.users.find(u => u.phone.toString() === remoteUser.phone.toString());
-                    if (localUser) {
-                        return { 
-                            ...remoteUser, 
-                            nationalAddress: remoteUser.nationalAddress || localUser.nationalAddress || "",
-                            houseImage: remoteUser.houseImage || localUser.houseImage || "",
-                            status: remoteUser.status || localUser.status || "فعال",
-                            lat: remoteUser.lat || localUser.lat || "",
-                            lng: remoteUser.lng || localUser.lng || ""
-                        };
-                    }
-                    return remoteUser;
-                });
-                if(JSON.stringify(db.users) !== JSON.stringify(mergedUsers)) {
-                    db.users = mergedUsers;
-                    dataChanged = true;
-                }
-                
-                if(dataChanged) {
-                    localStorage.setItem('products', JSON.stringify(db.products));
-                    localStorage.setItem('requests', JSON.stringify(db.requests));
-                    localStorage.setItem('users', JSON.stringify(db.users));
-                    updateUI();
-                }
-                if(syncIndicator) setTimeout(() => syncIndicator.style.display = 'none', 1000);
-            }).catch(e => { if(syncIndicator) syncIndicator.style.display = 'none'; });
-        }
-
-        // --- تهيئة سوبابيز والمستمعين الفوريين للبيانات (Realtime Listeners) ---
-        if (isSupabaseConfigured) {
-            try {
-                supabaseClient = supabase.createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseKey);
-                initSupabaseData();
-                initSupabaseListeners();
-                console.log("Supabase Mode Active.");
-            } catch (e) {
-                console.error("Supabase initialization failed:", e);
-            }
-        }
-
-        async function initSupabaseData() {
-            // جلب المنتجات
-            let { data: products } = await supabaseClient.from('products').select('*');
-            if (products) {
-                db.products = products;
-                localStorage.setItem('products', JSON.stringify(db.products));
+            // استبعاد السجلات التي تحتوي على أكواد برمجية لتفادي إفساد التخطيط
+            if (id.startsWith('//') || name.startsWith('//') || 
+                id.startsWith('/*') || name.startsWith('/*') || 
+                id.includes('package ') || name.includes('package ') ||
+                id.includes('import ') || name.includes('import ') ||
+                id.includes('<!DOCTYPE') || name.includes('<!DOCTYPE') ||
+                id.includes('class ') || name.includes('class ')) {
+                return false;
             }
             
-            // جلب طلبات الصيانة
-            let { data: requests } = await supabaseClient.from('requests').select('*');
-            if (requests) {
-                db.requests = requests.sort((a, b) => b.id - a.id);
-                localStorage.setItem('requests', JSON.stringify(db.requests));
-            }
-
-            // جلب المستخدمين
-            let { data: users } = await supabaseClient.from('users').select('*');
-            if (users) {
-                db.users = users.map(u => ({ ...u, date: u.created_at }));
-                localStorage.setItem('users', JSON.stringify(db.users));
-            }
-
-            // جلب المقترحات والشكاوى
-            let { data: feedbacks } = await supabaseClient.from('feedbacks').select('*');
-            if (feedbacks) {
-                db.feedbacks = feedbacks;
-                localStorage.setItem('feedbacks', JSON.stringify(db.feedbacks));
-            }
-            updateUI();
-        }
-
-        function initSupabaseListeners() {
-            // الاستماع الفوري لقاعدة البيانات لتحديث الواجهات لحظياً
-            supabaseClient.channel('custom-all-channel')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => { initSupabaseData(); })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { initSupabaseData(); })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => { initSupabaseData(); })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'feedbacks' }, () => { initSupabaseData(); })
-            .subscribe();
-        }
-
-        window.onload = function() {
-            // إظهار تنبيه إذا كان التطبيق يعمل محلياً وغير مربوط بـ Supabase
-            if (!isSupabaseConfigured) {
-                let banner = document.createElement('div');
-                banner.style.background = '#fef3c7';
-                banner.style.color = '#d97706';
-                banner.style.padding = '12px';
-                banner.style.textAlign = 'center';
-                banner.style.fontWeight = 'bold';
-                banner.style.borderBottom = '2px solid #fbbf24';
-                banner.style.fontSize = '14px';
-                banner.innerHTML = "⚠️ تنبيه: التطبيق يعمل بنظام الحفظ المحلي المؤقت. لتفعيل قاعدة البيانات السحابية الآمنة والتحقق الثنائي OTP بـ البريد الإلكتروني، يرجى ملء تكوين SupabaseConfig في سطر 429 من الكود.";
-                document.body.insertBefore(banner, document.body.firstChild);
-                
-                silentBackgroundSync();
-            } else {
-                let banner = document.createElement('div');
-                banner.style.background = '#d1fae5';
-                banner.style.color = '#065f46';
-                banner.style.padding = '12px';
-                banner.style.textAlign = 'center';
-                banner.style.fontWeight = 'bold';
-                banner.style.borderBottom = '2px solid #34d399';
-                banner.style.fontSize = '14px';
-                banner.innerHTML = "✅ متصل سحابياً بـ Supabase بنجاح. (تحقق الجوال المباشر نشط v2 - تم إصلاح التاريخ).";
-                document.body.insertBefore(banner, document.body.firstChild);
+            // استبعاد السجلات ذات النصوص الطويلة جداً التي تشير لبيانات تالفة أو نصوص محادثات
+            if (name.length > 50 || id.length > 30) {
+                return false;
             }
             
-            if(db.user) navigate('client'); else navigate('home');
-        };
-
-        function navigate(page) {
-            document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
-            document.getElementById('page-' + page).classList.add('active');
-            window.scrollTo(0,0);
-            
-            let nav = document.getElementById('nav-links-container');
-            if(['client', 'tech', 'admin'].includes(page)) {
-                nav.innerHTML = `<button class="btn btn-outline" style="border-color: red; color: red;" onclick="logout()">تسجيل خروج</button>`;
-            } else if(['register', 'payment', 'complete-reg'].includes(page)) {
-                nav.innerHTML = `<button class="btn btn-outline" onclick="navigate('home')">الرئيسية</button>`;
-            } else {
-                nav.innerHTML = `<button class="btn btn-outline" onclick="navigate('login')">تسجيل الدخول</button>`;
-            }
-            updateUI();
-            if (page === 'complete-reg') {
-                initMap();
-            }
-        }
-
-        async function logout() { 
-            db.user = ''; 
-            db.phone = ''; 
-            db.regDate = ''; 
-            localStorage.removeItem('user');
-            localStorage.removeItem('phone');
-            localStorage.removeItem('regDate');
-            if (isSupabaseConfigured) {
-                await supabaseClient.auth.signOut();
-            }
-            navigate('home'); 
-        }
-
-        // --- معالجة رفع ومعاينة الصور وضغطها تلقائياً لتناسب قواعد البيانات ---
-        function previewImage(input, previewId) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-                        
-                        const MAX_WIDTH = 500;
-                        const MAX_HEIGHT = 500;
-                        
-                        if (width > height) {
-                            if (width > MAX_WIDTH) {
-                                height *= MAX_WIDTH / width;
-                                width = MAX_WIDTH;
-                            }
-                        } else {
-                            if (height > MAX_HEIGHT) {
-                                width *= MAX_HEIGHT / height;
-                                height = MAX_HEIGHT;
-                            }
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                        
-                        const preview = document.getElementById(previewId);
-                        preview.src = compressedBase64;
-                        preview.style.display = 'block';
-                        
-                        if (previewId === 'house-preview') {
-                            tempHouseImageBase64 = compressedBase64;
-                        } else if (previewId === 'request-preview') {
-                            tempRequestImageBase64 = compressedBase64;
-                        }
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // تفاصيل المودال لمعاينة الصور
-        function openImageModal(src) {
-            if (!src || src === "لا توجد" || src.includes("undefined")) return;
-            document.getElementById('modal-viewer-img').src = src;
-            document.getElementById('image-modal').style.display = 'flex';
-        }
-        function closeImageModal() {
-            document.getElementById('image-modal').style.display = 'none';
-        }
-
-        // --- تهيئة وإدارة الخريطة التفاعلية وجلب العنوان الجغرافي العكسي ---
-        let map = null;
-        let marker = null;
-
-        function initMap() {
-            const defaultLat = 24.7136; 
-            const defaultLng = 46.6753;
-            
-            if (map) {
-                setTimeout(() => {
-                    map.invalidateSize();
-                    map.setView([defaultLat, defaultLng], 12);
-                    if (marker) marker.setLatLng([defaultLat, defaultLng]);
-                    reverseGeocode(defaultLat, defaultLng);
-                }, 200);
-                return;
-            }
-            
-            setTimeout(() => {
-                map = L.map('map', { attributionControl: false }).setView([defaultLat, defaultLng], 12);
-                L.control.attribution({ prefix: false }).addTo(map);
-                
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    maxZoom: 19,
-                    attribution: '© خريطة صيانة+'
-                }).addTo(map);
-                
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-                    maxZoom: 19
-                }).addTo(map);
-                
-                marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
-                
-                marker.on('dragend', function(e) {
-                    let latlng = marker.getLatLng();
-                    reverseGeocode(latlng.lat, latlng.lng);
-                });
-                
-                map.on('click', function(e) {
-                    marker.setLatLng(e.latlng);
-                    reverseGeocode(e.latlng.lat, e.latlng.lng);
-                });
-                
-                reverseGeocode(defaultLat, defaultLng);
-            }, 200);
-        }
-
-        function locateUser() {
-            if (navigator.geolocation) {
-                let addressInput = document.getElementById('comp-national-address');
-                addressInput.value = "جاري تحديد موقعك الجغرافي تلقائياً...";
-                
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        
-                        if (map && marker) {
-                            map.setView([lat, lng], 16); 
-                            marker.setLatLng([lat, lng]);
-                            reverseGeocode(lat, lng);
-                        }
-                    },
-                    function(error) {
-                        alert("عذراً، فشل تحديد موقعك التلقائي. يرجى سحب الدبوس وتحديد موقع منزلك يدوياً على الخريطة.");
-                        reverseGeocode(24.7136, 46.6753);
-                    },
-                    { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
-                );
-            } else {
-                alert("متصفحك لا يدعم جلب الموقع الجغرافي تلقائياً.");
-            }
-        }
-
-        function reverseGeocode(lat, lng) {
-            let addressInput = document.getElementById('comp-national-address');
-            addressInput.value = "جاري تحديد العنوان الوطني بدقة...";
-            
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ar`)
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.address) {
-                    let addr = data.address;
-                    let building = addr.house_number || "";
-                    let road = addr.road || addr.suburb || "";
-                    let neighbourhood = addr.neighbourhood || addr.suburb || "";
-                    let city = addr.city || addr.town || addr.state || "";
-                    let postcode = addr.postcode || "";
-                    
-                    let nationalAddrParts = [];
-                    if (building) nationalAddrParts.push(building);
-                    if (road) nationalAddrParts.push(road);
-                    if (neighbourhood && neighbourhood !== road) nationalAddrParts.push(neighbourhood);
-                    if (city) nationalAddrParts.push(city);
-                    if (postcode) nationalAddrParts.push(postcode);
-                    
-                    let formattedAddr = nationalAddrParts.join(' - ');
-                    if (!formattedAddr) {
-                        formattedAddr = data.display_name || "موقع محدد (إحداثيات: " + lat.toFixed(4) + "، " + lng.toFixed(4) + ")";
-                    }
-                    addressInput.value = formattedAddr;
-                } else {
-                    addressInput.value = "موقع محدد (إحداثيات: " + lat.toFixed(4) + "، " + lng.toFixed(4) + ")";
-                }
-            })
-            .catch(err => {
-                addressInput.value = "موقع محدد (إحداثيات: " + lat.toFixed(4) + "، " + lng.toFixed(4) + ")";
-            });
-        }
-
-        // --- التسجيل والدفع والـ Email OTP ---
-        let tempUser = "", tempPhone = "";
-        
-        async function proceedToPayment() { 
-            tempUser = document.getElementById('reg-name').value.trim();
-            tempPhone = document.getElementById('reg-phone').value.trim();
-            
-            if(!tempUser || !tempPhone) return alert("الرجاء إدخال بياناتك كاملة!");
-            
-            if (isSupabaseConfigured) {
-                // التحقق المسبق من عدم تسجيل الجوال
-                let { data: existingUser } = await supabaseClient.from('users').select('id').eq('phone', tempPhone).maybeSingle();
-                if (existingUser) {
-                    alert("رقم الجوال مسجل مسبقاً! يرجى تسجيل الدخول.");
-                    navigate('login');
-                } else {
-                    navigate('payment');
-                }
-            } else {
-                navigate('payment'); 
-            }
-        }
-
-        function switchPayment(method) {
-            document.querySelectorAll('.payment-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.payment-form').forEach(f => f.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById('form-' + method).classList.add('active');
-        }
-
-        async function showOTP() { 
-            // تخطي التحقق بالكامل كما طلب العميل والتوجه مباشرة لإكمال البيانات والدفع
-            document.getElementById('comp-name').value = tempUser;
-            document.getElementById('comp-phone').value = tempPhone;
-            document.getElementById('comp-national-address').value = "";
-            document.getElementById('comp-house-image').value = "";
-            document.getElementById('house-preview').style.display = "none";
-            tempHouseImageBase64 = "";
-
-            navigate('complete-reg');
-        }
-
-        async function saveCompleteRegistration() {
-            let nationalAddress = document.getElementById('comp-national-address').value.trim();
-            let btn = document.getElementById('btn-save-complete-reg');
-            
-            if(!nationalAddress) return alert("الرجاء إدخال العنوان الوطني السعودي!");
-            if(!tempHouseImageBase64) return alert("الرجاء إرفاق صورة المنزل لتفعيل الاشتراك!");
-
-            btn.innerText = "جاري تفعيل الاشتراك...";
-            btn.disabled = true;
-
-            let latVal = "";
-            let lngVal = "";
-            if (marker) {
-                let latlng = marker.getLatLng();
-                latVal = latlng.lat.toString();
-                lngVal = latlng.lng.toString();
-            }
-
-            let exactISO = new Date().toISOString(); 
-
-            if (isSupabaseConfigured) {
-                // استخدام الجوال كمعرف فريد للتخطي الفوري للتحقق
-                let userId = tempPhone;
-                
-                // تخزين ملف المشترك في جدول users بقاعدة البيانات السحابية
-                let userData = {
-                    id: userId,
-                    created_at: exactISO,
-                    name: tempUser,
-                    phone: tempPhone,
-                    email: "",
-                    status: 'فعال',
-                    nationalAddress: nationalAddress,
-                    houseImage: tempHouseImageBase64, // يتم تخزينها كـ base64 مضغوطة بشكل متوافق وسريع
-                    lat: latVal,
-                    lng: lngVal
-                };
-                
-                let { error } = await supabaseClient.from('users').upsert([userData]);
-                if (!error) {
-                    db.user = tempUser; db.phone = tempPhone; db.regDate = exactISO;
-                    localStorage.setItem('user', db.user); 
-                    localStorage.setItem('phone', db.phone); 
-                    localStorage.setItem('regDate', db.regDate);
-                    
-                    alert("✅ تم تفعيل باقة الاشتراك سحابياً بنجاح لمدة 12 شهر!"); 
-                    btn.innerText = "حفظ وتفعيل الاشتراك"; btn.disabled = false;
-                    navigate('client'); 
-                } else {
-                    alert("خطأ في تخزين البيانات سحابياً: " + error.message + "\n\n(تأكد من إلغاء حماية RLS للجداول في لوحة تحكم سوبابيز)");
-                    btn.disabled = false;
-                    btn.innerText = "حفظ وتفعيل الاشتراك";
-                }
-            } else {
-                // الوضع المحلي والربط مع قوقل شيت
-                let payload = { 
-                    action: "registerUser", 
-                    date: exactISO, 
-                    user: tempUser, 
-                    phone: tempPhone,
-                    nationalAddress: nationalAddress,
-                    houseImage: tempHouseImageBase64,
-                    lat: latVal,
-                    lng: lngVal
-                };
-
-                fetch(GOOGLE_SCRIPT_URL, { 
-                    method: "POST", 
-                    headers: { "Content-Type": "text/plain;charset=utf-8" }, 
-                    body: JSON.stringify(payload) 
-                }).then(() => {
-                    db.user = tempUser; db.phone = tempPhone; db.regDate = exactISO;
-                    
-                    db.users.push({
-                        date: exactISO, 
-                        name: tempUser, 
-                        phone: tempPhone, 
-                        status: 'فعال',
-                        nationalAddress: nationalAddress,
-                        houseImage: tempHouseImageBase64,
-                        lat: latVal,
-                        lng: lngVal
-                    });
-                    
-                    localStorage.setItem('user', db.user); 
-                    localStorage.setItem('phone', db.phone); 
-                    localStorage.setItem('regDate', db.regDate);
-                    localStorage.setItem('users', JSON.stringify(db.users));
-                    
-                    alert("✅ تم الاشتراك بنجاح وتفعيل الباقة لمدة 12 شهر!"); 
-                    btn.innerText = "حفظ وتفعيل الاشتراك"; btn.disabled = false;
-                    navigate('client'); 
-                }).catch(() => {
-                    db.user = tempUser; db.phone = tempPhone; db.regDate = exactISO;
-                    db.users.push({
-                        date: exactISO, 
-                        name: tempUser, 
-                        phone: tempPhone, 
-                        status: 'فعال',
-                        nationalAddress: nationalAddress,
-                        houseImage: tempHouseImageBase64,
-                        lat: latVal,
-                        lng: lngVal
-                    });
-                    localStorage.setItem('user', db.user); 
-                    localStorage.setItem('phone', db.phone); 
-                    localStorage.setItem('regDate', db.regDate);
-                    localStorage.setItem('users', JSON.stringify(db.users));
-
-                    alert("✅ تم تفعيل اشتراكك وحفظ البيانات محلياً!"); 
-                    btn.innerText = "حفظ وتفعيل الاشتراك"; btn.disabled = false;
-                    navigate('client');
-                });
-            }
-        }
-
-        async function loginUser() {
-            let phoneInput = document.getElementById('login-phone').value.trim();
-            if(!phoneInput) return alert("أدخل رقم جوالك المسجل");
-            tempPhone = phoneInput;
-
-            if (isSupabaseConfigured) {
-                // التحقق أولاً من وجود العميل في قاعدة بيانات المشتركين والدخول الفوري بدون كود
-                let { data: userData, error } = await supabaseClient.from('users')
-                    .select('*')
-                    .eq('phone', phoneInput)
-                    .maybeSingle();
-                
-                if (error) {
-                    alert("خطأ في جلب بيانات العضوية: " + error.message + "\n\n(تأكد من إلغاء حماية RLS لجدول users)");
-                    return;
-                }
-                
-                if (!userData) {
-                    alert("رقم الجوال المدخل غير مسجل كشريك! يرجى الاشتراك أولاً.");
-                    navigate('register');
-                    return;
-                }
-                
-                db.user = userData.name;
-                db.phone = userData.phone;
-                db.regDate = userData.created_at || userData.date;
-                localStorage.setItem('user', db.user);
-                localStorage.setItem('phone', db.phone);
-                localStorage.setItem('regDate', db.regDate);
-                alert("✅ تم تسجيل الدخول بنجاح!");
-                navigate('client');
-            } else {
-                // الوضع المحلي البسيط
-                let existingUser = db.users.find(u => u.phone === phoneInput);
-                if(existingUser) {
-                    db.user = existingUser.name; 
-                    db.phone = existingUser.phone; 
-                    db.regDate = existingUser.date;
-                    localStorage.setItem('user', db.user); 
-                    localStorage.setItem('phone', db.phone); 
-                    localStorage.setItem('regDate', db.regDate);
-                    navigate('client');
-                } else {
-                    alert("رقم الجوال غير مسجل! نرجو الاشتراك أولاً.");
-                    navigate('register');
-                }
-            }
-        }
-
-        // --- الشكاوى والاقتراحات ---
-        async function submitFeedback() {
-            let name = document.getElementById('feedback-name').value.trim();
-            let phone = document.getElementById('feedback-phone').value.trim();
-            let type = document.getElementById('feedback-type').value;
-            let desc = document.getElementById('feedback-desc').value.trim();
-
-            if(!name || !phone || !desc) {
-                return alert("الرجاء تعبئة الاسم والجوال وتفاصيل الرسالة لإتمام الإرسال");
-            }
-
-            let feedback = {
-                id: Date.now(),
-                date: new Date().toLocaleDateString('ar-SA'),
-                name: name,
-                phone: phone,
-                type: type,
-                desc: desc
+            return true;
+        }).map(emp => {
+            // معالجة القيم الافتراضية
+            return {
+                timestamp: emp.timestamp || new Date().toISOString(),
+                emp_id: emp.emp_id || 'N/A',
+                emp_name: emp.emp_name || 'موظف غير معروف',
+                lat: parseFloat(emp.lat) || 24.7136,
+                lng: parseFloat(emp.lng) || 46.6753,
+                speed: emp.speed !== '' ? parseFloat(emp.speed).toFixed(1) : '0.0',
+                heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
+                steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
+                battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
+                is_worn: emp.is_worn === 'YES' || emp.is_worn === true ? 'نعم' : 'لا',
+                status: (emp.status || 'NORMAL').toUpperCase(),
+                nearest_responder: emp.nearest_responder || 'لا يوجد'
             };
+        });
 
-            if (isSupabaseConfigured) {
-                let { error } = await supabaseClient.from('feedbacks').insert([feedback]);
-                if (!error) {
-                    alert("✅ شكرًا لك! تم إرسال رسالتك سحابياً بنجاح وسنتواصل معك قريباً.");
-                    document.getElementById('feedback-name').value = '';
-                    document.getElementById('feedback-phone').value = '';
-                    document.getElementById('feedback-desc').value = '';
-                } else {
-                    alert("فشل إرسال الرسالة سحابياً: " + error.message);
-                }
-            } else {
-                db.feedbacks.push(feedback);
-                localStorage.setItem('feedbacks', JSON.stringify(db.feedbacks));
+        // تحديث الفلترة
+        filterEmployees();
+        
+        // تحديث الإحصائيات
+        updateStats();
+        
+        // تحديث الدبابيس على الخريطة
+        updateMapMarkers();
+        
+        // التحقق من بلاغات الـ SOS النشطة وتفعيل الإنذار
+        checkSosAlerts();
 
-                alert("✅ شكرًا لك! تم إرسال رسالتك بنجاح محلياً وسيتواصل معك فريق الدعم قريباً.");
-                document.getElementById('feedback-name').value = '';
-                document.getElementById('feedback-phone').value = '';
-                document.getElementById('feedback-desc').value = '';
-                updateUI();
+        // تحديث لوحة التفاصيل إذا كان هناك موظف محدد مفتوح حالياً
+        if (state.selectedEmployeeId) {
+            const currentEmp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+            if (currentEmp) {
+                showEmployeeDetails(currentEmp);
             }
         }
 
-        // --- إرسال طلب جديد مع الصورة ---
-        async function submitRequest() {
-            let srv = document.getElementById('c-service').value, desc = document.getElementById('c-desc').value;
-            let btn = document.getElementById('btn-submit');
-            if(!desc) return alert("الرجاء كتابة وصف العطل");
+    } catch (error) {
+        console.error('حدث خطأ أثناء جلب البيانات:', error);
+        const listContainer = document.getElementById('employeeList');
+        listContainer.innerHTML = `<div class="list-placeholder" style="color:var(--color-danger)">
+            <i data-lucide="alert-triangle" style="margin-bottom:8px"></i><br>
+            فشل الاتصال بالسيرفر. تأكد من إعدادات الرابط والإنترنت.
+        </div>`;
+        lucide.createIcons();
+    } finally {
+        setTimeout(() => {
+            indicator.classList.remove('refreshing');
+        }, 600);
+    }
+}
 
-            btn.innerText = "جاري الإرسال..."; btn.disabled = true;
-            let reqId = Date.now();
-            let reqDate = new Date().toLocaleDateString('ar-SA');
+// تصفية قائمة الموظفين بناءً على البحث
+function filterEmployees() {
+    if (!state.searchQuery) {
+        state.filteredEmployees = [...state.employees];
+    } else {
+        state.filteredEmployees = state.employees.filter(emp => {
+            return emp.emp_name.toLowerCase().includes(state.searchQuery) ||
+                   emp.emp_id.toLowerCase().includes(state.searchQuery);
+        });
+    }
+    
+    // إعادة ترتيب القائمة بحيث تظهر حالات SOS في البداية ثم WARNING ثم NORMAL
+    state.filteredEmployees.sort((a, b) => {
+        const priority = { 'SOS': 3, 'WARNING': 2, 'NORMAL': 1 };
+        return (priority[b.status] || 0) - (priority[a.status] || 0);
+    });
 
-            if (isSupabaseConfigured) {
-                let reqData = {
-                    id: reqId,
-                    date: reqDate,
-                    user: db.user,
-                    phone: db.phone,
-                    service: srv,
-                    desc: desc,
-                    image: tempRequestImageBase64 || "", // يتم حفظها في حقول قاعدة البيانات مضغوطة بشكل سريع
-                    status: 'قيد الانتظار',
-                    tech: '',
-                    start: '',
-                    end: ''
-                };
-                
-                let { error } = await supabaseClient.from('requests').insert([reqData]);
-                if (!error) {
-                    btn.innerText = "إرسال الطلب"; btn.disabled = false; document.getElementById('c-desc').value = '';
-                    tempRequestImageBase64 = "";
-                    document.getElementById('c-image').value = "";
-                    document.getElementById('request-preview').style.display = "none";
-                } else {
-                    alert("فشل إرسال طلب الصيانة: " + error.message);
-                    btn.innerText = "إرسال الطلب"; btn.disabled = false;
-                }
-            } else {
-                // الوضع المحلي
-                let payload = { 
-                    action: "addRequest", 
-                    id: reqId, 
-                    date: reqDate, 
-                    user: db.user, 
-                    phone: db.phone, 
-                    service: srv, 
-                    desc: desc,
-                    image: tempRequestImageBase64
-                };
+    renderEmployeeList();
+}
 
-                db.requests.push({ 
-                    id: reqId, 
-                    date: reqDate, 
-                    user: db.user, 
-                    phone: db.phone, 
-                    service: srv, 
-                    desc: desc, 
-                    status: 'قيد الانتظار', 
-                    tech: '', 
-                    start: '', 
-                    end: '',
-                    image: tempRequestImageBase64
-                });
-                
-                tempRequestImageBase64 = "";
-                document.getElementById('c-image').value = "";
-                document.getElementById('request-preview').style.display = "none";
+// بناء وتحديث قائمة الموظفين الجانبية (UI)
+function renderEmployeeList() {
+    const listContainer = document.getElementById('employeeList');
+    
+    if (state.filteredEmployees.length === 0) {
+        listContainer.innerHTML = '<div class="list-placeholder">لا يوجد نتائج تطابق البحث.</div>';
+        return;
+    }
 
-                updateUI(); 
+    listContainer.innerHTML = '';
+    
+    state.filteredEmployees.forEach(emp => {
+        const card = document.createElement('div');
+        card.className = `employee-card ${state.selectedEmployeeId === emp.emp_id ? 'active-focus' : ''}`;
+        card.setAttribute('data-id', emp.emp_id);
+        
+        // تحديد فئة حالة النبض
+        const isHrCritical = emp.heart_rate > 120 || (emp.heart_rate < 50 && emp.heart_rate > 0);
+        
+        let statusClass = 'status-normal';
+        if (emp.status === 'WARNING') statusClass = 'status-warning';
+        if (emp.status === 'SOS') statusClass = 'status-sos';
 
-                fetch(GOOGLE_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
-                .then(() => { btn.innerText = "إرسال الطلب"; btn.disabled = false; document.getElementById('c-desc').value = ''; })
-                .catch(() => { btn.innerText = "إرسال الطلب"; btn.disabled = false; document.getElementById('c-desc').value = ''; });
-            }
+        card.innerHTML = `
+            <div class="card-main-info">
+                <span class="card-status-indicator ${statusClass}"></span>
+                <div class="employee-details">
+                    <span class="employee-name">${escapeHTML(emp.emp_name)}</span>
+                    <span class="employee-sub">رقم: ${escapeHTML(emp.emp_id)} | ${escapeHTML(emp.status)}</span>
+                </div>
+            </div>
+            <div class="card-stats">
+                <div class="card-stat-item ${isHrCritical ? 'hr-danger' : ''}">
+                    <i data-lucide="heart"></i>
+                    <span>${emp.heart_rate}</span>
+                </div>
+                <div class="card-stat-item">
+                    <i data-lucide="battery"></i>
+                    <span>${escapeHTML(emp.battery)}</span>
+                </div>
+            </div>
+        `;
+        
+        // حدث النقر على الكارت لتحديد وتوسيط الخريطة
+        card.addEventListener('click', () => {
+            focusOnEmployee(emp);
+        });
+
+        listContainer.appendChild(card);
+    });
+    
+    lucide.createIcons();
+}
+
+// تحديث لوحة الإحصائيات (Stats Cards)
+function updateStats() {
+    const total = state.employees.length;
+    const normal = state.employees.filter(e => e.status === 'NORMAL').length;
+    const warning = state.employees.filter(e => e.status === 'WARNING').length;
+    const sos = state.employees.filter(e => e.status === 'SOS').length;
+
+    document.getElementById('statTotal').innerText = total;
+    document.getElementById('statNormal').innerText = normal;
+    document.getElementById('statWarning').innerText = warning;
+    document.getElementById('statSos').innerText = sos;
+}
+
+// تحديث الدبابيس والمؤشرات على الخريطة
+function updateMapMarkers() {
+    const activeIds = new Set(state.employees.map(e => e.emp_id));
+
+    // 1. إزالة الدبابيس للموظفين الذين لم يعودوا في قائمة المراقبة الحالية
+    for (const empId in mapMarkers) {
+        if (!activeIds.has(empId)) {
+            map.removeLayer(mapMarkers[empId]);
+            delete mapMarkers[empId];
         }
+    }
 
-        async function addProduct() {
-            let name = document.getElementById('a-prod-name').value;
-            let price = document.getElementById('a-prod-price').value;
-            let btn = document.getElementById('btn-add-prod');
-            if(!name) return alert("أدخل الخدمة");
+    // 2. تحديث أو إضافة الدبابيس
+    state.employees.forEach(emp => {
+        const latLng = [emp.lat, emp.lng];
+        
+        // تصميم الأيقونة المخصصة
+        const customIcon = L.divIcon({
+            className: `custom-gps-marker ${emp.status.toLowerCase()}`,
+            html: `<div class="marker-pulse-ring"></div><div class="marker-pin"><div class="marker-inner-dot"></div></div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
 
-            btn.innerText = "جاري النشر..."; btn.disabled = true;
-
-            if (isSupabaseConfigured) {
-                let { error } = await supabaseClient.from('products').insert([{ id: Date.now(), name: name, price: price }]);
-                if (!error) {
-                    btn.innerText = "إضافة ونشر للموقع"; btn.disabled = false; 
-                    document.getElementById('a-prod-name').value = ''; 
-                    document.getElementById('a-prod-price').value = '';
-                } else {
-                    alert("خطأ في النشر: " + error.message);
-                    btn.innerText = "إضافة ونشر للموقع"; btn.disabled = false;
-                }
-            } else {
-                let payload = { action: "addProduct", id: Date.now(), name: name, price: price };
-                db.products.push({name, price});
-                updateUI();
-
-                fetch(GOOGLE_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
-                .then(() => { btn.innerText = "إضافة ونشر للموقع"; btn.disabled = false; document.getElementById('a-prod-name').value = ''; document.getElementById('a-prod-price').value = ''; });
-            }
-        }
-
-        async function changeStatus(id, newStatus) {
-            let req = db.requests.find(r => r.id == id);
-            if (!req) return;
-            let timeNow = new Date().toLocaleTimeString('ar-SA');
-
-            if (isSupabaseConfigured) {
-                let updates = { status: newStatus };
-                if (newStatus === 'جاري العمل') {
-                    updates.tech = db.user;
-                    updates.start = timeNow;
-                } else if (newStatus === 'مكتمل') {
-                    updates.end = timeNow;
-                }
-                
-                let { error } = await supabaseClient.from('requests').update(updates).eq('id', id);
-                if (error) {
-                    console.error("Error updating status in Supabase:", error);
-                }
-            } else {
-                let payload = { action: "updateStatus", id: id, status: newStatus };
-
-                if(newStatus === 'جاري العمل') { 
-                    req.status = 'جاري العمل'; 
-                    req.tech = db.user; 
-                    req.start = timeNow; 
-                    payload.tech = db.user; 
-                    payload.start = timeNow; 
-                }
-                else if (newStatus === 'مكتمل') { 
-                    req.status = 'مكتمل'; 
-                    req.end = timeNow; 
-                    payload.end = timeNow; 
-                }
-                
-                updateUI();
-                fetch(GOOGLE_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-            }
-        }
-
-        // --- التحديث الشامل وحساب الاشتراكات ---
-        function updateUI() {
-            if(db.regDate && document.getElementById('sub-end-date')) {
-                try {
-                    let startDate = new Date(db.regDate);
-                    let endDate = new Date(startDate);
-                    endDate.setFullYear(endDate.getFullYear() + 1);
-                    
-                    let diffDays = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
-                    let displayTxt = endDate.toLocaleDateString('en-GB') + ` (باقي ${diffDays} يوم)`;
-                    
-                    if(document.getElementById('sub-end-date').innerHTML !== displayTxt) {
-                        document.getElementById('sub-end-date').innerHTML = displayTxt;
-                    }
-                } catch(e) {}
-            }
-
-            if(document.getElementById('welcome-msg') && db.user) document.getElementById('welcome-msg').innerText = "أهلاً بك يا " + db.user + "!";
-
-            let currentUserRecord = db.users.find(u => u.phone.toString() === db.phone.toString() || (u.email && u.email.toString() === db.phone.toString()));
-            if(currentUserRecord && document.getElementById('client-sub-details')) {
-                document.getElementById('client-sub-details').style.display = 'block';
-                document.getElementById('client-detail-name').innerText = currentUserRecord.name;
-                document.getElementById('client-detail-phone').innerText = currentUserRecord.phone;
-                document.getElementById('client-detail-address').innerText = currentUserRecord.nationalAddress || 'غير محدد';
-                if(currentUserRecord.houseImage) {
-                    document.getElementById('client-detail-house-img').src = currentUserRecord.houseImage;
-                    document.getElementById('client-detail-house-img').style.display = 'block';
-                } else {
-                    document.getElementById('client-detail-house-img').style.display = 'none';
-                }
-            } else if(document.getElementById('client-sub-details')) {
-                document.getElementById('client-sub-details').style.display = 'none';
-            }
-
-            let homeHTML = '', sHTML = '';
-            db.products.forEach(p => {
-                homeHTML += `<div class="service-card"><h3>${p.name}</h3><div class="price">${p.price}</div></div>`;
-                sHTML += `<option value="${p.name}">${p.name} (${p.price})</option>`;
-            });
-            if(document.getElementById('home-products-grid') && document.getElementById('home-products-grid').innerHTML !== homeHTML) document.getElementById('home-products-grid').innerHTML = homeHTML;
-            if(document.getElementById('c-service') && document.getElementById('c-service').innerHTML !== sHTML) document.getElementById('c-service').innerHTML = sHTML;
-
-            let clientHTML='', techActive='', techDone='', adminActive='', adminUsers='';
-            let myRequestsCount = 0;
+        if (mapMarkers[emp.emp_id]) {
+            // تحديث الموقع والأيقونة الحالية لتفادي إعادة الإنشاء
+            mapMarkers[emp.emp_id].setLatLng(latLng);
             
-            db.requests.forEach(r => {
-                let badge = r.status === 'مكتمل' ? 'badge-success' : (r.status === 'جاري العمل' ? 'badge-working' : 'badge-pending');
-                let imgHtml = r.image ? `<img src="${r.image}" style="width: 45px; height: 45px; border-radius: 4px; object-fit: cover; cursor: pointer; border:1px solid var(--border);" onclick="openImageModal('${r.image}')">` : 'لا توجد';
-
-                if(r.phone && db.phone && r.phone.toString() === db.phone.toString()) {
-                    myRequestsCount++; 
-                    clientHTML += `<tr>
-                        <td>${r.date}</td>
-                        <td>${r.service}</td>
-                        <td>${r.desc}</td>
-                        <td>${imgHtml}</td>
-                        <td>${r.tech || 'جاري البحث'}</td>
-                        <td><span class="badge ${badge}">${r.status}</span></td>
-                    </tr>`;
-                }
-
-                if(r.status !== 'مكتمل') {
-                    let btnTxt = r.status === 'قيد الانتظار' ? 'استلم المهمة' : 'إنهاء الطلب';
-                    let actionStatus = r.status === 'قيد الانتظار' ? 'جاري العمل' : 'مكتمل';
-                    let btnStyle = r.status === 'قيد الانتظار' ? 'btn-primary' : 'btn-secondary';
-                    
-                    let clientUser = db.users.find(u => u.phone.toString() === r.phone.toString());
-                    let clientAddress = clientUser ? clientUser.nationalAddress : 'غير متوفر';
-                    let clientHouseImg = clientUser && clientUser.houseImage ? `<img src="${clientUser.houseImage}" style="width: 45px; height: 45px; border-radius: 4px; object-fit: cover; cursor: pointer; border:1px solid var(--border);" onclick="openImageModal('${clientUser.houseImage}')">` : 'لا توجد';
-                    
-                    let mapsUrl = "https://www.google.com/maps/search/?api=1&query=";
-                    if (clientUser && clientUser.lat && clientUser.lng) {
-                        mapsUrl += `${clientUser.lat},${clientUser.lng}`;
-                    } else {
-                        mapsUrl += encodeURIComponent(clientAddress);
-                    }
-                    
-                    let directionsBtn = `<a href="${mapsUrl}" target="_blank" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; text-decoration: none;">🗺️ فتح الخريطة</a>`;
-                    
-                    techActive += `<tr>
-                        <td>${r.user}</td>
-                        <td>${r.phone}</td>
-                        <td>${r.service}</td>
-                        <td>${r.desc}</td>
-                        <td>${imgHtml}</td>
-                        <td>${clientAddress}</td>
-                        <td>${clientHouseImg}</td>
-                        <td>${directionsBtn}</td>
-                        <td><span class="badge ${badge}">${r.status}</span></td>
-                        <td><button class="btn ${btnStyle}" style="padding:6px 12px" onclick="changeStatus(${r.id}, '${actionStatus}')">${btnTxt}</button></td>
-                    </tr>`;
-                    
-                    adminActive += `<tr>
-                        <td>${r.user}</td>
-                        <td>${r.phone}</td>
-                        <td>${r.service}</td>
-                        <td>${r.desc}</td>
-                        <td>${imgHtml}</td>
-                        <td>${r.tech || '-'}</td>
-                        <td><span class="badge ${badge}">${r.status}</span></td>
-                    </tr>`;
-                } else {
-                    techDone += `<tr>
-                        <td>${r.user}</td>
-                        <td>${r.service}</td>
-                        <td>${imgHtml}</td>
-                        <td>${r.start}</td>
-                        <td>${r.end}</td>
-                        <td><span class="badge badge-success">مكتمل</span></td>
-                    </tr>`;
-                }
-            });
-
-            if(document.getElementById('sub-req-count') && document.getElementById('sub-req-count').innerText != myRequestsCount) {
-                document.getElementById('sub-req-count').innerText = myRequestsCount;
-            }
-
-            db.users.forEach(u => {
-                let humanDate = new Date(u.date).toLocaleDateString('ar-SA') || u.date;
-                let address = u.nationalAddress || 'غير محدد';
-                let houseImgHtml = u.houseImage ? `<img src="${u.houseImage}" style="width: 45px; height: 45px; border-radius: 4px; object-fit: cover; cursor: pointer; border:1px solid var(--border);" onclick="openImageModal('${u.houseImage}')">` : 'لا توجد';
+            // تحديث المحتوى التفاعلي (Popup)
+            mapMarkers[emp.emp_id].setIcon(customIcon);
+            mapMarkers[emp.emp_id].setPopupContent(buildPopupHTML(emp));
+        } else {
+            // إنشاء دبوس جديد بالكامل
+            const marker = L.marker(latLng, { icon: customIcon })
+                .bindPopup(buildPopupHTML(emp))
+                .addTo(map);
                 
-                adminUsers += `<tr>
-                    <td>${humanDate}</td>
-                    <td>${u.name}</td>
-                    <td>${u.phone}</td>
-                    <td>${address}</td>
-                    <td>${houseImgHtml}</td>
-                    <td><span class="badge badge-success">${u.status || 'فعال'}</span></td>
-                </tr>`;
+            // عند النقر على الدبوس، إظهار التفاصيل وتحديد العنصر
+            marker.on('click', () => {
+                selectEmployee(emp);
             });
-
-            let feedbackHTML = '';
-            db.feedbacks.forEach(f => {
-                let fBadge = f.type === 'شكوى' ? 'badge-pending' : 'badge-working';
-                feedbackHTML += `<tr>
-                    <td>${f.date}</td>
-                    <td>${f.name}</td>
-                    <td>${f.phone}</td>
-                    <td><span class="badge ${fBadge}">${f.type}</span></td>
-                    <td>${f.desc}</td>
-                </tr>`;
-            });
-
-            if(document.getElementById('client-list') && document.getElementById('client-list').innerHTML !== clientHTML) document.getElementById('client-list').innerHTML = clientHTML;
-            if(document.getElementById('tech-active-list') && document.getElementById('tech-active-list').innerHTML !== techActive) document.getElementById('tech-active-list').innerHTML = techActive;
-            if(document.getElementById('tech-completed-list') && document.getElementById('tech-completed-list').innerHTML !== techDone) document.getElementById('tech-completed-list').innerHTML = techDone;
-            if(document.getElementById('admin-active-list') && document.getElementById('admin-active-list').innerHTML !== adminActive) document.getElementById('admin-active-list').innerHTML = adminActive;
-            if(document.getElementById('admin-users-list') && document.getElementById('admin-users-list').innerHTML !== adminUsers) document.getElementById('admin-users-list').innerHTML = adminUsers;
-            if(document.getElementById('admin-feedbacks-list') && document.getElementById('admin-feedbacks-list').innerHTML !== feedbackHTML) document.getElementById('admin-feedbacks-list').innerHTML = feedbackHTML;
+            
+            mapMarkers[emp.emp_id] = marker;
         }
-    </script>
-</body>
-</html>
+    });
+}
+
+// بناء كود HTML للـ Popup الخاص بالدبوس على الخريطة
+function buildPopupHTML(emp) {
+    let statusBadge = '<span style="color:var(--color-normal);font-weight:bold">مستقر</span>';
+    if (emp.status === 'WARNING') statusBadge = '<span style="color:var(--color-warning);font-weight:bold">تحذير حركة</span>';
+    if (emp.status === 'SOS') statusBadge = '<span style="color:var(--color-danger);font-weight:bold;animation:heart-beat 0.8s infinite">طوارئ SOS</span>';
+
+    return `
+        <div style="font-family:'Cairo',sans-serif; direction:rtl; text-align:right;">
+            <strong style="font-size:1.05rem; display:block; margin-bottom:4px;">${escapeHTML(emp.emp_name)}</strong>
+            <span style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:8px;">رقم: ${escapeHTML(emp.emp_id)}</span>
+            <div style="border-top:1px solid rgba(255,255,255,0.15); padding-top:6px; font-size:0.85rem;">
+                الحالة: ${statusBadge}<br>
+                النبض: <strong>${emp.heart_rate} BPM</strong><br>
+                البطارية: <strong>${escapeHTML(emp.battery)}</strong>
+            </div>
+        </div>
+    `;
+}
+
+// التركيز على موظف محدد وتوسيط الخريطة عليه
+function focusOnEmployee(emp) {
+    selectEmployee(emp);
+    
+    // نقل الخريطة إلى إحداثيات الموظف
+    map.setView([emp.lat, emp.lng], 16, {
+        animate: true,
+        duration: 1.2
+    });
+    
+    // فتح الـ Popup الخاص به
+    if (mapMarkers[emp.emp_id]) {
+        mapMarkers[emp.emp_id].openPopup();
+    }
+}
+
+// تحديد موظف وعرض بياناته في لوحة التفاصيل
+function selectEmployee(emp) {
+    state.selectedEmployeeId = emp.emp_id;
+    
+    // تفعيل التحديد البصري في القائمة الجانبية
+    document.querySelectorAll('.employee-card').forEach(card => {
+        if (card.getAttribute('data-id') === emp.emp_id) {
+            card.classList.add('active-focus');
+            // تمرير القائمة تلقائياً لعنصر الموظف المحدد
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            card.classList.remove('active-focus');
+        }
+    });
+
+    // إظهار لوحة التفاصيل العائمة وتحديث محتواها
+    showEmployeeDetails(emp);
+}
+
+// تحديث وعرض لوحة التفاصيل العائمة (UI)
+function showEmployeeDetails(emp) {
+    const panel = document.getElementById('detailPanel');
+    panel.classList.remove('hidden');
+
+    // تحديث المحتوى النصي
+    document.getElementById('detailName').innerText = emp.emp_name;
+    document.getElementById('detailId').innerText = `#${emp.emp_id}`;
+    document.getElementById('detailHeartRate').innerText = `${emp.heart_rate} BPM`;
+    document.getElementById('detailSteps').innerText = `${emp.steps.toLocaleString()} خطوة`;
+    document.getElementById('detailBattery').innerText = emp.battery;
+    document.getElementById('detailSpeed').innerText = `${emp.speed} م/ث`;
+    document.getElementById('detailWorn').innerText = emp.is_worn;
+    
+    // معالجة تنسيق الوقت
+    let timeString = '--:--:--';
+    try {
+        const date = new Date(emp.timestamp);
+        timeString = date.toLocaleTimeString('ar-SA', { hour12: false });
+    } catch(e) {}
+    document.getElementById('detailTime').innerText = timeString;
+
+    // ضبط نقطة الحالة الملونة
+    const dot = document.getElementById('detailStatusDot');
+    dot.className = `status-dot ${emp.status.toLowerCase()}`;
+
+    // معالجة تفاصيل المستجيب (إذا كانت الحالة طوارئ SOS)
+    const responderBox = document.getElementById('responderBox');
+    if (emp.status === 'SOS') {
+        responderBox.classList.remove('hidden');
+        document.getElementById('detailResponder').innerText = emp.nearest_responder;
+    } else {
+        responderBox.classList.add('hidden');
+    }
+}
+
+// إلغاء تحديد الموظف وإغلاق لوحة التفاصيل
+function deselectEmployee() {
+    state.selectedEmployeeId = null;
+    document.getElementById('detailPanel').classList.add('hidden');
+    document.querySelectorAll('.employee-card').forEach(card => {
+        card.classList.remove('active-focus');
+    });
+}
+
+// التحكم في تشغيل التحديث التلقائي
+function toggleAutoRefresh(enable) {
+    state.autoRefresh = enable;
+    
+    if (enable) {
+        if (!state.refreshIntervalId) {
+            state.refreshIntervalId = setInterval(fetchTelemetryData, 3000);
+        }
+    } else {
+        if (state.refreshIntervalId) {
+            clearInterval(state.refreshIntervalId);
+            state.refreshIntervalId = null;
+        }
+    }
+}
+
+// التحقق من وجود حالات طوارئ نشطة وبدء الإنذار
+function checkSosAlerts() {
+    const sosEmployees = state.employees.filter(e => e.status === 'SOS');
+    const banner = document.getElementById('sosBanner');
+    
+    if (sosEmployees.length > 0) {
+        banner.classList.remove('hidden');
+        
+        // صياغة رسالة الإنذار بأسماء الموظفين في حالة الطوارئ وأقرب المستجيبين
+        const details = sosEmployees.map(e => `${e.emp_name} (أقرب مستجيب: ${e.nearest_responder})`).join(' | ');
+        document.getElementById('sosBannerMessage').innerText = `طوارئ نشطة لـ: ${details}`;
+        
+        // تشغيل صوت التنبيه
+        playAlarmSiren();
+    } else {
+        banner.classList.add('hidden');
+        stopAlarmSiren();
+    }
+}
+
+// توليد صوت الإنذار عبر الـ Web Audio API لتجنب تحميل ملف خارجي
+function playAlarmSiren() {
+    if (state.isMuted) return;
+
+    if (!state.audioContext) {
+        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    if (state.sirenIntervalId) return; // الإنذار يعمل بالفعل
+
+    state.sirenIntervalId = setInterval(() => {
+        if (state.audioContext.state === 'suspended') {
+            state.audioContext.resume();
+        }
+        
+        const osc = state.audioContext.createOscillator();
+        const gain = state.audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(state.audioContext.destination);
+
+        // نوع الصوت ليكون شبه سرينة الشرطة/الإسعاف (Sawtooth)
+        osc.type = 'sawtooth';
+        
+        const time = state.audioContext.currentTime;
+        // ترددات متناوبة للسرينة
+        osc.frequency.setValueAtTime(580, time);
+        osc.frequency.linearRampToValueAtTime(880, time + 0.35);
+        
+        gain.gain.setValueAtTime(0.12, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.35);
+
+        osc.start(time);
+        osc.stop(time + 0.38);
+    }, 450);
+}
+
+// إيقاف صوت الإنذار
+function stopAlarmSiren() {
+    if (state.sirenIntervalId) {
+        clearInterval(state.sirenIntervalId);
+        state.sirenIntervalId = null;
+    }
+}
+
+// كتم/تفعيل صوت الإنذار من زر لوحة الإنذار
+function toggleMute() {
+    state.isMuted = !state.isMuted;
+    const muteIcon = document.getElementById('muteIcon');
+    
+    if (state.isMuted) {
+        muteIcon.setAttribute('data-lucide', 'volume-x');
+        stopAlarmSiren();
+    } else {
+        muteIcon.setAttribute('data-lucide', 'volume-2');
+        checkSosAlerts();
+    }
+    
+    lucide.createIcons();
+}
+
+// دالة لتطهير نصوص HTML لمنع اختراق تخطيط الصفحة (XSS / Layout Spillage Protection)
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
