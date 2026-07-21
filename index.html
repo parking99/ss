@@ -3,26 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>غرفة العمليات والمراقبة الأمنية | Security Operations Center</title>
-    
-    <!-- Leaflet CSS for Maps -->
+    <title>غرفة العمليات والمراقبة الأمنية</title>
+
+    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Tailwind CSS -->
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Lucide Icons -->
+
+    <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Google Fonts (Cairo) -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
+
+    <!-- Fonts: Cairo for display/numbers, IBM Plex Sans Arabic for body copy -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+
     <style>
+        :root {
+            --bg-page: #F6F8FB;
+            --bg-panel: #FFFFFF;
+            --bg-subtle: #F1F4F9;
+            --border-soft: #E4E9F1;
+            --border-strong: #D6DCE7;
+            --text-primary: #10182B;
+            --text-secondary: #64748B;
+            --text-muted: #94A3B8;
+            --navy: #0B3B60;
+            --navy-soft: #E7EEF5;
+            --accent: #2563EB;
+            --normal: #059669;
+            --normal-soft: #E3F6EE;
+            --warning: #D97706;
+            --warning-soft: #FDF1DE;
+            --sos: #DC2626;
+            --sos-soft: #FCE8E8;
+            --offline: #94A3B8;
+            --offline-soft: #EEF1F5;
+            --shadow-sm: 0 1px 2px rgba(16,24,43,0.06);
+            --shadow-md: 0 8px 24px rgba(16,24,43,0.08);
+        }
+
+        * { font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
+        .font-display { font-family: 'Cairo', sans-serif; }
+
         body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #0f172a; /* Slate 900 */
-            color: #f8fafc;
+            background-color: var(--bg-page);
+            color: var(--text-primary);
         }
 
         #map {
@@ -31,455 +57,490 @@
             border-radius: 1rem;
             z-index: 1;
         }
-
-        /* تخصيص مؤشرات الدبابيس على الخريطة */
-        .custom-gps-marker {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid #ffffff;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            transition: all 0.3s ease;
+        .leaflet-control-zoom a {
+            background-color: var(--bg-panel) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-soft) !important;
         }
-        .custom-gps-marker.normal { background-color: #10b981; }
-        .custom-gps-marker.warning { background-color: #f59e0b; }
-        .custom-gps-marker.sos {
-            background-color: #ef4444;
-            animation: pulse-marker 1s infinite;
+        .leaflet-popup-content-wrapper {
+            background-color: var(--bg-panel) !important;
+            color: var(--text-primary) !important;
+            border-radius: 0.75rem !important;
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-md) !important;
         }
+        .leaflet-popup-tip { background-color: var(--bg-panel) !important; }
 
+        /* Map marker pins: two-tone badge with white ring, easier to spot on a light basemap */
+        .gps-pin {
+            width: 26px; height: 26px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid #fff;
+            box-shadow: 0 2px 6px rgba(16,24,43,0.35);
+        }
+        .gps-pin.normal { background-color: var(--normal); }
+        .gps-pin.warning { background-color: var(--warning); }
+        .gps-pin.sos { background-color: var(--sos); animation: pulse-marker 1s infinite; }
+        .gps-pin.offline { background-color: var(--offline); }
         @keyframes pulse-marker {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { transform: scale(1.15); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); }
+            70% { box-shadow: 0 0 0 14px rgba(220,38,38,0); }
+            100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
         }
 
-        /* بطاقات القائمة الجانبية */
         .employee-card {
-            background-color: rgba(30, 41, 59, 0.7);
-            border: 1px solid rgba(51, 65, 85, 0.8);
-            border-radius: 0.75rem;
-            padding: 0.85rem;
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-soft);
+            border-radius: 0.85rem;
+            padding: 0.9rem;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
+            box-shadow: var(--shadow-sm);
         }
-        .employee-card:hover {
-            background-color: rgba(51, 65, 85, 0.9);
-            border-color: #3b82f6;
-        }
+        .employee-card:hover { border-color: var(--accent); transform: translateY(-1px); }
         .employee-card.active-focus {
-            border-color: #3b82f6;
-            background-color: rgba(30, 58, 138, 0.4);
-            box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+            border-color: var(--accent);
+            background-color: var(--navy-soft);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
         }
 
-        /* نقاط الحالة الملونة */
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .status-dot.normal { background-color: #10b981; }
-        .status-dot.warning { background-color: #f59e0b; }
-        .status-dot.sos { background-color: #ef4444; animation: ping 1s infinite; }
+        .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .status-dot.normal { background-color: var(--normal); }
+        .status-dot.warning { background-color: var(--warning); }
+        .status-dot.sos { background-color: var(--sos); animation: ping-dot 1s infinite; }
+        .status-dot.offline { background-color: var(--offline); }
+        @keyframes ping-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
-        /* حركة التحديث التلقائي */
+        .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; letter-spacing: 0.2px; }
+        .badge.normal { background: var(--normal-soft); color: var(--normal); }
+        .badge.warning { background: var(--warning-soft); color: var(--warning); }
+        .badge.sos { background: var(--sos); color: #fff; }
+        .badge.offline { background: var(--offline-soft); color: var(--offline); }
+
+        .chip {
+            font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+            border: 1px solid var(--border-soft); background: var(--bg-panel); color: var(--text-secondary);
+            cursor: pointer; transition: all 0.15s ease; white-space: nowrap;
+        }
+        .chip:hover { border-color: var(--accent); color: var(--accent); }
+        .chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
         .refreshing { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* تخصيص Popups خريطة Leaflet */
-        .leaflet-popup-content-wrapper {
-            background-color: #1e293b !important;
-            color: #f8fafc !important;
-            border-radius: 0.75rem !important;
-            border: 1px solid #475569;
+        /* Signature element: a small live pulse next to the title, echoing the wearable heart-rate signal this room exists to watch */
+        .live-pulse { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--normal); }
+        .live-pulse::after {
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(5,150,105,0.5);
+            animation: livepulse 1.8s ease-out infinite;
         }
-        .leaflet-popup-tip { background-color: #1e293b !important; }
+        @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(5,150,105,0.45); } 100% { box-shadow: 0 0 0 10px rgba(5,150,105,0); } }
+        .live-pulse.sos { background: var(--sos); }
+        .live-pulse.sos::after { animation: livepulse-sos 1s ease-out infinite; }
+        @keyframes livepulse-sos { 0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); } 100% { box-shadow: 0 0 0 12px rgba(220,38,38,0); } }
+
+        input:focus-visible, button:focus-visible, .employee-card:focus-visible {
+            outline: 2px solid var(--accent); outline-offset: 2px;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing { animation: none !important; }
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
-    <!-- شريط الإنذار العلوي العاجل (SOS Banner) -->
-    <div id="sosBanner" class="hidden bg-red-600 text-white px-4 py-2.5 flex justify-between items-center animate-bounce shadow-lg z-50">
+    <!-- SOS Banner -->
+    <div id="sosBanner" class="hidden text-white px-4 py-2.5 flex justify-between items-center shadow-lg z-50" style="background-color: var(--sos);">
         <div class="flex items-center gap-2">
-            <i data-lucide="siren" class="w-6 h-6 animate-pulse"></i>
-            <span class="font-bold text-sm md:text-base" id="sosBannerMessage">طوارئ نشطة!</span>
+            <i data-lucide="siren" class="w-5 h-5"></i>
+            <span class="font-bold text-sm md:text-base font-display" id="sosBannerMessage">طوارئ نشطة!</span>
         </div>
-        <button id="muteAlarmBtn" class="bg-red-800 hover:bg-red-900 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1">
+        <button id="muteAlarmBtn" class="bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
             <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4"></i>
-            <span>كتم/تفعيل</span>
+            <span>كتم / تفعيل</span>
         </button>
     </div>
 
-    <!-- Header / Navbar -->
-    <header class="bg-slate-900 border-b border-slate-800 p-4 flex flex-col md:flex-row justify-between items-center gap-4 z-40">
+    <!-- Header -->
+    <header class="bg-white border-b flex flex-col md:flex-row justify-between items-center gap-3 px-4 py-3.5 z-40" style="border-color: var(--border-soft);">
         <div class="flex items-center gap-3">
-            <div class="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
-                <i data-lucide="shield-alert" class="w-6 h-6"></i>
+            <div class="p-2.5 rounded-xl border" style="background: var(--navy-soft); color: var(--navy); border-color: var(--border-soft);">
+                <i data-lucide="shield-check" class="w-6 h-6"></i>
             </div>
             <div>
-                <h1 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                <h1 class="text-lg font-bold font-display flex items-center gap-2" style="color: var(--text-primary);">
+                    <span id="headerPulse" class="live-pulse"></span>
                     مركز المراقبة والأمان المباشر
-                    <i id="refreshIndicator" data-lucide="rotate-cw" class="w-4 h-4 text-slate-400"></i>
                 </h1>
-                <p class="text-xs text-slate-400">تتبع حي ومباشر عبر Wear OS Suite</p>
+                <p class="text-xs" style="color: var(--text-secondary);">
+                    تتبع حي عبر أجهزة الرصد الميدانية · آخر تحديث
+                    <span id="lastUpdateTime" class="font-semibold" style="color: var(--text-primary);">--:--:--</span>
+                </p>
             </div>
         </div>
 
-        <!-- إعدادات إضافية في الهيدر -->
-        <div class="flex items-center gap-3 w-full md:w-auto overflow-x-auto">
-            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
-                <i data-lucide="link" class="w-4 h-4 text-slate-400"></i>
-                <input type="text" id="apiUrlInput" class="bg-transparent text-slate-200 outline-none w-40 md:w-64 text-xs" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec">
+        <div class="flex items-center gap-2.5 w-full md:w-auto overflow-x-auto">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                <i data-lucide="link" class="w-4 h-4" style="color: var(--text-muted);"></i>
+                <input type="text" id="apiUrlInput" class="bg-transparent outline-none w-40 md:w-64 text-xs" style="color: var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec">
             </div>
 
-            <label class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs cursor-pointer select-none">
-                <input type="checkbox" id="autoRefreshToggle" checked class="rounded border-slate-700 text-blue-600 focus:ring-0">
+            <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                <input type="checkbox" id="autoRefreshToggle" checked class="rounded" style="accent-color: var(--accent);">
                 <span>تحديث تلقائي</span>
             </label>
+
+            <i id="refreshIndicator" data-lucide="rotate-cw" class="w-4 h-4 flex-shrink-0" style="color: var(--text-muted);"></i>
         </div>
     </header>
 
-    <!-- Main Container -->
+    <!-- Main -->
     <div class="flex-1 flex flex-col lg:flex-row overflow-hidden p-3 gap-3">
-        
-        <!-- Sidebar (Left Column) -->
+
+        <!-- Sidebar -->
         <aside class="w-full lg:w-80 flex flex-col gap-3 h-full overflow-hidden">
-            
-            <!-- KPIs Bar -->
-            <div class="grid grid-cols-4 gap-2 bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
-                <div>
-                    <span class="block text-[10px] text-slate-400">الكل</span>
-                    <span id="statTotal" class="font-bold text-blue-400 text-sm">0</span>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-4 gap-2 bg-white p-3 rounded-xl border" style="border-color: var(--border-soft); box-shadow: var(--shadow-sm);">
+                <div class="text-center">
+                    <span class="block text-[10px]" style="color: var(--text-muted);">الكل</span>
+                    <span id="statTotal" class="font-bold text-sm font-display" style="color: var(--navy);">0</span>
                 </div>
-                <div>
-                    <span class="block text-[10px] text-slate-400">طبيعي</span>
-                    <span id="statNormal" class="font-bold text-emerald-400 text-sm">0</span>
+                <div class="text-center">
+                    <span class="block text-[10px]" style="color: var(--text-muted);">طبيعي</span>
+                    <span id="statNormal" class="font-bold text-sm font-display" style="color: var(--normal);">0</span>
                 </div>
-                <div>
-                    <span class="block text-[10px] text-slate-400">تحذير</span>
-                    <span id="statWarning" class="font-bold text-amber-400 text-sm">0</span>
+                <div class="text-center">
+                    <span class="block text-[10px]" style="color: var(--text-muted);">تحذير</span>
+                    <span id="statWarning" class="font-bold text-sm font-display" style="color: var(--warning);">0</span>
                 </div>
-                <div>
-                    <span class="block text-[10px] text-slate-400">SOS</span>
-                    <span id="statSos" class="font-bold text-red-500 text-sm">0</span>
+                <div class="text-center">
+                    <span class="block text-[10px]" style="color: var(--text-muted);">SOS</span>
+                    <span id="statSos" class="font-bold text-sm font-display" style="color: var(--sos);">0</span>
                 </div>
             </div>
 
-            <!-- Search Input -->
+            <!-- Search -->
             <div class="relative">
-                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute right-3 top-3"></i>
-                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pr-9 pl-3 py-2 text-xs text-slate-200 outline-none focus:border-blue-500">
+                <i data-lucide="search" class="w-4 h-4 absolute right-3 top-2.5" style="color: var(--text-muted);"></i>
+                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full bg-white border rounded-xl pr-9 pl-3 py-2 text-xs outline-none" style="border-color: var(--border-soft); color: var(--text-primary);">
             </div>
 
-            <!-- Employee List Feed -->
+            <!-- Status filter chips -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5" id="filterChips">
+                <button class="chip active" data-filter="ALL">الكل</button>
+                <button class="chip" data-filter="SOS">SOS</button>
+                <button class="chip" data-filter="WARNING">تحذير</button>
+                <button class="chip" data-filter="NORMAL">طبيعي</button>
+                <button class="chip" data-filter="OFFLINE">غير متصل</button>
+            </div>
+
+            <!-- Employee list -->
             <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="employeeList">
-                <div class="text-center text-slate-500 py-10 text-xs">
-                    جاري جلب بيانات الموظفين...
-                </div>
+                <div class="text-center py-10 text-xs" style="color: var(--text-muted);">جاري جلب بيانات الموظفين...</div>
             </div>
         </aside>
 
-        <!-- Map & Detail Panel Area (Center & Right Column) -->
+        <!-- Map -->
         <main class="flex-1 relative h-full flex flex-col">
-            
-            <!-- Map Container -->
-            <div id="map" class="shadow-inner"></div>
+            <div id="map" class="shadow-inner border" style="border-color: var(--border-soft);"></div>
 
-            <!-- Floating Detail Panel (لوحة التفاصيل العائمة) -->
-            <div id="detailPanel" class="hidden absolute bottom-4 right-4 left-4 md:left-auto md:w-96 bg-slate-900/90 backdrop-blur border border-slate-700 p-4 rounded-2xl shadow-2xl z-20 transition-all duration-300">
-                <div class="flex justify-between items-start mb-3 border-b border-slate-800 pb-2">
+            <!-- Detail panel -->
+            <div id="detailPanel" class="hidden absolute bottom-4 right-4 left-4 md:left-auto md:w-96 bg-white/95 backdrop-blur border p-4 rounded-2xl z-20 transition-all duration-300" style="border-color: var(--border-soft); box-shadow: var(--shadow-md);">
+                <div class="flex justify-between items-start mb-3 border-b pb-2" style="border-color: var(--border-soft);">
                     <div class="flex items-center gap-2">
                         <span id="detailStatusDot" class="status-dot normal"></span>
                         <div>
-                            <h3 id="detailName" class="font-bold text-white text-base">اسم الموظف</h3>
-                            <span id="detailId" class="text-xs text-slate-400">#ID</span>
+                            <h3 id="detailName" class="font-bold text-base font-display" style="color: var(--text-primary);">اسم الموظف</h3>
+                            <span id="detailId" class="text-xs" style="color: var(--text-muted);">#ID</span>
                         </div>
                     </div>
-                    <button id="closeDetailBtn" class="text-slate-400 hover:text-white p-1">
+                    <button id="closeDetailBtn" class="p-1 rounded-lg hover:bg-slate-100" style="color: var(--text-muted);" aria-label="إغلاق">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
 
-                <!-- Emergency Dispatcher Box -->
-                <div id="responderBox" class="hidden mb-3 p-2.5 bg-red-950/60 border border-red-600/60 rounded-xl text-xs text-red-300 flex items-center gap-2">
-                    <i data-lucide="ambulance" class="w-5 h-5 text-red-500"></i>
+                <div id="responderBox" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--sos-soft); border: 1px solid #F3B9B9; color: var(--sos);">
+                    <i data-lucide="ambulance" class="w-5 h-5 flex-shrink-0"></i>
                     <div>
-                        <span class="block text-[10px] text-red-400">أقرب حارس أمن موجه للموقع:</span>
-                        <strong id="detailResponder" class="text-white text-xs">لا يوجد</strong>
+                        <span class="block text-[10px]" style="color: #B94545;">أقرب حارس أمن موجه للموقع:</span>
+                        <strong id="detailResponder" style="color: var(--text-primary);">لا يوجد</strong>
                     </div>
                 </div>
 
-                <!-- Grid Details -->
+                <div id="offlineNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--offline-soft); color: var(--offline);">
+                    <i data-lucide="wifi-off" class="w-4 h-4 flex-shrink-0"></i>
+                    <span>لم يتم استلام تحديث من هذا الجهاز منذ أكثر من دقيقة</span>
+                </div>
+
                 <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div class="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                        <span class="text-slate-400 block text-[10px]">النبض</span>
-                        <span id="detailHeartRate" class="font-bold text-emerald-400">0 BPM</span>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">النبض</span>
+                        <span id="detailHeartRate" class="font-bold font-display" style="color: var(--normal);">0 BPM</span>
                     </div>
-                    <div class="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                        <span class="text-slate-400 block text-[10px]">البطارية</span>
-                        <span id="detailBattery" class="font-bold text-blue-400">100%</span>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">البطارية</span>
+                        <span id="detailBattery" class="font-bold font-display" style="color: var(--accent);">100%</span>
                     </div>
-                    <div class="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                        <span class="text-slate-400 block text-[10px]">الخطوات</span>
-                        <span id="detailSteps" class="font-bold text-slate-200">0</span>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">الخطوات</span>
+                        <span id="detailSteps" class="font-bold font-display" style="color: var(--text-primary);">0</span>
                     </div>
-                    <div class="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                        <span class="text-slate-400 block text-[10px]">السرعة</span>
-                        <span id="detailSpeed" class="font-bold text-slate-200">0 م/ث</span>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">السرعة</span>
+                        <span id="detailSpeed" class="font-bold font-display" style="color: var(--text-primary);">0 م/ث</span>
                     </div>
-                    <div class="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                        <span class="text-slate-400 block text-[10px]">حالة الارتداء</span>
-                        <span id="detailWorn" class="font-bold text-slate-200">نعم</span>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">حالة الارتداء</span>
+                        <span id="detailWorn" class="font-bold font-display" style="color: var(--text-primary);">نعم</span>
                     </div>
-                    <div class="bg-slate-800/60 p-2 rounded-lg border border-slate-700/50">
-                        <span class="text-slate-400 block text-[10px]">التحديث</span>
-                        <span id="detailTime" class="font-bold text-slate-200">--:--:--</span>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">التحديث</span>
+                        <span id="detailTime" class="font-bold font-display" style="color: var(--text-primary);">--:--:--</span>
                     </div>
                 </div>
             </div>
-
         </main>
     </div>
 
-    <!-- كود JavaScript الخاص بك كاملاً -->
     <script>
-        // إدارة حالة التطبيق (State Management)
+        const OFFLINE_THRESHOLD_MS = 60000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 60 ثانية
+        const REFRESH_INTERVAL_MS = 3000;
+        const SEARCH_DEBOUNCE_MS = 250;
+
         let state = {
             employees: [],
             filteredEmployees: [],
             selectedEmployeeId: null,
             searchQuery: '',
+            statusFilter: 'ALL',
             isMuted: false,
-            apiUrl: 'https://script.google.com/macros/s/AKfycbznf_WNaBMMbHnR1ZiP8QLG2BX80rU__OjlYs3_kWFirLfGVGo2toe0wKOOGAZxYUNthA/exec',
+            apiUrl: document.getElementById('apiUrlInput')?.value || '',
             autoRefresh: true,
             refreshIntervalId: null,
             audioContext: null,
-            sirenIntervalId: null
+            sirenIntervalId: null,
+            fetchController: null,
+            searchDebounceId: null
         };
 
-        // حاوية معرّفات الدبابيس على الخريطة لمنع إعادة إنشائها وتفادي الوميض
         const mapMarkers = {};
         let map = null;
 
-        // تهيئة التطبيق عند تحميل الصفحة
         document.addEventListener('DOMContentLoaded', () => {
             initMap();
             initEventListeners();
             lucide.createIcons();
-            
-            // جلب أول دفعة بيانات
             fetchTelemetryData();
-            
-            // بدء التحديث التلقائي
             toggleAutoRefresh(true);
         });
 
-        // تهيئة خريطة Leaflet
         function initMap() {
-            // الرياض كإحداثيات افتراضية للمركز
-            map = L.map('map', {
-                zoomControl: false // سنضيفه لاحقاً في مكان مخصص
-            }).setView([24.7136, 46.6753], 12);
-
-            // إضافة أزرار التحكم بالتقريب في موقع مناسب
+            map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
             L.control.zoom({ position: 'topleft' }).addTo(map);
 
-            // استخدام طبقة خريطة داكنة احترافية مناسبة لغرف العمليات الأمنية (CartoDB Dark Matter)
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            // خريطة فاتحة تناسب الواجهة البيضاء الجديدة
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',
                 maxZoom: 20
             }).addTo(map);
         }
 
-        // تهيئة مستمعي الأحداث (Event Listeners)
         function initEventListeners() {
-            // البحث
-            const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('input', (e) => {
-                state.searchQuery = e.target.value.trim().toLowerCase();
-                filterEmployees();
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                clearTimeout(state.searchDebounceId);
+                const val = e.target.value;
+                state.searchDebounceId = setTimeout(() => {
+                    state.searchQuery = val.trim().toLowerCase();
+                    filterEmployees();
+                }, SEARCH_DEBOUNCE_MS);
             });
 
-            // تبديل التحديث التلقائي
-            const autoRefreshToggle = document.getElementById('autoRefreshToggle');
-            autoRefreshToggle.addEventListener('change', (e) => {
+            document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
                 toggleAutoRefresh(e.target.checked);
             });
 
-            // كتم/تفعيل صوت الإنذار
-            const muteAlarmBtn = document.getElementById('muteAlarmBtn');
-            muteAlarmBtn.addEventListener('click', toggleMute);
+            document.getElementById('muteAlarmBtn').addEventListener('click', toggleMute);
+            document.getElementById('closeDetailBtn').addEventListener('click', deselectEmployee);
 
-            // إغلاق لوحة التفاصيل
-            const closeDetailBtn = document.getElementById('closeDetailBtn');
-            closeDetailBtn.addEventListener('click', deselectEmployee);
-
-            // تحديث رابط الـ API يدوياً
-            const apiUrlInput = document.getElementById('apiUrlInput');
-            apiUrlInput.addEventListener('change', (e) => {
+            document.getElementById('apiUrlInput').addEventListener('change', (e) => {
                 const val = e.target.value.trim();
                 if (val) {
                     state.apiUrl = val;
                     fetchTelemetryData();
                 }
             });
+
+            document.getElementById('filterChips').addEventListener('click', (e) => {
+                const btn = e.target.closest('.chip');
+                if (!btn) return;
+                document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                state.statusFilter = btn.getAttribute('data-filter');
+                filterEmployees();
+            });
         }
 
-        // جلب البيانات الحية من Google Apps Script Web App
+        // تحديد ما إذا كان الجهاز "غير متصل" بناءً على وقت آخر تحديث
+        function isDeviceOffline(emp) {
+            const ts = new Date(emp.timestamp).getTime();
+            if (isNaN(ts)) return false;
+            return (Date.now() - ts) > OFFLINE_THRESHOLD_MS;
+        }
+
+        function effectiveStatus(emp) {
+            // SOS تبقى أولوية قصوى حتى لو كان آخر تحديث قديمًا قليلاً
+            if (emp.status === 'SOS') return 'SOS';
+            if (isDeviceOffline(emp)) return 'OFFLINE';
+            return emp.status;
+        }
+
         async function fetchTelemetryData() {
             const indicator = document.getElementById('refreshIndicator');
             indicator.classList.add('refreshing');
 
+            // إلغاء أي طلب سابق لم يكتمل بعد لتفادي تضارب البيانات (سباق الطلبات)
+            if (state.fetchController) state.fetchController.abort();
+            state.fetchController = new AbortController();
+
             try {
-                const response = await fetch(state.apiUrl);
-                if (!response.ok) {
-                    throw new Error(`خطأ في خادم البيانات: ${response.status}`);
-                }
+                const response = await fetch(state.apiUrl, { signal: state.fetchController.signal });
+                if (!response.ok) throw new Error(`خطأ في خادم البيانات: ${response.status}`);
 
                 const rawData = await response.json();
 
-                // تصفية السجلات الفارغة والتأكد من وجود اسم للموظف ومعرّف، ومنع البيانات التالفة
                 state.employees = rawData.filter(emp => {
                     const id = (emp.emp_id || '').toString().trim();
                     const name = (emp.emp_name || '').toString().trim();
-                    
-                    // يجب أن يحتوي السجل على معرف أو اسم
                     if (!id && !name) return false;
-                    
-                    // استبعاد السجلات التي تحتوي على أكواد برمجية لتفادي إفساد التخطيط
-                    if (id.startsWith('//') || name.startsWith('//') || id.startsWith('/*') || name.startsWith('/*') || 
+                    if (id.startsWith('//') || name.startsWith('//') || id.startsWith('/*') || name.startsWith('/*') ||
                         id.includes('package ') || name.includes('package ') || id.includes('import ') || name.includes('import ') ||
-                        id.length > 50 || id.length > 30) {
+                        id.length > 30 || name.length > 80) {
                         return false;
                     }
                     return true;
-                }).map(emp => {
-                    // معالجة القيم الافتراضية
-                    return {
-                        timestamp: emp.timestamp || new Date().toISOString(),
-                        emp_id: emp.emp_id || 'N/A',
-                        emp_name: emp.emp_name || 'موظف غير معروف',
-                        lat: parseFloat(emp.lat) || 24.7136,
-                        lng: parseFloat(emp.lng) || 46.6753,
-                        speed: emp.speed !== '' ? parseFloat(emp.speed).toFixed(1) : '0.0',
-                        heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
-                        steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
-                        battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
-                        is_worn: emp.is_worn === 'YES' || emp.is_worn === true ? 'نعم' : 'لا',
-                        status: (emp.status || 'NORMAL').toUpperCase(),
-                        nearest_responder: emp.nearest_responder || 'لا يوجد'
-                    };
-                });
+                }).map(emp => ({
+                    timestamp: emp.timestamp || new Date().toISOString(),
+                    emp_id: (emp.emp_id || 'N/A').toString(),
+                    emp_name: emp.emp_name || 'موظف غير معروف',
+                    lat: parseFloat(emp.lat) || 24.7136,
+                    lng: parseFloat(emp.lng) || 46.6753,
+                    speed: emp.speed !== '' ? parseFloat(emp.speed).toFixed(1) : '0.0',
+                    heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
+                    steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
+                    battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
+                    is_worn: emp.is_worn === 'YES' || emp.is_worn === true ? 'نعم' : 'لا',
+                    status: (emp.status || 'NORMAL').toUpperCase(),
+                    nearest_responder: emp.nearest_responder || 'لا يوجد'
+                }));
 
-                // تحديث الفلترة
                 filterEmployees();
-                // تحديث الإحصائيات
                 updateStats();
-                // تحديث الدبابيس على الخريطة
                 updateMapMarkers();
-                // التحقق من بلاغات الـ SOS النشطة وتفعيل الإنذار
                 checkSosAlerts();
+                updateHeaderPulse();
+                document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
 
-                // تحديث لوحة التفاصيل إذا كان هناك موظف محدد مفتوح حالياً
                 if (state.selectedEmployeeId) {
                     const currentEmp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
                     if (currentEmp) {
                         showEmployeeDetails(currentEmp);
+                    } else {
+                        // الموظف لم يعد ضمن البيانات الحالية، أغلق اللوحة بدلًا من إبقاء بيانات قديمة
+                        deselectEmployee();
                     }
                 }
 
             } catch (error) {
+                if (error.name === 'AbortError') return;
                 console.error('حدث خطأ أثناء جلب البيانات:', error);
-                const listContainer = document.getElementById('employeeList');
-                listContainer.innerHTML = `<div class="text-center text-red-400 p-4 text-xs">فشل الاتصال بالسيرفر. تأكد من إعدادات الرابط والإنترنت.</div>`;
+                document.getElementById('employeeList').innerHTML =
+                    `<div class="text-center p-4 text-xs" style="color: var(--sos);">فشل الاتصال بالسيرفر. تأكد من إعدادات الرابط والإنترنت.</div>`;
             } finally {
-                setTimeout(() => {
-                    indicator.classList.remove('refreshing');
-                }, 600);
+                setTimeout(() => indicator.classList.remove('refreshing'), 500);
             }
         }
 
-        // تصفية قائمة الموظفين بناءً على البحث
         function filterEmployees() {
-            if (!state.searchQuery) {
-                state.filteredEmployees = [...state.employees];
-            } else {
-                state.filteredEmployees = state.employees.filter(emp => {
-                    return emp.emp_name.toLowerCase().includes(state.searchQuery) ||
-                           emp.emp_id.toLowerCase().includes(state.searchQuery);
-                });
-            }
+            state.filteredEmployees = state.employees.filter(emp => {
+                const matchesSearch = !state.searchQuery ||
+                    emp.emp_name.toLowerCase().includes(state.searchQuery) ||
+                    emp.emp_id.toLowerCase().includes(state.searchQuery);
+                if (!matchesSearch) return false;
 
-            // إعادة ترتيب القائمة بحيث تظهر حالات SOS في البداية ثم WARNING ثم NORMAL
+                if (state.statusFilter === 'ALL') return true;
+                return effectiveStatus(emp) === state.statusFilter;
+            });
+
             state.filteredEmployees.sort((a, b) => {
-                const priority = { 'SOS': 3, 'WARNING': 2, 'NORMAL': 1 };
-                return (priority[b.status] || 0) - (priority[a.status] || 0);
+                const priority = { SOS: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
+                return (priority[effectiveStatus(b)] || 0) - (priority[effectiveStatus(a)] || 0);
             });
 
             renderEmployeeList();
         }
 
-        // بناء وتحديث قائمة الموظفين الجانبية (UI)
         function renderEmployeeList() {
             const listContainer = document.getElementById('employeeList');
-            
+
             if (state.filteredEmployees.length === 0) {
-                listContainer.innerHTML = '<div class="text-center text-slate-500 py-10 text-xs">لا يوجد نتائج تطابق البحث.</div>';
+                listContainer.innerHTML = `<div class="text-center py-10 text-xs" style="color: var(--text-muted);">لا يوجد نتائج تطابق البحث.</div>`;
                 return;
             }
 
             listContainer.innerHTML = '';
 
             state.filteredEmployees.forEach(emp => {
+                const status = effectiveStatus(emp);
                 const card = document.createElement('div');
                 card.className = `employee-card ${state.selectedEmployeeId === emp.emp_id ? 'active-focus' : ''}`;
                 card.setAttribute('data-id', emp.emp_id);
+                card.setAttribute('tabindex', '0');
 
-                let statusClass = 'status-normal';
-                if (emp.status === 'WARNING') statusClass = 'status-warning';
-                if (emp.status === 'SOS') statusClass = 'status-sos';
+                const statusLabel = { SOS: 'SOS', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
+                const lowBattery = parseInt(emp.battery) < 15;
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
-                        <span class="font-bold text-sm text-slate-100">${escapeHTML(emp.emp_name)}</span>
-                        <span class="text-[10px] px-2 py-0.5 rounded font-bold ${emp.status === 'SOS' ? 'bg-red-600 text-white animate-pulse' : (emp.status === 'WARNING' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400')}">
-                            ${escapeHTML(emp.status)}
-                        </span>
+                        <span class="font-bold text-sm">${escapeHTML(emp.emp_name)}</span>
+                        <span class="badge ${status.toLowerCase()}">${escapeHTML(statusLabel)}</span>
                     </div>
-                    <div class="flex justify-between items-center text-xs text-slate-400 mt-2">
+                    <div class="flex justify-between items-center text-xs mt-2" style="color: var(--text-secondary);">
                         <span class="flex items-center gap-1">❤️ ${emp.heart_rate} BPM</span>
-                        <span class="flex items-center gap-1">🔋 ${escapeHTML(emp.battery)}</span>
-                        <span class="text-[10px] text-slate-500">#${escapeHTML(emp.emp_id)}</span>
+                        <span class="flex items-center gap-1 ${lowBattery ? 'font-bold' : ''}" style="${lowBattery ? 'color: var(--warning);' : ''}">🔋 ${escapeHTML(emp.battery)}</span>
+                        <span class="text-[10px]" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
                     </div>
                 `;
 
-                // حدث النقر على الكارت لتحديد وتوسيط الخريطة
-                card.addEventListener('click', () => {
-                    focusOnEmployee(emp);
-                });
+                card.addEventListener('click', () => focusOnEmployee(emp));
+                card.addEventListener('keydown', (e) => { if (e.key === 'Enter') focusOnEmployee(emp); });
 
                 listContainer.appendChild(card);
             });
-
-            lucide.createIcons();
         }
 
-        // تحديث لوحة الإحصائيات (Stats Cards)
         function updateStats() {
-            const total = state.employees.length;
-            const normal = state.employees.filter(e => e.status === 'NORMAL').length;
-            const warning = state.employees.filter(e => e.status === 'WARNING').length;
-            const sos = state.employees.filter(e => e.status === 'SOS').length;
-
-            document.getElementById('statTotal').innerText = total;
-            document.getElementById('statNormal').innerText = normal;
-            document.getElementById('statWarning').innerText = warning;
-            document.getElementById('statSos').innerText = sos;
+            document.getElementById('statTotal').innerText = state.employees.length;
+            document.getElementById('statNormal').innerText = state.employees.filter(e => effectiveStatus(e) === 'NORMAL').length;
+            document.getElementById('statWarning').innerText = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
+            document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS').length;
         }
 
-        // تحديث الدبابيس والمؤشرات على الخريطة
+        function updateHeaderPulse() {
+            const hasSos = state.employees.some(e => e.status === 'SOS');
+            document.getElementById('headerPulse').classList.toggle('sos', hasSos);
+        }
+
         function updateMapMarkers() {
             const activeIds = new Set(state.employees.map(e => e.emp_id));
 
-            // 1. إزالة الدبابيس للموظفين الذين لم يعودوا في قائمة المراقبة الحالية
             for (const empId in mapMarkers) {
                 if (!activeIds.has(empId)) {
                     map.removeLayer(mapMarkers[empId]);
@@ -487,77 +548,56 @@
                 }
             }
 
-            // 2. تحديث أو إضافة الدبابيس
             state.employees.forEach(emp => {
                 const latLng = [emp.lat, emp.lng];
+                const status = effectiveStatus(emp);
 
-                // تصميم الأيقونة المخصصة
                 const customIcon = L.divIcon({
-                    className: `custom-gps-marker ${emp.status.toLowerCase()}`,
-                    html: ``,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
+                    className: 'gps-pin-wrap',
+                    html: `<div class="gps-pin ${status.toLowerCase()}"></div>`,
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 24]
                 });
 
                 if (mapMarkers[emp.emp_id]) {
-                    // تحديث الموقع والأيقونة الحالية لتفادي إعادة الإنشاء
                     mapMarkers[emp.emp_id].setLatLng(latLng);
                     mapMarkers[emp.emp_id].setIcon(customIcon);
                     mapMarkers[emp.emp_id].setPopupContent(buildPopupHTML(emp));
                 } else {
-                    // إنشاء دبوس جديد بالكامل
                     const marker = L.marker(latLng, { icon: customIcon })
                         .bindPopup(buildPopupHTML(emp))
                         .addTo(map);
-
-                    // عند النقر على الدبوس، إظهار التفاصيل وتحديد العنصر
-                    marker.on('click', () => {
-                        selectEmployee(emp);
-                    });
-
+                    marker.on('click', () => selectEmployee(emp));
                     mapMarkers[emp.emp_id] = marker;
                 }
             });
         }
 
-        // بناء كود HTML للـ Popup الخاص بالدبوس على الخريطة
         function buildPopupHTML(emp) {
-            let statusBadge = 'مستقر';
-            if (emp.status === 'WARNING') statusBadge = 'تحذير حركة';
-            if (emp.status === 'SOS') statusBadge = 'طوارئ SOS';
+            const status = effectiveStatus(emp);
+            const statusLabel = { SOS: 'طوارئ SOS', WARNING: 'تحذير حركة', NORMAL: 'مستقر', OFFLINE: 'غير متصل' }[status] || status;
+            const color = { SOS: 'var(--sos)', WARNING: 'var(--warning)', NORMAL: 'var(--normal)', OFFLINE: 'var(--offline)' }[status];
 
             return `
-                <div dir="rtl" class="p-1 font-sans text-xs">
-                    <b class="text-sm text-white block mb-1">${escapeHTML(emp.emp_name)}</b>
-                    <span class="text-slate-400 block mb-1">رقم: ${escapeHTML(emp.emp_id)}</span>
-                    <span class="block mb-1">الحالة: <b class="${emp.status === 'SOS' ? 'text-red-400' : 'text-emerald-400'}">${statusBadge}</b></span>
+                <div dir="rtl" class="p-1 text-xs">
+                    <b class="text-sm block mb-1" style="color: var(--text-primary);">${escapeHTML(emp.emp_name)}</b>
+                    <span class="block mb-1" style="color: var(--text-muted);">رقم: ${escapeHTML(emp.emp_id)}</span>
+                    <span class="block mb-1">الحالة: <b style="color: ${color};">${escapeHTML(statusLabel)}</b></span>
                     <span class="block mb-1">النبض: ${emp.heart_rate} BPM</span>
                     <span class="block">البطارية: ${escapeHTML(emp.battery)}</span>
                 </div>
             `;
         }
 
-        // التركيز على موظف محدد وتوسيط الخريطة عليه
         function focusOnEmployee(emp) {
             selectEmployee(emp);
-            
-            // نقل الخريطة إلى إحداثيات الموظف
-            map.setView([emp.lat, emp.lng], 16, {
-                animate: true,
-                duration: 1.2
-            });
-
-            // فتح الـ Popup الخاص به
-            if (mapMarkers[emp.emp_id]) {
-                mapMarkers[emp.emp_id].openPopup();
-            }
+            map.setView([emp.lat, emp.lng], 16, { animate: true, duration: 1.2 });
+            if (mapMarkers[emp.emp_id]) mapMarkers[emp.emp_id].openPopup();
         }
 
-        // تحديد موظف وعرض بياناته في لوحة التفاصيل
         function selectEmployee(emp) {
             state.selectedEmployeeId = emp.emp_id;
 
-            // تفعيل التحديد البصري في القائمة الجانبية
             document.querySelectorAll('.employee-card').forEach(card => {
                 if (card.getAttribute('data-id') === emp.emp_id) {
                     card.classList.add('active-focus');
@@ -567,16 +607,13 @@
                 }
             });
 
-            // إظهار لوحة التفاصيل العائمة وتحديث محتواها
             showEmployeeDetails(emp);
         }
 
-        // تحديث وعرض لوحة التفاصيل العائمة (UI)
         function showEmployeeDetails(emp) {
             const panel = document.getElementById('detailPanel');
             panel.classList.remove('hidden');
 
-            // تحديث المحتوى النصي
             document.getElementById('detailName').innerText = emp.emp_name;
             document.getElementById('detailId').innerText = `#${emp.emp_id}`;
             document.getElementById('detailHeartRate').innerText = `${emp.heart_rate} BPM`;
@@ -585,53 +622,39 @@
             document.getElementById('detailSpeed').innerText = `${emp.speed} م/ث`;
             document.getElementById('detailWorn').innerText = emp.is_worn;
 
-            // معالجة تنسيق الوقت
             let timeString = '--:--:--';
             try {
-                const date = new Date(emp.timestamp);
-                timeString = date.toLocaleTimeString('ar-SA', { hour12: false });
-            } catch(e) {}
+                timeString = new Date(emp.timestamp).toLocaleTimeString('ar-SA', { hour12: false });
+            } catch (e) {}
             document.getElementById('detailTime').innerText = timeString;
 
-            // ضبط نقطة الحالة الملونة
-            const dot = document.getElementById('detailStatusDot');
-            dot.className = `status-dot ${emp.status.toLowerCase()}`;
+            const status = effectiveStatus(emp);
+            document.getElementById('detailStatusDot').className = `status-dot ${status.toLowerCase()}`;
 
-            // معالجة تفاصيل المستجيب (إذا كانت الحالة طوارئ SOS)
-            const responderBox = document.getElementById('responderBox');
-            if (emp.status === 'SOS') {
-                responderBox.classList.remove('hidden');
-                document.getElementById('detailResponder').innerText = emp.nearest_responder;
-            } else {
-                responderBox.classList.add('hidden');
-            }
+            document.getElementById('responderBox').classList.toggle('hidden', emp.status !== 'SOS');
+            if (emp.status === 'SOS') document.getElementById('detailResponder').innerText = emp.nearest_responder;
+
+            document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
         }
 
-        // إلغاء تحديد الموظف وإغلاق لوحة التفاصيل
         function deselectEmployee() {
             state.selectedEmployeeId = null;
             document.getElementById('detailPanel').classList.add('hidden');
-            document.querySelectorAll('.employee-card').forEach(card => {
-                card.classList.remove('active-focus');
-            });
+            document.querySelectorAll('.employee-card').forEach(card => card.classList.remove('active-focus'));
         }
 
-        // التحكم في تشغيل التحديث التلقائي
         function toggleAutoRefresh(enable) {
             state.autoRefresh = enable;
             if (enable) {
                 if (!state.refreshIntervalId) {
-                    state.refreshIntervalId = setInterval(fetchTelemetryData, 3000);
+                    state.refreshIntervalId = setInterval(fetchTelemetryData, REFRESH_INTERVAL_MS);
                 }
-            } else {
-                if (state.refreshIntervalId) {
-                    clearInterval(state.refreshIntervalId);
-                    state.refreshIntervalId = null;
-                }
+            } else if (state.refreshIntervalId) {
+                clearInterval(state.refreshIntervalId);
+                state.refreshIntervalId = null;
             }
         }
 
-        // التحقق من وجود حالات طوارئ نشطة وبدء الإنذار
         function checkSosAlerts() {
             const sosEmployees = state.employees.filter(e => e.status === 'SOS');
             const banner = document.getElementById('sosBanner');
@@ -640,8 +663,6 @@
                 banner.classList.remove('hidden');
                 const details = sosEmployees.map(e => `${e.emp_name} (أقرب مستجيب: ${e.nearest_responder})`).join(' | ');
                 document.getElementById('sosBannerMessage').innerText = `طوارئ نشطة لـ: ${details}`;
-                
-                // تشغيل صوت التنبيه
                 playAlarmSiren();
             } else {
                 banner.classList.add('hidden');
@@ -649,33 +670,25 @@
             }
         }
 
-        // توليد صوت الإنذار عبر الـ Web Audio API لتجنب تحميل ملف خارجي
         function playAlarmSiren() {
             if (state.isMuted) return;
-
             if (!state.audioContext) {
                 state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
-
-            if (state.sirenIntervalId) return; // الإنذار يعمل بالفعل
+            if (state.sirenIntervalId) return;
 
             state.sirenIntervalId = setInterval(() => {
-                if (state.audioContext.state === 'suspended') {
-                    state.audioContext.resume();
-                }
+                if (state.audioContext.state === 'suspended') state.audioContext.resume();
 
                 const osc = state.audioContext.createOscillator();
                 const gain = state.audioContext.createGain();
-
                 osc.connect(gain);
                 gain.connect(state.audioContext.destination);
 
                 osc.type = 'sawtooth';
                 const time = state.audioContext.currentTime;
-
                 osc.frequency.setValueAtTime(580, time);
                 osc.frequency.linearRampToValueAtTime(880, time + 0.35);
-
                 gain.gain.setValueAtTime(0.12, time);
                 gain.gain.exponentialRampToValueAtTime(0.01, time + 0.35);
 
@@ -684,7 +697,6 @@
             }, 450);
         }
 
-        // إيقاف صوت الإنذار
         function stopAlarmSiren() {
             if (state.sirenIntervalId) {
                 clearInterval(state.sirenIntervalId);
@@ -692,7 +704,6 @@
             }
         }
 
-        // كتم/تفعيل صوت الإنذار من زر لوحة الإنذار
         function toggleMute() {
             state.isMuted = !state.isMuted;
             const muteIcon = document.getElementById('muteIcon');
@@ -706,7 +717,6 @@
             lucide.createIcons();
         }
 
-        // دالة لتطهير نصوص HTML لمنع اختراق تخطيط الصفحة (XSS / Layout Spillage Protection)
         function escapeHTML(str) {
             if (!str) return '';
             return str.toString()
