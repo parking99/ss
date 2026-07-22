@@ -677,6 +677,11 @@
             document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS').length;
         }
 
+        function updateHeaderPulse() {
+            const hasSos = state.employees.some(e => e.status === 'SOS');
+            document.getElementById('headerPulse').classList.toggle('sos', hasSos);
+        }
+
         // تحديث وتصفية مواقع الخريطة لتتطابق تماماً مع الفلاتر الفعالة
         function updateMapMarkers() {
             const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
@@ -814,14 +819,12 @@
             }
         }
 
-        // إغلاق حالة الطوارئ وإرسال طلب POST
+        // إغلاق حالة الطوارئ وإرسال طلب GET
         async function resolveEmergencyRemote(empId) {
             try {
-                // استخدام معاملات الاستعلام (Query Parameters) لتجنب قيود CORS Preflight المتصفحية
+                // استخدام طلب GET لتفادي قيود CORS نهائياً وضمان الاستجابة السريعة
                 const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
-                const response = await fetch(url, {
-                    method: 'POST'
-                });
+                const response = await fetch(url);
                 
                 if (!response.ok) throw new Error(`خادم السكربت غير متاح: ${response.status}`);
                 
