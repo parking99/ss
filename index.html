@@ -71,7 +71,7 @@
         }
         .leaflet-popup-tip { background-color: var(--bg-panel) !important; }
 
-        /* Map marker pins: two-tone badge with white ring, easier to spot on a light basemap */
+        /* Map marker pins */
         .gps-pin {
             width: 26px; height: 26px;
             border-radius: 50% 50% 50% 0;
@@ -129,7 +129,7 @@
         .refreshing { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Signature element: a small live pulse next to the title */
+        /* Title pulse */
         .live-pulse { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--normal); }
         .live-pulse::after {
             content: ''; position: absolute; inset: 0; border-radius: 50%;
@@ -183,7 +183,7 @@
                 </button>
             </div>
 
-            <!-- التحكم بالصوت للمشغل -->
+            <!-- الصوت للمركز -->
             <button id="muteAlarmBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none hover:bg-slate-100 transition-colors" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-primary);" title="كتم / تفعيل التنبيه الصوتي للمركز">
                 <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
                 <span id="muteText" class="font-medium">التنبيه الصوتي نشط</span>
@@ -200,7 +200,7 @@
                 </select>
             </label>
 
-            <!-- زر تحديث يدوي فوري -->
+            <!-- زر التحديث اليدوي -->
             <button id="manualRefreshBtn" class="p-1.5 rounded-lg border hover:bg-slate-100 transition-colors flex-shrink-0" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-secondary);" title="تحديث يدوي الآن">
                 <i id="refreshIndicator" data-lucide="rotate-cw" class="w-4 h-4 flex-shrink-0"></i>
             </button>
@@ -273,7 +273,7 @@
                     </button>
                 </div>
 
-                <!-- صندوق الاستجابة والأمر بالطوارئ (مدمج به زر الإغلاق) -->
+                <!-- صندوق الاستجابة للإنذار -->
                 <div id="responderBox" class="hidden mb-3 p-3 rounded-xl text-xs flex flex-col gap-2.5" style="background: var(--sos-soft); border: 1px solid #F3B9B9; color: var(--sos);">
                     <div class="flex items-center gap-2">
                         <i data-lucide="ambulance" class="w-5 h-5 flex-shrink-0 animate-pulse"></i>
@@ -293,28 +293,33 @@
                     <span>لم يتم استلام تحديث من هذا الجهاز منذ أكثر من دقيقة</span>
                 </div>
 
+                <!-- شبكة تفاصيل المؤشرات الحيوية المدمجة -->
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">النبض</span>
                         <span id="detailHeartRate" class="font-bold font-display" style="color: var(--normal);">0 BPM</span>
                     </div>
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">البطارية</span>
-                        <span id="detailBattery" class="font-bold font-display" style="color: var(--accent);">100%</span>
+                        <span class="block text-[10px]" style="color: var(--text-muted);">ضغط الدم</span>
+                        <span id="detailBP" class="font-bold font-display" style="color: var(--warning);">120/80</span>
+                    </div>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">الأكسجين SpO2</span>
+                        <span id="detailSpo2" class="font-bold font-display" style="color: var(--accent);">98%</span>
+                    </div>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">درجة الحرارة</span>
+                        <span id="detailTemp" class="font-bold font-display" style="color: var(--sos);">37.0°C</span>
                     </div>
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">الخطوات</span>
                         <span id="detailSteps" class="font-bold font-display" style="color: var(--text-primary);">0</span>
                     </div>
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">السرعة</span>
-                        <span id="detailSpeed" class="font-bold font-display" style="color: var(--text-primary);">0 م/ث</span>
+                        <span class="block text-[10px]" style="color: var(--text-muted);">البطارية</span>
+                        <span id="detailBattery" class="font-bold font-display" style="color: var(--text-primary);">100%</span>
                     </div>
-                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">حالة الارتداء</span>
-                        <span id="detailWorn" class="font-bold font-display" style="color: var(--text-primary);">نعم</span>
-                    </div>
-                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                    <div class="col-span-2 p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">التحديث</span>
                         <span id="detailTime" class="font-bold font-display" style="color: var(--text-primary);">--:--:--</span>
                     </div>
@@ -359,7 +364,7 @@
             initMap();
             initEventListeners();
             lucide.createIcons();
-            toggleAutoRefresh(true); // هذا سيقوم ببدء الجلب التلقائي لأول مرة
+            toggleAutoRefresh(true);
             startRelativeTimeUpdater();
         });
 
@@ -367,7 +372,6 @@
             map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
             L.control.zoom({ position: 'topleft' }).addTo(map);
 
-            // خريطة فاتحة تناسب الواجهة البيضاء الجديدة
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',
@@ -430,7 +434,6 @@
                 }
             });
 
-            // إظهار/إخفاء رابط الـ API
             const urlInput = document.getElementById('apiUrlInput');
             document.getElementById('toggleUrlVisibilityBtn').addEventListener('click', (e) => {
                 const btn = e.currentTarget;
@@ -443,7 +446,6 @@
             });
         }
 
-        // تحديد ما إذا كان الجهاز "غير متصل" بناءً على وقت آخر تحديث
         function isDeviceOffline(emp) {
             const ts = new Date(emp.timestamp).getTime();
             if (isNaN(ts)) return false;
@@ -451,15 +453,13 @@
         }
 
         function effectiveStatus(emp) {
-            // SOS تبقى أولوية قصوى حتى لو كان آخر تحديث قديمًا قليلاً
             if (emp.status === 'SOS') return 'SOS';
             if (isDeviceOffline(emp)) return 'OFFLINE';
             return emp.status;
         }
 
-        // دالة حساب المسافة بين إحداثيين (صيغة هافرسين) بالمتر
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // نصف قطر الأرض بالمتر
+            const R = 6371e3;
             const phi1 = lat1 * Math.PI / 180;
             const phi2 = lat2 * Math.PI / 180;
             const deltaPhi = (lat2 - lat1) * Math.PI / 180;
@@ -470,17 +470,16 @@
                       Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-            return R * c; // المسافة بالمتر
+            return R * c;
         }
 
-        // حساب أقرب موظف متاح للمساعدة (حالته طبيعية وليست طوارئ) لنجدة الموظف المستغيث
         function findNearestResponder(sosEmp, allEmployees) {
             let nearest = null;
             let minDistance = Infinity;
 
             allEmployees.forEach(other => {
                 if (other.emp_id === sosEmp.emp_id) return;
-                if (other.status === 'SOS') return; // لا يمكن لمستغيث آخر أن يستجيب
+                if (other.status === 'SOS') return;
 
                 const dist = calculateDistance(sosEmp.lat, sosEmp.lng, other.lat, other.lng);
                 if (dist < minDistance) {
@@ -502,7 +501,6 @@
             return 'لا يوجد مستجيب قريب متاح حالياً';
         }
 
-        // دالة تحويل الوقت إلى وقت نسبي باللغة العربية
         function getRelativeTimeString(isoString) {
             const date = new Date(isoString);
             const now = new Date();
@@ -525,7 +523,6 @@
             return `منذ ${hoursDiff} ساعة`;
         }
 
-        // مشغل الوقت النسبي التلقائي
         function startRelativeTimeUpdater() {
             setInterval(() => {
                 document.querySelectorAll('.relative-time-update').forEach(el => {
@@ -548,7 +545,6 @@
             const indicator = document.getElementById('refreshIndicator');
             if (indicator) indicator.classList.add('refreshing');
 
-            // إلغاء أي طلب يدوي سابق لم يكتمل بعد
             if (state.fetchController) state.fetchController.abort();
             state.fetchController = new AbortController();
 
@@ -572,17 +568,17 @@
                         emp_name: emp.emp_name || 'موظف غير معروف',
                         lat: latNum,
                         lng: lngNum,
-                        speed: emp.speed !== '' ? safeParseFloat(emp.speed, 0).toFixed(1) : '0.0',
                         heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
+                        blood_pressure: emp.blood_pressure || '120/80',
+                        spo2: emp.spo2 || '98%',
+                        temperature: emp.temperature || '37.0°C',
                         steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
                         battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
-                        is_worn: emp.is_worn === 'YES' || emp.is_worn === true ? 'نعم' : 'لا',
                         status: (emp.status || 'NORMAL').toUpperCase(),
                         nearest_responder: emp.nearest_responder || 'لا يوجد'
                     };
                 });
 
-                // حساب أقرب مستجيب ديناميكياً لكل مستغيث (SOS) في لوحة التحكم مباشرة
                 cleaned.forEach(emp => {
                     if (emp.status === 'SOS') {
                         emp.nearest_responder = findNearestResponder(emp, cleaned);
@@ -632,7 +628,7 @@
             });
 
             renderEmployeeList();
-            updateMapMarkers(); // مزامنة الخريطة فورياً مع الفلاتر الفعالة
+            updateMapMarkers();
         }
 
         function renderEmployeeList() {
@@ -689,7 +685,6 @@
             document.getElementById('headerPulse').classList.toggle('sos', hasSos);
         }
 
-        // تحديث وتصفية مواقع الخريطة لتتطابق تماماً مع الفلاتر الفعالة
         function updateMapMarkers() {
             const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
 
@@ -769,12 +764,12 @@
             document.getElementById('detailName').innerText = emp.emp_name;
             document.getElementById('detailId').innerText = `#${emp.emp_id}`;
             document.getElementById('detailHeartRate').innerText = `${emp.heart_rate} BPM`;
+            document.getElementById('detailBP').innerText = emp.blood_pressure || '120/80';
+            document.getElementById('detailSpo2').innerText = emp.spo2 || '98%';
+            document.getElementById('detailTemp').innerText = emp.temperature || '37.0°C';
             document.getElementById('detailSteps').innerText = `${emp.steps.toLocaleString()} خطوة`;
             document.getElementById('detailBattery').innerText = emp.battery;
-            document.getElementById('detailSpeed').innerText = `${emp.speed} م/ث`;
-            document.getElementById('detailWorn').innerText = emp.is_worn;
 
-            // ضبط الوقت النسبي وتخزين التوقيت الفعلي للتحديث التلقائي
             document.getElementById('detailTime').innerText = getRelativeTimeString(emp.timestamp);
             document.getElementById('detailTime').setAttribute('data-timestamp', emp.timestamp);
 
@@ -828,7 +823,6 @@
 
         // إغلاق حالة الطوارئ وإرسال طلب GET
         async function resolveEmergencyRemote(empId) {
-            // تحديث الحالة محلياً فوراً لمنح المشغل استجابة بصرية وسريعة
             const emp = state.employees.find(e => e.emp_id === empId);
             if (emp) {
                 emp.status = 'NORMAL';
@@ -843,7 +837,6 @@
             }
 
             try {
-                // استخدام طلب GET لتفادي قيود CORS نهائياً وضمان الاستجابة السريعة
                 const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
                 const response = await fetch(url);
                 
@@ -912,7 +905,6 @@
             lucide.createIcons();
         }
 
-        // دالة حماية النصوص لمنع الثغرات
         function escapeHTML(str) {
             if (!str) return '';
             return str.toString()
