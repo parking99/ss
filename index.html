@@ -1,411 +1,927 @@
-// 1. استقبال البيانات وتحديث الحالات (POST Request)
-function doPost(e) {
-  try {
-    var sheet = getOrCreateTelemetrySheet();
-    var timestamp = new Date();
-    
-    // قراءة البيانات من الرابط أو الجسم
-    var action = e.parameter.action;
-    var empId = e.parameter.emp_id;
-    
-    var data = null;
-    if (e.postData && e.postData.contents) {
-      try {
-        data = JSON.parse(e.postData.contents);
-        if (data) {
-          if (!action) action = data.action;
-          if (!empId) empId = data.emp_id;
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>غرفة العمليات والمراقبة الأمنية</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Fonts: Cairo for display/numbers, IBM Plex Sans Arabic for body copy -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-page: #F6F8FB;
+            --bg-panel: #FFFFFF;
+            --bg-subtle: #F1F4F9;
+            --border-soft: #E4E9F1;
+            --border-strong: #D6DCE7;
+            --text-primary: #10182B;
+            --text-secondary: #64748B;
+            --text-muted: #94A3B8;
+            --navy: #0B3B60;
+            --navy-soft: #E7EEF5;
+            --accent: #2563EB;
+            --normal: #059669;
+            --normal-soft: #E3F6EE;
+            --warning: #D97706;
+            --warning-soft: #FDF1DE;
+            --sos: #DC2626;
+            --sos-soft: #FCE8E8;
+            --offline: #94A3B8;
+            --offline-soft: #EEF1F5;
+            --shadow-sm: 0 1px 2px rgba(16,24,43,0.06);
+            --shadow-md: 0 8px 24px rgba(16,24,43,0.08);
         }
-      } catch (err) {}
-    }
-    
-    // أ) معالجة إنهاء حالة الطوارئ (Resolve)
-    if (action === "resolve" && empId) {
-      return handleResolveEmergency(sheet, empId.toString(), timestamp);
-    }
 
-    // ب) معالجة بيانات التتبع المرسلة من الساعة
-    if (!data) {
-      return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": "No telemetry data received" }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
+        * { font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
+        .font-display { font-family: 'Cairo', sans-serif; }
 
-    var watchEmpId = (data.emp_id || "WATCH_001").toString().trim().toUpperCase();
-    
-    // جلب الاسم المطابق لرمز الساعة من جدول الموظفين (مثال: WATCH_001 -> أحمد منصور)
-    var empName = getEmployeeNameFromDatabase(watchEmpId);
-    
-    // استخدام محلل الأرقام الآمن لتجاوز الفواصل العربية (٫)
-    var lat = safeParseFloat(data.lat, 24.7136);
-    var lng = safeParseFloat(data.lng, 46.6753);
-    var speed = data.speed !== undefined ? data.speed.toString() : "0.0";
-    var hr = data.heart_rate !== undefined ? parseInt(data.heart_rate) : 0;
-    var steps = data.steps !== undefined ? parseInt(data.steps) : 0;
-    var battery = typeof data.battery !== 'undefined' ? data.battery.toString().replace('%', '') + "%" : "100%";
-    var isWorn = data.is_worn ? "YES" : "NO";
-    
-    // توحيد الحالات
-    var rawStatus = (data.status || "NORMAL").toUpperCase();
-    var status = "NORMAL";
-    if (rawStatus === "SOS" || rawStatus === "EMERGENCY") {
-      status = "SOS";
-    } else if (rawStatus === "WARNING") {
-      status = "WARNING";
-    }
-    
-    // جلب آخر حالة للموظف في جدول التتبع
-    var currentStatus = "NORMAL";
-    var rows = sheet.getDataRange().getValues();
-    for (var i = rows.length - 1; i >= 1; i--) {
-      if (rows[i][1].toString().trim().toUpperCase() === watchEmpId) {
-        currentStatus = rows[i][10].toString().trim().toUpperCase();
-        break;
-      }
-    }
-    
-    // قفل الأمان (Safety Lock): إذا كان مسجلاً في الطوارئ حالياً، نحميه من إيقاف الإنذار تلقائياً
-    if (currentStatus === "SOS" && status !== "SOS") {
-      status = "SOS";
-    }
-    
-    // حساب أقرب مسعف متاح وكتابته مباشرة في صف الطوارئ
-    var nearestResponder = "لا يوجد";
-    if (status === "SOS") {
-      nearestResponder = findNearestResponderInSheet(sheet, watchEmpId, lat, lng);
-    }
-    
-    // إضافة صف التتبع الفعلي
-    sheet.appendRow([
-      timestamp, 
-      watchEmpId, 
-      empName, 
-      lat, 
-      lng, 
-      speed, 
-      hr, 
-      steps, 
-      battery, 
-      isWorn, 
-      status,
-      nearestResponder
-    ]);
-    
-    return ContentService.createTextOutput(JSON.stringify({ "result": "success", "status": "recorded", "dispatch_to": nearestResponder }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-// 2. جلب وتصدير البيانات وإنهاء الحالة (GET Request)
-function doGet(e) {
-  try {
-    var sheet = getOrCreateTelemetrySheet();
-    var timestamp = new Date();
-    
-    var action = e.parameter.action;
-    var empId = e.parameter.emp_id;
-    
-    // أ) معالجة إنهاء حالة الطوارئ عبر GET
-    if (action === "resolve" && empId) {
-      return handleResolveEmergency(sheet, empId.toString(), timestamp);
-    }
-    
-    // ب) جلب أحدث الحالات للوحة المراقبة
-    var rows = sheet.getDataRange().getValues();
-    if (rows.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify([]))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    var headers = rows[0];
-    var headerMap = {};
-    for (var i = 0; i < headers.length; i++) {
-      headerMap[headers[i].toString().trim().toLowerCase()] = i;
-    }
-    
-    var latestRecords = {};
-    
-    for (var r = rows.length - 1; r >= 1; r--) {
-      var row = rows[r];
-      var empIdIdx = headerMap["employee id"];
-      if (empIdIdx === undefined || empIdIdx >= row.length) continue;
-      
-      var id = row[empIdIdx].toString().trim().toUpperCase();
-      if (id === "") continue;
-      
-      if (!latestRecords[id]) {
-        var getVal = function(headerName, defaultVal) {
-          var idx = headerMap[headerName.toLowerCase()];
-          if (idx !== undefined && idx < row.length) {
-            var val = row[idx];
-            return (val !== null && val !== undefined && val !== "") ? val : defaultVal;
-          }
-          return defaultVal;
-        };
-        
-        var timeVal = getVal("Timestamp", "");
-        if (timeVal instanceof Date) {
-          timeVal = timeVal.toISOString();
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-primary);
         }
-        
-        latestRecords[id] = {
-          timestamp: timeVal,
-          emp_id: id,
-          emp_name: getVal("Employee Name", "موظف غير معروف"),
-          lat: safeParseFloat(getVal("Latitude", 24.7136), 24.7136),
-          lng: safeParseFloat(getVal("Longitude", 46.6753), 46.6753),
-          speed: getVal("Speed (m/s)", "0.0").toString(),
-          heart_rate: parseInt(getVal("Heart Rate (BPM)", 0)) || 0,
-          steps: parseInt(getVal("Steps", 0)) || 0,
-          battery: getVal("Battery", "100%").toString(),
-          is_worn: getVal("Is Worn", "YES").toString(),
-          status: getVal("Status", "NORMAL").toString().toUpperCase(),
-          nearest_responder: getVal("Nearest Responder", "لا يوجد").toString()
+
+        #map {
+            height: 100%;
+            width: 100%;
+            border-radius: 1rem;
+            z-index: 1;
+        }
+        .leaflet-control-zoom a {
+            background-color: var(--bg-panel) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-soft) !important;
+        }
+        .leaflet-popup-content-wrapper {
+            background-color: var(--bg-panel) !important;
+            color: var(--text-primary) !important;
+            border-radius: 0.75rem !important;
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-md) !important;
+        }
+        .leaflet-popup-tip { background-color: var(--bg-panel) !important; }
+
+        /* Map marker pins: two-tone badge with white ring, easier to spot on a light basemap */
+        .gps-pin {
+            width: 26px; height: 26px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid #fff;
+            box-shadow: 0 2px 6px rgba(16,24,43,0.35);
+        }
+        .gps-pin.normal { background-color: var(--normal); }
+        .gps-pin.warning { background-color: var(--warning); }
+        .gps-pin.sos { background-color: var(--sos); animation: pulse-marker 1s infinite; }
+        .gps-pin.offline { background-color: var(--offline); }
+        @keyframes pulse-marker {
+            0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); }
+            70% { box-shadow: 0 0 0 14px rgba(220,38,38,0); }
+            100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+        }
+
+        .employee-card {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-soft);
+            border-radius: 0.85rem;
+            padding: 0.9rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: var(--shadow-sm);
+        }
+        .employee-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+        .employee-card.active-focus {
+            border-color: var(--accent);
+            background-color: var(--navy-soft);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+        }
+
+        .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .status-dot.normal { background-color: var(--normal); }
+        .status-dot.warning { background-color: var(--warning); }
+        .status-dot.sos { background-color: var(--sos); animation: ping-dot 1s infinite; }
+        .status-dot.offline { background-color: var(--offline); }
+        @keyframes ping-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+        .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; letter-spacing: 0.2px; }
+        .badge.normal { background: var(--normal-soft); color: var(--normal); }
+        .badge.warning { background: var(--warning-soft); color: var(--warning); }
+        .badge.sos { background: var(--sos); color: #fff; }
+        .badge.offline { background: var(--offline-soft); color: var(--offline); }
+
+        .chip {
+            font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+            border: 1px solid var(--border-soft); background: var(--bg-panel); color: var(--text-secondary);
+            cursor: pointer; transition: all 0.15s ease; white-space: nowrap;
+        }
+        .chip:hover { border-color: var(--accent); color: var(--accent); }
+        .chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+        .refreshing { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Signature element: a small live pulse next to the title */
+        .live-pulse { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--normal); }
+        .live-pulse::after {
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(5,150,105,0.5);
+            animation: livepulse 1.8s ease-out infinite;
+        }
+        @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(5,150,105,0.45); } 100% { box-shadow: 0 0 0 10px rgba(5,150,105,0); } }
+        .live-pulse.sos { background: var(--sos); }
+        .live-pulse.sos::after { animation: livepulse-sos 1s ease-out infinite; }
+        @keyframes livepulse-sos { 0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); } 100% { box-shadow: 0 0 0 12px rgba(220,38,38,0); } }
+
+        input:focus-visible, button:focus-visible, .employee-card:focus-visible {
+            outline: 2px solid var(--accent); outline-offset: 2px;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing { animation: none !important; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white border-b flex flex-col md:flex-row justify-between items-center gap-3 px-4 py-3.5 z-40" style="border-color: var(--border-soft);">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl border" style="background: var(--navy-soft); color: var(--navy); border-color: var(--border-soft);">
+                <i data-lucide="shield-check" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold font-display flex items-center gap-2" style="color: var(--text-primary);">
+                    <span id="headerPulse" class="live-pulse"></span>
+                    مركز المراقبة والأمان المباشر
+                </h1>
+                <p class="text-xs flex items-center gap-1.5" style="color: var(--text-secondary);">
+                    تتبع حي عبر أجهزة الرصد الميدانية · آخر تحديث
+                    <span id="lastUpdateTime" class="font-semibold" style="color: var(--text-primary);">--:--:--</span>
+                    <span id="connectionErrorBadge" class="hidden bg-rose-100 text-rose-600 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">اتصال غير مستقر</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 w-full md:w-auto overflow-x-auto">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                <i data-lucide="link" class="w-4 h-4" style="color: var(--text-muted);"></i>
+                <input type="password" id="apiUrlInput" class="bg-transparent outline-none w-40 md:w-64 text-xs" style="color: var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbxQO7RjW_Wxqviuizlk2bOJyqNxvbIuiTPFJhiAHgiIFgQikS7mOHfFQJW0lZhqsuGjwg/exec">
+                <button id="toggleUrlVisibilityBtn" class="flex-shrink-0" style="color: var(--text-muted);" aria-label="إظهار الرابط" type="button">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- التحكم بالصوت للمشغل -->
+            <button id="muteAlarmBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none hover:bg-slate-100 transition-colors" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-primary);" title="كتم / تفعيل التنبيه الصوتي للمركز">
+                <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
+                <span id="muteText" class="font-medium">التنبيه الصوتي نشط</span>
+            </button>
+
+            <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                <input type="checkbox" id="autoRefreshToggle" checked class="rounded" style="accent-color: var(--accent);">
+                <span>تحديث تلقائي كل:</span>
+                <select id="refreshRateSelect" class="bg-transparent border-0 font-bold focus:outline-none cursor-pointer text-xs" style="color: var(--text-primary);">
+                    <option value="3000">3 ثوانٍ</option>
+                    <option value="10000">10 ثوانٍ</option>
+                    <option value="15000" selected>15 ثانية</option>
+                    <option value="30000">30 ثانية</option>
+                </select>
+            </label>
+
+            <!-- زر تحديث يدوي فوري -->
+            <button id="manualRefreshBtn" class="p-1.5 rounded-lg border hover:bg-slate-100 transition-colors flex-shrink-0" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-secondary);" title="تحديث يدوي الآن">
+                <i id="refreshIndicator" data-lucide="rotate-cw" class="w-4 h-4 flex-shrink-0"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden p-3 gap-3">
+
+        <!-- Sidebar -->
+        <aside class="w-full lg:w-80 flex flex-col gap-3 h-full overflow-hidden">
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-4 gap-2 bg-white p-3 rounded-xl border" style="border-color: var(--border-soft); box-shadow: var(--shadow-sm);">
+                <div class="text-center">
+                    <span class="block text-[10px]" style="color: var(--text-muted);">الكل</span>
+                    <span id="statTotal" class="font-bold text-sm font-display" style="color: var(--navy);">0</span>
+                </div>
+                <div class="text-center">
+                    <span class="block text-[10px]" style="color: var(--text-muted);">طبيعي</span>
+                    <span id="statNormal" class="font-bold text-sm font-display" style="color: var(--normal);">0</span>
+                </div>
+                <div class="text-center">
+                    <span class="block text-[10px]" style="color: var(--text-muted);">تحذير</span>
+                    <span id="statWarning" class="font-bold text-sm font-display" style="color: var(--warning);">0</span>
+                </div>
+                <div class="text-center">
+                    <span class="block text-[10px]" style="color: var(--text-muted);">SOS</span>
+                    <span id="statSos" class="font-bold text-sm font-display" style="color: var(--sos);">0</span>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 absolute right-3 top-2.5" style="color: var(--text-muted);"></i>
+                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full bg-white border rounded-xl pr-9 pl-3 py-2 text-xs outline-none" style="border-color: var(--border-soft); color: var(--text-primary);">
+            </div>
+
+            <!-- Status filter chips -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5" id="filterChips">
+                <button class="chip active" data-filter="ALL">الكل</button>
+                <button class="chip" data-filter="SOS">SOS</button>
+                <button class="chip" data-filter="WARNING">تحذير</button>
+                <button class="chip" data-filter="NORMAL">طبيعي</button>
+                <button class="chip" data-filter="OFFLINE">غير متصل</button>
+            </div>
+
+            <!-- Employee list -->
+            <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="employeeList">
+                <div class="text-center py-10 text-xs" style="color: var(--text-muted);">جاري جلب بيانات الموظفين...</div>
+            </div>
+        </aside>
+
+        <!-- Map -->
+        <main class="flex-1 relative h-full flex flex-col">
+            <div id="map" class="shadow-inner border" style="border-color: var(--border-soft);"></div>
+
+            <!-- Detail panel -->
+            <div id="detailPanel" class="hidden absolute bottom-4 right-4 left-4 md:left-auto md:w-96 bg-white/95 backdrop-blur border p-4 rounded-2xl z-20 transition-all duration-300" style="border-color: var(--border-soft); box-shadow: var(--shadow-md);">
+                <div class="flex justify-between items-start mb-3 border-b pb-2" style="border-color: var(--border-soft);">
+                    <div class="flex items-center gap-2">
+                        <span id="detailStatusDot" class="status-dot normal"></span>
+                        <div>
+                            <h3 id="detailName" class="font-bold text-base font-display" style="color: var(--text-primary);">اسم الموظف</h3>
+                            <span id="detailId" class="text-xs" style="color: var(--text-muted);">#ID</span>
+                        </div>
+                    </div>
+                    <button id="closeDetailBtn" class="p-1 rounded-lg hover:bg-slate-100" style="color: var(--text-muted);" aria-label="إغلاق">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- صندوق الاستجابة والأمر بالطوارئ (مدمج به زر الإغلاق) -->
+                <div id="responderBox" class="hidden mb-3 p-3 rounded-xl text-xs flex flex-col gap-2.5" style="background: var(--sos-soft); border: 1px solid #F3B9B9; color: var(--sos);">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="ambulance" class="w-5 h-5 flex-shrink-0 animate-pulse"></i>
+                        <div class="flex-1">
+                            <span class="block text-[10px]" style="color: #B94545;">المستجيب الأقرب طوارئ (حسب المسافة الحالية):</span>
+                            <strong id="detailResponder" class="block mt-0.5 text-sm" style="color: var(--text-primary);">حساب المستجيب القريب...</strong>
+                        </div>
+                    </div>
+                    <button id="resolveEmergencyBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm" type="button">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        <span>إنهاء حالة الطوارئ وإغلاقها</span>
+                    </button>
+                </div>
+
+                <div id="offlineNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--offline-soft); color: var(--offline);">
+                    <i data-lucide="wifi-off" class="w-4 h-4 flex-shrink-0"></i>
+                    <span>لم يتم استلام تحديث من هذا الجهاز منذ أكثر من دقيقة</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">النبض</span>
+                        <span id="detailHeartRate" class="font-bold font-display" style="color: var(--normal);">0 BPM</span>
+                    </div>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">البطارية</span>
+                        <span id="detailBattery" class="font-bold font-display" style="color: var(--accent);">100%</span>
+                    </div>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">الخطوات</span>
+                        <span id="detailSteps" class="font-bold font-display" style="color: var(--text-primary);">0</span>
+                    </div>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">السرعة</span>
+                        <span id="detailSpeed" class="font-bold font-display" style="color: var(--text-primary);">0 م/ث</span>
+                    </div>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">حالة الارتداء</span>
+                        <span id="detailWorn" class="font-bold font-display" style="color: var(--text-primary);">نعم</span>
+                    </div>
+                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
+                        <span class="block text-[10px]" style="color: var(--text-muted);">التحديث</span>
+                        <span id="detailTime" class="font-bold font-display" style="color: var(--text-primary);">--:--:--</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const OFFLINE_THRESHOLD_MS = 60000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 60 ثانية
+        let REFRESH_INTERVAL_MS = 15000;
+        const SEARCH_DEBOUNCE_MS = 250;
+
+        function safeParseFloat(val, defaultVal) {
+            if (val === undefined || val === null || val === "") return defaultVal;
+            const str = val.toString().replace(/٫/g, ".").replace(/,/g, ".");
+            const num = parseFloat(str);
+            return isNaN(num) ? defaultVal : num;
+        }
+
+        let state = {
+            employees: [],
+            filteredEmployees: [],
+            selectedEmployeeId: null,
+            searchQuery: '',
+            statusFilter: 'ALL',
+            isMuted: false,
+            apiUrl: document.getElementById('apiUrlInput')?.value || '',
+            autoRefresh: true,
+            refreshIntervalId: null,
+            audioContext: null,
+            sirenIntervalId: null,
+            fetchController: null,
+            searchDebounceId: null
         };
-      }
-    }
-    
-    var data = Object.keys(latestRecords).map(function(key) {
-      return latestRecords[key];
-    });
-    
-    return ContentService.createTextOutput(JSON.stringify(data))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
 
-// دالة مساعدة لتحويل الفواصل العشرية بشكل آمن وتفادي الكومة العربية (٫)
-function safeParseFloat(val, defaultVal) {
-  if (val === undefined || val === null || val === "") return defaultVal;
-  var str = val.toString().replace(/٫/g, ".").replace(/,/g, ".");
-  var num = parseFloat(str);
-  return isNaN(num) ? defaultVal : num;
-}
+        const mapMarkers = {};
+        let map = null;
+        let refreshTimeoutId = null;
 
-// دالة مساعدة لإنهاء حالة الطوارئ وإضافة صف NORMAL
-function handleResolveEmergency(sheet, empId, timestamp) {
-  var empName = getEmployeeNameFromDatabase(empId);
-  
-  sheet.appendRow([
-    timestamp, 
-    empId, 
-    empName, 
-    24.7136, 
-    46.6753, 
-    "0.0", 
-    75, 
-    0, 
-    "100%", 
-    "YES", 
-    "NORMAL",
-    "لا يوجد"
-  ]);
-  
-  return ContentService.createTextOutput(JSON.stringify({ "result": "success", "message": "Emergency resolved successfully for " + empName }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            initEventListeners();
+            lucide.createIcons();
+            toggleAutoRefresh(true); // هذا سيقوم ببدء الجلب التلقائي لأول مرة
+            startRelativeTimeUpdater();
+        });
 
-// دالة للبحث عن اسم الموظف بالاعتماد على رقمه الوظيفي من جدول الموظفين
-function getEmployeeNameFromDatabase(empId) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var dbSheet = getOrCreateEmployeesSheet(ss);
-  var rows = dbSheet.getDataRange().getValues();
-  
-  var cleanId = empId.toString().trim().toUpperCase();
-  for (var i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString().trim().toUpperCase() === cleanId) {
-      return rows[i][1]; 
-    }
-  }
-  return "حارس " + empId;
-}
+        function initMap() {
+            map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
+            L.control.zoom({ position: 'topleft' }).addTo(map);
 
-// دالة جلب أو إنشاء ورقة الموظفين وتعبئتها تلقائياً
-function getOrCreateEmployeesSheet(ss) {
-  var sheet = ss.getSheetByName("Employees");
-  var rebuild = false;
-  
-  if (sheet) {
-    var firstValue = sheet.getRange(2, 1).getValue().toString().trim();
-    if (firstValue === "101") {
-      rebuild = true;
-      sheet.clearContents();
-    }
-  } else {
-    sheet = ss.insertSheet("Employees");
-    rebuild = true;
-  }
-  
-  if (rebuild) {
-    sheet.appendRow(["Employee ID", "Employee Name", "Role"]);
-    
-    var employees = [
-      ["WATCH_001", "أحمد منصور", "مشرف ميداني"],
-      ["WATCH_002", "خالد الحربي", "حارس أمن"],
-      ["WATCH_003", "عبد الرحمن العتيبي", "حارس أمن"],
-      ["WATCH_004", "محمد القحطاني", "حارس أمن"],
-      ["WATCH_005", "سعد الدوسري", "مشرف دورية"],
-      ["WATCH_006", "فيصل المطيري", "حارس بوابات"],
-      ["WATCH_007", "سلطان الشمري", "حارس أمن"],
-      ["WATCH_008", "عبد الله الغامدي", "حارس أمن"],
-      ["WATCH_009", "عمر الزهراني", "حارس أمن"],
-      ["WATCH_010", "فهد المالكي", "حارس أمن"],
-      ["WATCH_011", "سلمان الشهري", "مسعف ميداني"],
-      ["WATCH_012", "بدر العنزي", "حارس أمن"],
-      ["WATCH_013", "يوسف الرشيدي", "حارس أمن"],
-      ["WATCH_014", "خليل السبيعي", "حارس أمن"],
-      ["WATCH_015", "صالح الدوسري", "حارس أمن"]
-    ];
-    
-    for (var i = 0; i < employees.length; i++) {
-      sheet.appendRow(employees[i]);
-    }
-    
-    var headerRange = sheet.getRange(1, 1, 1, 3);
-    headerRange.setBackground("#3B82F6").setFontColor("#FFFFFF").setFontWeight("bold");
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
-}
+            // خريطة فاتحة تناسب الواجهة البيضاء الجديدة
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+        }
 
-// دالة جلب أو إنشاء ورقة التتبع وإعداد التنسيقات
-function getOrCreateTelemetrySheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("Telemetry");
-  
-  if (!sheet) {
-    sheet = ss.insertSheet("Telemetry");
-    var headers = [
-      "Timestamp", 
-      "Employee ID", 
-      "Employee Name", 
-      "Latitude", 
-      "Longitude", 
-      "Speed (m/s)", 
-      "Heart Rate (BPM)", 
-      "Steps", 
-      "Battery", 
-      "Is Worn", 
-      "Status",
-      "Nearest Responder"
-    ];
-    
-    sheet.appendRow(headers);
-    
-    var headerRange = sheet.getRange(1, 1, 1, headers.length);
-    headerRange.setBackground("#1F2937")
-               .setFontColor("#FFFFFF")
-               .setFontWeight("bold")
-               .setHorizontalAlignment("center");
-               
-    sheet.setFrozenRows(1);
-    
-    var statusRange = sheet.getRange("K2:K1000");
-    var ruleNormal = SpreadsheetApp.newConditionalFormatRule()
-      .whenTextEqualTo("NORMAL")
-      .setBackground("#D1FAE5")
-      .setFontColor("#065F46")
-      .setBold(true)
-      .setRanges([statusRange])
-      .build();
-      
-    var ruleWarning = SpreadsheetApp.newConditionalFormatRule()
-      .whenTextEqualTo("WARNING")
-      .setBackground("#FEF3C7")
-      .setFontColor("#92400E")
-      .setBold(true)
-      .setRanges([statusRange])
-      .build();
-      
-    var ruleSos = SpreadsheetApp.newConditionalFormatRule()
-      .whenTextEqualTo("SOS")
-      .setBackground("#FEE2E2")
-      .setFontColor("#991B1B")
-      .setBold(true)
-      .setRanges([statusRange])
-      .build();
-      
-    var rules = sheet.getConditionalFormatRules();
-    rules.push(ruleNormal, ruleWarning, ruleSos);
-    sheet.setConditionalFormatRules(rules);
-  }
-  return sheet;
-}
+        function initEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                clearTimeout(state.searchDebounceId);
+                const val = e.target.value;
+                state.searchDebounceId = setTimeout(() => {
+                    state.searchQuery = val.trim().toLowerCase();
+                    filterEmployees();
+                }, SEARCH_DEBOUNCE_MS);
+            });
 
-// حساب أقرب مستجيب في الإكسيل
-function findNearestResponderInSheet(sheet, sosEmpId, sosLat, sosLng) {
-  if (sosLat === 0 && sosLng === 0) return "لا يوجد";
-  
-  var rows = sheet.getDataRange().getValues();
-  if (rows.length <= 1) return "لا يوجد";
-  
-  var headers = rows[0];
-  var headerMap = {};
-  for (var i = 0; i < headers.length; i++) {
-    headerMap[headers[i].toString().trim().toLowerCase()] = i;
-  }
-  
-  var latestEmployees = {};
-  for (var r = rows.length - 1; r >= 1; r--) {
-    var row = rows[r];
-    var empId = row[headerMap["employee id"]].toString().trim().toUpperCase();
-    if (empId === "" || empId === sosEmpId.toUpperCase()) continue;
-    
-    if (!latestEmployees[empId]) {
-      var getVal = function(colName) {
-        var idx = headerMap[colName.toLowerCase()];
-        return (idx !== undefined && idx < row.length) ? row[idx] : "";
-      };
-      
-      latestEmployees[empId] = {
-        emp_name: getVal("Employee Name"),
-        lat: safeParseFloat(getVal("Latitude"), 0),
-        lng: safeParseFloat(getVal("Longitude"), 0),
-        status: getVal("Status").toString().toUpperCase(),
-        timestamp: new Date(getVal("Timestamp"))
-      };
-    }
-  }
-  
-  var nearestName = "لا يوجد مستجيب متاح";
-  var minDistance = Infinity;
-  
-  for (var empId in latestEmployees) {
-    var emp = latestEmployees[empId];
-    if (emp.status === "SOS") continue; 
-    
-    if (isNaN(emp.timestamp.getTime()) || (new Date() - emp.timestamp) > 300000) continue;
-    if (emp.lat === 0 || emp.lng === 0) continue;
-    
-    var dist = calculateHaversineDistance(sosLat, sosLng, emp.lat, emp.lng);
-    if (dist < minDistance) {
-      minDistance = dist;
-      var distStr = dist < 1000 ? Math.round(dist) + " متر" : (dist / 1000).toFixed(1) + " كم";
-      nearestName = emp.emp_name + " (" + empId + ") · على بعد " + distStr;
-    }
-  }
-  
-  return nearestName;
-}
+            document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
+                toggleAutoRefresh(e.target.checked);
+            });
 
-function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
-  var R = 6371e3; 
-  var phi1 = lat1 * Math.PI / 180;
-  var phi2 = lat2 * Math.PI / 180;
-  var deltaPhi = (lat2 - lat1) * Math.PI / 180;
-  var deltaLambda = (lon2 - lon1) * Math.PI / 180;
+            document.getElementById('refreshRateSelect').addEventListener('change', (e) => {
+                REFRESH_INTERVAL_MS = parseInt(e.target.value);
+                if (state.autoRefresh) {
+                    toggleAutoRefresh(false);
+                    toggleAutoRefresh(true);
+                }
+            });
 
-  var a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-          Math.cos(phi1) * Math.cos(phi2) *
-          Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            document.getElementById('manualRefreshBtn').addEventListener('click', () => {
+                fetchTelemetryData();
+            });
 
-  return R * c;
-}
+            document.getElementById('muteAlarmBtn').addEventListener('click', toggleMute);
+            document.getElementById('closeDetailBtn').addEventListener('click', deselectEmployee);
+
+            document.getElementById('apiUrlInput').addEventListener('change', (e) => {
+                const val = e.target.value.trim();
+                if (val) {
+                    state.apiUrl = val;
+                    fetchTelemetryData();
+                }
+            });
+
+            document.getElementById('filterChips').addEventListener('click', (e) => {
+                const btn = e.target.closest('.chip');
+                if (!btn) return;
+                document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                state.statusFilter = btn.getAttribute('data-filter');
+                filterEmployees();
+            });
+
+            document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
+                if (state.selectedEmployeeId) {
+                    const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+                    if (emp && confirm(`هل تم التعامل مع حالة الموظف ${emp.emp_name} وترغب بإغلاق حالة الطوارئ؟`)) {
+                        resolveEmergencyRemote(emp.emp_id);
+                    }
+                }
+            });
+
+            // إظهار/إخفاء رابط الـ API
+            const urlInput = document.getElementById('apiUrlInput');
+            document.getElementById('toggleUrlVisibilityBtn').addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                const showing = urlInput.type === 'text';
+                urlInput.type = showing ? 'password' : 'text';
+                btn.innerHTML = showing
+                    ? '<i data-lucide="eye" class="w-4 h-4"></i>'
+                    : '<i data-lucide="eye-off" class="w-4 h-4"></i>';
+                lucide.createIcons();
+            });
+        }
+
+        // تحديد ما إذا كان الجهاز "غير متصل" بناءً على وقت آخر تحديث
+        function isDeviceOffline(emp) {
+            const ts = new Date(emp.timestamp).getTime();
+            if (isNaN(ts)) return false;
+            return (Date.now() - ts) > OFFLINE_THRESHOLD_MS;
+        }
+
+        function effectiveStatus(emp) {
+            // SOS تبقى أولوية قصوى حتى لو كان آخر تحديث قديمًا قليلاً
+            if (emp.status === 'SOS') return 'SOS';
+            if (isDeviceOffline(emp)) return 'OFFLINE';
+            return emp.status;
+        }
+
+        // دالة حساب المسافة بين إحداثيين (صيغة هافرسين) بالمتر
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // نصف قطر الأرض بالمتر
+            const phi1 = lat1 * Math.PI / 180;
+            const phi2 = lat2 * Math.PI / 180;
+            const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+            const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                      Math.cos(phi1) * Math.cos(phi2) *
+                      Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // المسافة بالمتر
+        }
+
+        // حساب أقرب موظف متاح للمساعدة (حالته طبيعية وليست طوارئ) لنجدة الموظف المستغيث
+        function findNearestResponder(sosEmp, allEmployees) {
+            let nearest = null;
+            let minDistance = Infinity;
+
+            allEmployees.forEach(other => {
+                if (other.emp_id === sosEmp.emp_id) return;
+                if (other.status === 'SOS') return; // لا يمكن لمستغيث آخر أن يستجيب
+
+                const dist = calculateDistance(sosEmp.lat, sosEmp.lng, other.lat, other.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearest = {
+                        emp_name: other.emp_name,
+                        emp_id: other.emp_id,
+                        distance: dist
+                    };
+                }
+            });
+
+            if (nearest) {
+                const distStr = nearest.distance < 1000 
+                    ? `${Math.round(nearest.distance)} متر` 
+                    : `${(nearest.distance / 1000).toFixed(1)} كم`;
+                return `${nearest.emp_name} (#${nearest.emp_id}) · على بعد ${distStr}`;
+            }
+            return 'لا يوجد مستجيب قريب متاح حالياً';
+        }
+
+        // دالة تحويل الوقت إلى وقت نسبي باللغة العربية
+        function getRelativeTimeString(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const secondsDiff = Math.floor((now - date) / 1000);
+            
+            if (isNaN(secondsDiff) || secondsDiff < 0) return 'الآن';
+            if (secondsDiff < 5) return 'الآن';
+            if (secondsDiff < 60) return `منذ ${secondsDiff} ثانية`;
+            
+            const minutesDiff = Math.floor(secondsDiff / 60);
+            if (minutesDiff === 1) return 'منذ دقيقة';
+            if (minutesDiff === 2) return 'منذ دقيقتين';
+            if (minutesDiff <= 10) return `منذ ${minutesDiff} دقائق`;
+            if (minutesDiff < 60) return `منذ ${minutesDiff} دقيقة`;
+            
+            const hoursDiff = Math.floor(minutesDiff / 60);
+            if (hoursDiff === 1) return 'منذ ساعة';
+            if (hoursDiff === 2) return 'منذ ساعتين';
+            if (hoursDiff <= 10) return `منذ ${hoursDiff} ساعات`;
+            return `منذ ${hoursDiff} ساعة`;
+        }
+
+        // مشغل الوقت النسبي التلقائي
+        function startRelativeTimeUpdater() {
+            setInterval(() => {
+                document.querySelectorAll('.relative-time-update').forEach(el => {
+                    const ts = el.getAttribute('data-timestamp');
+                    if (ts) {
+                        el.innerText = getRelativeTimeString(ts);
+                    }
+                });
+                const detailTimeEl = document.getElementById('detailTime');
+                if (detailTimeEl) {
+                    const ts = detailTimeEl.getAttribute('data-timestamp');
+                    if (ts) {
+                        detailTimeEl.innerText = getRelativeTimeString(ts);
+                    }
+                }
+            }, 5000);
+        }
+
+        async function fetchTelemetryData() {
+            const indicator = document.getElementById('refreshIndicator');
+            if (indicator) indicator.classList.add('refreshing');
+
+            // إلغاء أي طلب يدوي سابق لم يكتمل بعد
+            if (state.fetchController) state.fetchController.abort();
+            state.fetchController = new AbortController();
+
+            try {
+                const response = await fetch(state.apiUrl, { signal: state.fetchController.signal });
+                if (!response.ok) throw new Error(`خطأ في خادم البيانات: ${response.status}`);
+
+                const rawData = await response.json();
+
+                const cleaned = rawData.filter(emp => {
+                    const id = (emp.emp_id || '').toString().trim();
+                    const name = (emp.emp_name || '').toString().trim();
+                    if (!id && !name) return false;
+                    return true;
+                }).map(emp => {
+                    const latNum = safeParseFloat(emp.lat, 24.7136);
+                    const lngNum = safeParseFloat(emp.lng, 46.6753);
+                    return {
+                        timestamp: emp.timestamp || new Date().toISOString(),
+                        emp_id: (emp.emp_id || 'N/A').toString(),
+                        emp_name: emp.emp_name || 'موظف غير معروف',
+                        lat: latNum,
+                        lng: lngNum,
+                        speed: emp.speed !== '' ? safeParseFloat(emp.speed, 0).toFixed(1) : '0.0',
+                        heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
+                        steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
+                        battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
+                        is_worn: emp.is_worn === 'YES' || emp.is_worn === true ? 'نعم' : 'لا',
+                        status: (emp.status || 'NORMAL').toUpperCase(),
+                        nearest_responder: emp.nearest_responder || 'لا يوجد'
+                    };
+                });
+
+                // حساب أقرب مستجيب ديناميكياً لكل مستغيث (SOS) في لوحة التحكم مباشرة
+                cleaned.forEach(emp => {
+                    if (emp.status === 'SOS') {
+                        emp.nearest_responder = findNearestResponder(emp, cleaned);
+                    }
+                });
+
+                state.employees = cleaned;
+                filterEmployees();
+                updateStats();
+                checkSosAlerts();
+                updateHeaderPulse();
+                document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
+                document.getElementById('connectionErrorBadge').classList.add('hidden');
+
+                if (state.selectedEmployeeId) {
+                    const currentEmp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+                    if (currentEmp) {
+                        showEmployeeDetails(currentEmp);
+                    } else {
+                        deselectEmployee();
+                    }
+                }
+
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.error('حدث خطأ أثناء جلب البيانات:', error);
+                document.getElementById('connectionErrorBadge').classList.remove('hidden');
+            } finally {
+                if (indicator) setTimeout(() => indicator.classList.remove('refreshing'), 500);
+            }
+        }
+
+        function filterEmployees() {
+            state.filteredEmployees = state.employees.filter(emp => {
+                const matchesSearch = !state.searchQuery ||
+                    emp.emp_name.toLowerCase().includes(state.searchQuery) ||
+                    emp.emp_id.toLowerCase().includes(state.searchQuery);
+                if (!matchesSearch) return false;
+
+                if (state.statusFilter === 'ALL') return true;
+                return effectiveStatus(emp) === state.statusFilter;
+            });
+
+            state.filteredEmployees.sort((a, b) => {
+                const priority = { SOS: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
+                return (priority[effectiveStatus(b)] || 0) - (priority[effectiveStatus(a)] || 0);
+            });
+
+            renderEmployeeList();
+            updateMapMarkers(); // مزامنة الخريطة فورياً مع الفلاتر الفعالة
+        }
+
+        function renderEmployeeList() {
+            const listContainer = document.getElementById('employeeList');
+
+            if (state.filteredEmployees.length === 0) {
+                listContainer.innerHTML = `<div class="text-center py-10 text-xs" style="color: var(--text-muted);">لا يوجد نتائج تطابق البحث.</div>`;
+                return;
+            }
+
+            listContainer.innerHTML = '';
+
+            state.filteredEmployees.forEach(emp => {
+                const status = effectiveStatus(emp);
+                const card = document.createElement('div');
+                card.className = `employee-card ${state.selectedEmployeeId === emp.emp_id ? 'active-focus' : ''}`;
+                card.setAttribute('data-id', emp.emp_id);
+                card.setAttribute('tabindex', '0');
+
+                const statusLabel = { SOS: 'SOS', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
+                const lowBattery = parseInt(emp.battery) < 15;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="font-bold text-sm">${escapeHTML(emp.emp_name)}</span>
+                        <span class="badge ${status.toLowerCase()}">${escapeHTML(statusLabel)}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs mt-2" style="color: var(--text-secondary);">
+                        <span class="flex items-center gap-1">❤️ ${emp.heart_rate} BPM</span>
+                        <span class="flex items-center gap-1 ${lowBattery ? 'font-bold' : ''}" style="${lowBattery ? 'color: var(--warning);' : ''}">🔋 ${escapeHTML(emp.battery)}</span>
+                        <div class="flex flex-col items-end gap-0.5">
+                            <span class="text-[10px]" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
+                            <span class="text-[9px] font-semibold text-slate-400 relative-time-update" data-timestamp="${emp.timestamp}">${getRelativeTimeString(emp.timestamp)}</span>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => focusOnEmployee(emp));
+                card.addEventListener('keydown', (e) => { if (e.key === 'Enter') focusOnEmployee(emp); });
+
+                listContainer.appendChild(card);
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('statTotal').innerText = state.employees.length;
+            document.getElementById('statNormal').innerText = state.employees.filter(e => effectiveStatus(e) === 'NORMAL').length;
+            document.getElementById('statWarning').innerText = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
+            document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS').length;
+        }
+
+        function updateHeaderPulse() {
+            const hasSos = state.employees.some(e => e.status === 'SOS');
+            document.getElementById('headerPulse').classList.toggle('sos', hasSos);
+        }
+
+        // تحديث وتصفية مواقع الخريطة لتتطابق تماماً مع الفلاتر الفعالة
+        function updateMapMarkers() {
+            const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
+
+            for (const empId in mapMarkers) {
+                if (!activeIds.has(empId)) {
+                    map.removeLayer(mapMarkers[empId]);
+                    delete mapMarkers[empId];
+                }
+            }
+
+            state.filteredEmployees.forEach(emp => {
+                const latLng = [emp.lat, emp.lng];
+                const status = effectiveStatus(emp);
+
+                const customIcon = L.divIcon({
+                    className: 'gps-pin-wrap',
+                    html: `<div class="gps-pin ${status.toLowerCase()}"></div>`,
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 24]
+                });
+
+                if (mapMarkers[emp.emp_id]) {
+                    mapMarkers[emp.emp_id].setLatLng(latLng);
+                    mapMarkers[emp.emp_id].setIcon(customIcon);
+                    mapMarkers[emp.emp_id].setPopupContent(buildPopupHTML(emp));
+                } else {
+                    const marker = L.marker(latLng, { icon: customIcon })
+                        .bindPopup(buildPopupHTML(emp))
+                        .addTo(map);
+                    marker.on('click', () => selectEmployee(emp));
+                    mapMarkers[emp.emp_id] = marker;
+                }
+            });
+        }
+
+        function buildPopupHTML(emp) {
+            const status = effectiveStatus(emp);
+            const statusLabel = { SOS: 'طوارئ SOS', WARNING: 'تحذير حركة', NORMAL: 'مستقر', OFFLINE: 'غير متصل' }[status] || status;
+            const color = { SOS: 'var(--sos)', WARNING: 'var(--warning)', NORMAL: 'var(--normal)', OFFLINE: 'var(--offline)' }[status];
+
+            return `
+                <div dir="rtl" class="p-1 text-xs">
+                    <b class="text-sm block mb-1" style="color: var(--text-primary);">${escapeHTML(emp.emp_name)}</b>
+                    <span class="block mb-1" style="color: var(--text-muted);">رقم: ${escapeHTML(emp.emp_id)}</span>
+                    <span class="block mb-1">الحالة: <b style="color: ${color};">${escapeHTML(statusLabel)}</b></span>
+                    <span class="block mb-1">النبض: ${emp.heart_rate} BPM</span>
+                    <span class="block">البطارية: ${escapeHTML(emp.battery)}</span>
+                </div>
+            `;
+        }
+
+        function focusOnEmployee(emp) {
+            selectEmployee(emp);
+            map.setView([emp.lat, emp.lng], 16, { animate: true, duration: 1.2 });
+            if (mapMarkers[emp.emp_id]) mapMarkers[emp.emp_id].openPopup();
+        }
+
+        function selectEmployee(emp) {
+            state.selectedEmployeeId = emp.emp_id;
+
+            document.querySelectorAll('.employee-card').forEach(card => {
+                if (card.getAttribute('data-id') === emp.emp_id) {
+                    card.classList.add('active-focus');
+                    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    card.classList.remove('active-focus');
+                }
+            });
+
+            showEmployeeDetails(emp);
+        }
+
+        function showEmployeeDetails(emp) {
+            const panel = document.getElementById('detailPanel');
+            panel.classList.remove('hidden');
+
+            document.getElementById('detailName').innerText = emp.emp_name;
+            document.getElementById('detailId').innerText = `#${emp.emp_id}`;
+            document.getElementById('detailHeartRate').innerText = `${emp.heart_rate} BPM`;
+            document.getElementById('detailSteps').innerText = `${emp.steps.toLocaleString()} خطوة`;
+            document.getElementById('detailBattery').innerText = emp.battery;
+            document.getElementById('detailSpeed').innerText = `${emp.speed} م/ث`;
+            document.getElementById('detailWorn').innerText = emp.is_worn;
+
+            // ضبط الوقت النسبي وتخزين التوقيت الفعلي للتحديث التلقائي
+            document.getElementById('detailTime').innerText = getRelativeTimeString(emp.timestamp);
+            document.getElementById('detailTime').setAttribute('data-timestamp', emp.timestamp);
+
+            const status = effectiveStatus(emp);
+            document.getElementById('detailStatusDot').className = `status-dot ${status.toLowerCase()}`;
+
+            document.getElementById('responderBox').classList.toggle('hidden', emp.status !== 'SOS');
+            if (emp.status === 'SOS') {
+                document.getElementById('detailResponder').innerText = emp.nearest_responder;
+            }
+
+            document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
+        }
+
+        function deselectEmployee() {
+            state.selectedEmployeeId = null;
+            document.getElementById('detailPanel').classList.add('hidden');
+            document.querySelectorAll('.employee-card').forEach(card => card.classList.remove('active-focus'));
+        }
+
+        async function performAutoRefresh() {
+            if (!state.autoRefresh) return;
+            await fetchTelemetryData();
+            if (state.autoRefresh) {
+                refreshTimeoutId = setTimeout(performAutoRefresh, REFRESH_INTERVAL_MS);
+            }
+        }
+
+        function toggleAutoRefresh(enable) {
+            state.autoRefresh = enable;
+            if (enable) {
+                if (!refreshTimeoutId) {
+                    performAutoRefresh();
+                }
+            } else {
+                if (refreshTimeoutId) {
+                    clearTimeout(refreshTimeoutId);
+                    refreshTimeoutId = null;
+                }
+            }
+        }
+
+        function checkSosAlerts() {
+            const sosEmployees = state.employees.filter(e => e.status === 'SOS');
+            if (sosEmployees.length > 0) {
+                playAlarmSiren();
+            } else {
+                stopAlarmSiren();
+            }
+        }
+
+        // إغلاق حالة الطوارئ وإرسال طلب GET
+        async function resolveEmergencyRemote(empId) {
+            // تحديث الحالة محلياً فوراً لمنح المشغل استجابة بصرية وسريعة
+            const emp = state.employees.find(e => e.emp_id === empId);
+            if (emp) {
+                emp.status = 'NORMAL';
+                emp.nearest_responder = 'لا يوجد';
+                filterEmployees();
+                updateStats();
+                checkSosAlerts();
+                updateHeaderPulse();
+                if (state.selectedEmployeeId === empId) {
+                    showEmployeeDetails(emp);
+                }
+            }
+
+            try {
+                // استخدام طلب GET لتفادي قيود CORS نهائياً وضمان الاستجابة السريعة
+                const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) throw new Error(`خادم السكربت غير متاح: ${response.status}`);
+                
+                await fetchTelemetryData();
+                alert(`تم إنهاء حالة الطوارئ للموظف #${empId} بنجاح. يرجى إيقاف زر الاستغاثة (SOS) من ساعة الموظف الميداني لكي لا يعاد تفعيل الإنذار تلقائياً.`);
+            } catch (err) {
+                console.error('فشل إغلاق حالة الطوارئ:', err);
+                alert('تم التحديث محلياً ولكن تعذر إغلاقه على السيرفر. تحقق من الاتصال وحاول مرة أخرى.');
+            }
+        }
+
+        function playAlarmSiren() {
+            if (state.isMuted) return;
+            if (!state.audioContext) {
+                state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (state.sirenIntervalId) return;
+
+            state.sirenIntervalId = setInterval(() => {
+                if (state.audioContext.state === 'suspended') state.audioContext.resume();
+
+                const osc = state.audioContext.createOscillator();
+                const gain = state.audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(state.audioContext.destination);
+
+                osc.type = 'sawtooth';
+                const time = state.audioContext.currentTime;
+                osc.frequency.setValueAtTime(580, time);
+                osc.frequency.linearRampToValueAtTime(880, time + 0.35);
+                gain.gain.setValueAtTime(0.12, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.35);
+
+                osc.start(time);
+                osc.stop(time + 0.38);
+            }, 450);
+        }
+
+        function stopAlarmSiren() {
+            if (state.sirenIntervalId) {
+                clearInterval(state.sirenIntervalId);
+                state.sirenIntervalId = null;
+            }
+        }
+
+        function toggleMute() {
+            state.isMuted = !state.isMuted;
+            const muteIcon = document.getElementById('muteIcon');
+            const muteText = document.getElementById('muteText');
+            
+            if (state.isMuted) {
+                muteIcon.setAttribute('data-lucide', 'volume-x');
+                muteIcon.classList.remove('text-emerald-600');
+                muteIcon.classList.add('text-rose-500');
+                muteText.innerText = 'التنبيه الصوتي مكتوم';
+                stopAlarmSiren();
+            } else {
+                muteIcon.setAttribute('data-lucide', 'volume-2');
+                muteIcon.classList.remove('text-rose-500');
+                muteIcon.classList.add('text-emerald-600');
+                muteText.innerText = 'التنبيه الصوتي نشط';
+                checkSosAlerts();
+            }
+            lucide.createIcons();
+        }
+
+        // دالة حماية النصوص لمنع الثغرات
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
