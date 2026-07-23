@@ -20,40 +20,48 @@
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Fonts: Cairo for display/numbers, IBM Plex Sans Arabic for body copy -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Fonts: Cairo for display/numbers, IBM Plex Sans Arabic for body copy, JetBrains Mono for telemetry -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-page: #F6F8FB;
-            --bg-panel: #FFFFFF;
-            --bg-subtle: #F1F4F9;
-            --border-soft: #E4E9F1;
-            --border-strong: #D6DCE7;
-            --text-primary: #10182B;
-            --text-secondary: #64748B;
-            --text-muted: #94A3B8;
-            --navy: #0B3B60;
-            --navy-soft: #E7EEF5;
-            --accent: #2563EB;
-            --normal: #059669;
-            --normal-soft: #E3F6EE;
-            --warning: #D97706;
-            --warning-soft: #FDF1DE;
-            --sos: #DC2626;
-            --sos-soft: #FCE8E8;
-            --offline: #94A3B8;
-            --offline-soft: #EEF1F5;
-            --shadow-sm: 0 1px 2px rgba(16,24,43,0.06);
-            --shadow-md: 0 8px 24px rgba(16,24,43,0.08);
+            --bg-void: #060911;
+            --bg-page: #0A0F19;
+            --bg-panel: #101827;
+            --bg-subtle: #0B121E;
+            --bg-elevated: #16202F;
+            --border-soft: #202C40;
+            --border-strong: #2E3D56;
+            --text-primary: #EAF0FB;
+            --text-secondary: #8291A8;
+            --text-muted: #4F5E76;
+            --navy: #3E8EDE;
+            --navy-soft: rgba(62,142,222,0.12);
+            --accent: #33C7F4;
+            --accent-soft: rgba(51,199,244,0.12);
+            --normal: #22D488;
+            --normal-soft: rgba(34,212,136,0.12);
+            --warning: #F5A623;
+            --warning-soft: rgba(245,166,35,0.14);
+            --sos: #FF3B4E;
+            --sos-soft: rgba(255,59,78,0.16);
+            --offline: #64748B;
+            --offline-soft: rgba(100,116,139,0.14);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
+            --shadow-md: 0 16px 40px rgba(0,0,0,0.55);
         }
 
         * { font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
         .font-display { font-family: 'Cairo', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; direction: ltr; unicode-bidi: isolate; }
 
         body {
-            background-color: var(--bg-page);
+            background-color: var(--bg-void);
             color: var(--text-primary);
+            background-image:
+                linear-gradient(var(--bg-page), var(--bg-page)),
+                repeating-linear-gradient(0deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px),
+                repeating-linear-gradient(90deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px);
         }
 
         #map {
@@ -61,66 +69,81 @@
             width: 100%;
             border-radius: 1rem;
             z-index: 1;
+            background: var(--bg-subtle) !important;
         }
         .leaflet-control-zoom a {
             background-color: var(--bg-panel) !important;
             color: var(--text-primary) !important;
             border-color: var(--border-soft) !important;
         }
-        .leaflet-popup-content-wrapper {
+        .leaflet-control-zoom a:hover { color: var(--accent) !important; }
+        .leaflet-control-layers {
             background-color: var(--bg-panel) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-soft) !important;
+            box-shadow: var(--shadow-md) !important;
+        }
+        .leaflet-control-layers-expanded { color: var(--text-primary) !important; }
+        .leaflet-popup-content-wrapper {
+            background-color: var(--bg-elevated) !important;
             color: var(--text-primary) !important;
             border-radius: 0.75rem !important;
             border: 1px solid var(--border-soft);
             box-shadow: var(--shadow-md) !important;
         }
-        .leaflet-popup-tip { background-color: var(--bg-panel) !important; }
+        .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
+        .leaflet-container a.leaflet-popup-close-button { color: var(--text-muted) !important; }
 
         /* Map marker pins */
         .gps-pin {
-            width: 26px; height: 26px;
+            width: 24px; height: 24px;
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
-            border: 3px solid #fff;
-            box-shadow: 0 2px 6px rgba(16,24,43,0.35);
+            border: 2.5px solid var(--bg-void);
+            position: relative;
         }
-        .gps-pin.normal { background-color: var(--normal); }
-        .gps-pin.warning { background-color: var(--warning); }
-        .gps-pin.sos { background-color: var(--sos); animation: pulse-marker 1s infinite; }
-        .gps-pin.offline { background-color: var(--offline); }
+        .gps-pin.normal { background-color: var(--normal); box-shadow: 0 0 0 3px rgba(34,212,136,0.25), 0 2px 8px rgba(0,0,0,0.5); }
+        .gps-pin.warning { background-color: var(--warning); box-shadow: 0 0 0 3px rgba(245,166,35,0.28), 0 2px 8px rgba(0,0,0,0.5); }
+        .gps-pin.sos { background-color: var(--sos); box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 2px 8px rgba(0,0,0,0.5); animation: pulse-marker 1s infinite; }
+        .gps-pin.offline { background-color: var(--offline); box-shadow: 0 0 0 3px rgba(100,116,139,0.22), 0 2px 8px rgba(0,0,0,0.5); }
         @keyframes pulse-marker {
-            0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); }
-            70% { box-shadow: 0 0 0 14px rgba(220,38,38,0); }
-            100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+            0% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0.55); }
+            70% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 16px rgba(255,59,78,0); }
+            100% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0); }
         }
 
         .employee-card {
             background-color: var(--bg-panel);
             border: 1px solid var(--border-soft);
-            border-radius: 0.85rem;
-            padding: 0.9rem;
+            border-inline-start: 3px solid var(--border-soft);
+            border-radius: 0.7rem;
+            padding: 0.8rem 0.9rem;
             cursor: pointer;
             transition: all 0.15s ease;
-            box-shadow: var(--shadow-sm);
         }
-        .employee-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+        .employee-card:hover { border-color: var(--accent); border-inline-start-color: var(--accent); background-color: var(--bg-elevated); }
         .employee-card.active-focus {
             border-color: var(--accent);
-            background-color: var(--navy-soft);
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+            border-inline-start-color: var(--accent);
+            background-color: var(--accent-soft);
+            box-shadow: 0 0 0 1px rgba(51,199,244,0.25);
         }
+        .employee-card.st-sos { border-inline-start-color: var(--sos); }
+        .employee-card.st-warning { border-inline-start-color: var(--warning); }
+        .employee-card.st-normal { border-inline-start-color: var(--normal); }
+        .employee-card.st-offline { border-inline-start-color: var(--offline); opacity: 0.75; }
 
-        .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-        .status-dot.normal { background-color: var(--normal); }
-        .status-dot.warning { background-color: var(--warning); }
-        .status-dot.sos { background-color: var(--sos); animation: ping-dot 1s infinite; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .status-dot.normal { background-color: var(--normal); box-shadow: 0 0 6px rgba(34,212,136,0.7); }
+        .status-dot.warning { background-color: var(--warning); box-shadow: 0 0 6px rgba(245,166,35,0.7); }
+        .status-dot.sos { background-color: var(--sos); box-shadow: 0 0 6px rgba(255,59,78,0.8); animation: ping-dot 1s infinite; }
         .status-dot.offline { background-color: var(--offline); }
         @keyframes ping-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
-        .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; letter-spacing: 0.2px; }
+        .badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: 0.3px; font-family: 'Cairo', sans-serif; }
         .badge.normal { background: var(--normal-soft); color: var(--normal); }
         .badge.warning { background: var(--warning-soft); color: var(--warning); }
-        .badge.sos { background: var(--sos); color: #fff; }
+        .badge.sos { background: var(--sos); color: #1a0405; }
         .badge.offline { background: var(--offline-soft); color: var(--offline); }
 
         .chip {
@@ -129,32 +152,48 @@
             cursor: pointer; transition: all 0.15s ease; white-space: nowrap;
         }
         .chip:hover { border-color: var(--accent); color: var(--accent); }
-        .chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+        .chip.active { background: var(--accent); color: #04222c; border-color: var(--accent); }
+
+        .stab {
+            flex: 1; text-align: center; font-size: 11px; font-weight: 600; padding: 8px 4px;
+            border-radius: 0.6rem; border: 1px solid transparent; cursor: pointer; transition: all 0.15s ease;
+            color: var(--text-secondary); background: var(--bg-subtle);
+        }
+        .stab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 
         .refreshing { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Title pulse */
-        .live-pulse { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--normal); }
+        /* Title pulse + tactical scan ring signature */
+        .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); }
         .live-pulse::after {
-            content: ''; position: absolute; inset: 0; border-radius: 50%;
-            box-shadow: 0 0 0 0 rgba(5,150,105,0.5);
-            animation: livepulse 1.8s ease-out infinite;
+            content: ''; position: absolute; inset: -3px; border-radius: 50%;
+            border: 1.5px solid rgba(34,212,136,0.55);
+            animation: livepulse 2s ease-out infinite;
         }
-        @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(5,150,105,0.45); } 100% { box-shadow: 0 0 0 10px rgba(5,150,105,0); } }
+        @keyframes livepulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; } }
         .live-pulse.sos { background: var(--sos); }
-        .live-pulse.sos::after { animation: livepulse-sos 1s ease-out infinite; }
-        @keyframes livepulse-sos { 0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.55); } 100% { box-shadow: 0 0 0 12px rgba(220,38,38,0); } }
+        .live-pulse.sos::after { border-color: rgba(255,59,78,0.65); animation: livepulse-sos 1s ease-out infinite; }
+        @keyframes livepulse-sos { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+
+        .scan-ring { position: relative; }
+        .scan-ring::before {
+            content: ''; position: absolute; inset: -6px; border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 0%, rgba(255,59,78,0.9) 8%, transparent 20%);
+            animation: scan-spin 1.6s linear infinite;
+        }
+        @keyframes scan-spin { to { transform: rotate(360deg); } }
 
         input:focus-visible, button:focus-visible, .employee-card:focus-visible {
             outline: 2px solid var(--accent); outline-offset: 2px;
         }
 
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+        ::-webkit-scrollbar-track { background: transparent; }
 
         @media (prefers-reduced-motion: reduce) {
-            .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing { animation: none !important; }
+            .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing, .scan-ring::before { animation: none !important; }
         }
 
         /* أدوات الخريطة الإضافية */
@@ -166,10 +205,11 @@
         .map-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
         #fitAllBtn { top: 12px; right: 12px; }
         .marker-cluster-custom {
-            background: rgba(11,59,96,0.88); color: #fff; border-radius: 50%;
+            background: rgba(16,24,39,0.92); color: var(--accent); border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 12px; font-family: 'Cairo', sans-serif;
-            border: 3px solid rgba(255,255,255,0.9);
+            font-weight: 700; font-size: 12px; font-family: 'JetBrains Mono', monospace;
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 12px rgba(51,199,244,0.35);
         }
         .gps-stale-badge {
             font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
@@ -178,12 +218,23 @@
         .accuracy-good { color: var(--normal); }
         .accuracy-mid { color: var(--warning); }
         .accuracy-bad { color: var(--sos); }
+
+        .insight-bar {
+            display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 0.7rem;
+            border: 1px solid var(--border-soft); background: var(--bg-panel); font-size: 12px;
+        }
+
+        .log-entry { display: flex; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--border-soft); font-size: 11.5px; }
+        .log-entry:last-child { border-bottom: none; }
+        .log-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+
+        .sparkline { display: block; overflow: visible; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <!-- Header -->
-    <header class="bg-white border-b flex flex-col md:flex-row justify-between items-center gap-3 px-4 py-3.5 z-40" style="border-color: var(--border-soft);">
+    <header class="flex flex-col md:flex-row justify-between items-center gap-3 px-4 py-3 z-40 border-b" style="background: var(--bg-panel); border-color: var(--border-soft);">
         <div class="flex items-center gap-3">
             <div class="p-2.5 rounded-xl border" style="background: var(--navy-soft); color: var(--navy); border-color: var(--border-soft);">
                 <i data-lucide="shield-check" class="w-6 h-6"></i>
@@ -194,14 +245,17 @@
                     مركز المراقبة والأمان المباشر
                 </h1>
                 <p class="text-xs flex items-center gap-1.5" style="color: var(--text-secondary);">
+                    <span id="systemStatusChip" class="badge normal">تشغيل طبيعي</span>
                     تتبع حي عبر أجهزة الرصد الميدانية · آخر تحديث
-                    <span id="lastUpdateTime" class="font-semibold" style="color: var(--text-primary);">--:--:--</span>
-                    <span id="connectionErrorBadge" class="hidden bg-rose-100 text-rose-600 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">اتصال غير مستقر</span>
+                    <span id="lastUpdateTime" class="font-semibold font-mono" style="color: var(--text-primary);">--:--:--</span>
+                    <span id="connectionErrorBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-bold animate-pulse" style="background: var(--sos-soft); color: var(--sos);">اتصال غير مستقر</span>
                 </p>
             </div>
         </div>
 
         <div class="flex items-center gap-2.5 w-full md:w-auto overflow-x-auto">
+            <div id="liveClock" class="font-mono text-sm font-semibold px-3 py-1.5 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--accent);">--:--:--</div>
+
             <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                 <i data-lucide="link" class="w-4 h-4" style="color: var(--text-muted);"></i>
                 <input type="password" id="apiUrlInput" class="bg-transparent outline-none w-40 md:w-64 text-xs" style="color: var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbxQO7RjW_Wxqviuizlk2bOJyqNxvbIuiTPFJhiAHgiIFgQikS7mOHfFQJW0lZhqsuGjwg/exec">
@@ -211,8 +265,8 @@
             </div>
 
             <!-- الصوت للمركز -->
-            <button id="muteAlarmBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none hover:bg-slate-100 transition-colors" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-primary);" title="كتم / تفعيل التنبيه الصوتي للمركز">
-                <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
+            <button id="muteAlarmBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none transition-colors" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-primary);" title="كتم / تفعيل التنبيه الصوتي للمركز">
+                <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4" style="color: var(--normal);"></i>
                 <span id="muteText" class="font-medium">التنبيه الصوتي نشط</span>
             </button>
 
@@ -220,15 +274,15 @@
                 <input type="checkbox" id="autoRefreshToggle" checked class="rounded" style="accent-color: var(--accent);">
                 <span>تحديث تلقائي كل:</span>
                 <select id="refreshRateSelect" class="bg-transparent border-0 font-bold focus:outline-none cursor-pointer text-xs" style="color: var(--text-primary);">
-                    <option value="3000">3 ثوانٍ</option>
-                    <option value="10000">10 ثوانٍ</option>
-                    <option value="15000" selected>15 ثانية</option>
-                    <option value="30000">30 ثانية</option>
+                    <option value="3000" style="color:#000;">3 ثوانٍ</option>
+                    <option value="10000" style="color:#000;">10 ثوانٍ</option>
+                    <option value="15000" style="color:#000;" selected>15 ثانية</option>
+                    <option value="30000" style="color:#000;">30 ثانية</option>
                 </select>
             </label>
 
             <!-- زر التحديث اليدوي -->
-            <button id="manualRefreshBtn" class="p-1.5 rounded-lg border hover:bg-slate-100 transition-colors flex-shrink-0" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-secondary);" title="تحديث يدوي الآن">
+            <button id="manualRefreshBtn" class="p-1.5 rounded-lg border transition-colors flex-shrink-0" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-secondary);" title="تحديث يدوي الآن">
                 <i id="refreshIndicator" data-lucide="rotate-cw" class="w-4 h-4 flex-shrink-0"></i>
             </button>
         </div>
@@ -241,29 +295,39 @@
         <aside class="w-full lg:w-80 flex flex-col gap-3 h-full overflow-hidden">
 
             <!-- KPIs -->
-            <div class="grid grid-cols-4 gap-2 bg-white p-3 rounded-xl border" style="border-color: var(--border-soft); box-shadow: var(--shadow-sm);">
+            <div class="grid grid-cols-5 gap-1.5 p-2.5 rounded-xl border" style="background: var(--bg-panel); border-color: var(--border-soft);">
                 <div class="text-center">
-                    <span class="block text-[10px]" style="color: var(--text-muted);">الكل</span>
-                    <span id="statTotal" class="font-bold text-sm font-display" style="color: var(--navy);">0</span>
+                    <span class="block text-[9px]" style="color: var(--text-muted);">الكل</span>
+                    <span id="statTotal" class="font-bold text-sm font-mono" style="color: var(--text-primary);">0</span>
                 </div>
                 <div class="text-center">
-                    <span class="block text-[10px]" style="color: var(--text-muted);">طبيعي</span>
-                    <span id="statNormal" class="font-bold text-sm font-display" style="color: var(--normal);">0</span>
+                    <span class="block text-[9px]" style="color: var(--text-muted);">طبيعي</span>
+                    <span id="statNormal" class="font-bold text-sm font-mono" style="color: var(--normal);">0</span>
                 </div>
                 <div class="text-center">
-                    <span class="block text-[10px]" style="color: var(--text-muted);">تحذير</span>
-                    <span id="statWarning" class="font-bold text-sm font-display" style="color: var(--warning);">0</span>
+                    <span class="block text-[9px]" style="color: var(--text-muted);">تحذير</span>
+                    <span id="statWarning" class="font-bold text-sm font-mono" style="color: var(--warning);">0</span>
                 </div>
                 <div class="text-center">
-                    <span class="block text-[10px]" style="color: var(--text-muted);">SOS</span>
-                    <span id="statSos" class="font-bold text-sm font-display" style="color: var(--sos);">0</span>
+                    <span class="block text-[9px]" style="color: var(--text-muted);">SOS</span>
+                    <span id="statSos" class="font-bold text-sm font-mono" style="color: var(--sos);">0</span>
                 </div>
+                <div class="text-center">
+                    <span class="block text-[9px]" style="color: var(--text-muted);">حوادث اليوم</span>
+                    <span id="statIncidents" class="font-bold text-sm font-mono" style="color: var(--accent);">0</span>
+                </div>
+            </div>
+
+            <!-- Smart insight bar -->
+            <div id="insightBar" class="insight-bar">
+                <i data-lucide="activity" class="w-4 h-4 flex-shrink-0" style="color: var(--normal);"></i>
+                <span id="insightText" style="color: var(--text-secondary);">جاري تحليل الوضع الميداني...</span>
             </div>
 
             <!-- Search -->
             <div class="relative">
                 <i data-lucide="search" class="w-4 h-4 absolute right-3 top-2.5" style="color: var(--text-muted);"></i>
-                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full bg-white border rounded-xl pr-9 pl-3 py-2 text-xs outline-none" style="border-color: var(--border-soft); color: var(--text-primary);">
+                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full rounded-xl pr-9 pl-3 py-2 text-xs outline-none border" style="background: var(--bg-panel); border-color: var(--border-soft); color: var(--text-primary);">
             </div>
 
             <!-- Status filter chips -->
@@ -275,9 +339,20 @@
                 <button class="chip" data-filter="OFFLINE">غير متصل</button>
             </div>
 
+            <!-- Sidebar tabs: employees / activity log -->
+            <div class="flex gap-1.5" id="sidebarTabs">
+                <button class="stab active" data-tab="list"><i data-lucide="users" class="w-3.5 h-3.5 inline-block ml-1"></i>الموظفون</button>
+                <button class="stab" data-tab="log"><i data-lucide="list-tree" class="w-3.5 h-3.5 inline-block ml-1"></i>سجل الأحداث</button>
+            </div>
+
             <!-- Employee list -->
             <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="employeeList">
                 <div class="text-center py-10 text-xs" style="color: var(--text-muted);">جاري جلب بيانات الموظفين...</div>
+            </div>
+
+            <!-- Activity log -->
+            <div class="hidden flex-1 overflow-y-auto pr-1 rounded-xl border p-2" id="activityLogPanel" style="background: var(--bg-panel); border-color: var(--border-soft);">
+                <div class="text-center py-10 text-xs" style="color: var(--text-muted);">لا توجد أحداث مسجلة بعد.</div>
             </div>
         </aside>
 
@@ -290,30 +365,30 @@
             </button>
 
             <!-- Detail panel -->
-            <div id="detailPanel" class="hidden absolute bottom-4 right-4 left-4 md:left-auto md:w-96 bg-white/95 backdrop-blur border p-4 rounded-2xl z-20 transition-all duration-300" style="border-color: var(--border-soft); box-shadow: var(--shadow-md);">
+            <div id="detailPanel" class="hidden absolute bottom-4 right-4 left-4 md:left-auto md:w-96 backdrop-blur border p-4 rounded-2xl z-20 transition-all duration-300" style="background: rgba(16,24,39,0.97); border-color: var(--border-soft); box-shadow: var(--shadow-md);">
                 <div class="flex justify-between items-start mb-3 border-b pb-2" style="border-color: var(--border-soft);">
                     <div class="flex items-center gap-2">
                         <span id="detailStatusDot" class="status-dot normal"></span>
                         <div>
                             <h3 id="detailName" class="font-bold text-base font-display" style="color: var(--text-primary);">اسم الموظف</h3>
-                            <span id="detailId" class="text-xs" style="color: var(--text-muted);">#ID</span>
+                            <span id="detailId" class="text-xs font-mono" style="color: var(--text-muted);">#ID</span>
                         </div>
                     </div>
-                    <button id="closeDetailBtn" class="p-1 rounded-lg hover:bg-slate-100" style="color: var(--text-muted);" aria-label="إغلاق">
+                    <button id="closeDetailBtn" class="p-1 rounded-lg" style="color: var(--text-muted);" aria-label="إغلاق">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
 
                 <!-- صندوق الاستجابة للإنذار -->
-                <div id="responderBox" class="hidden mb-3 p-3 rounded-xl text-xs flex flex-col gap-2.5" style="background: var(--sos-soft); border: 1px solid #F3B9B9; color: var(--sos);">
+                <div id="responderBox" class="hidden mb-3 p-3 rounded-xl text-xs flex flex-col gap-2.5" style="background: var(--sos-soft); border: 1px solid rgba(255,59,78,0.4); color: var(--sos);">
                     <div class="flex items-center gap-2">
-                        <i data-lucide="ambulance" class="w-5 h-5 flex-shrink-0 animate-pulse"></i>
+                        <span class="scan-ring flex-shrink-0"><i data-lucide="ambulance" class="w-5 h-5"></i></span>
                         <div class="flex-1">
-                            <span class="block text-[10px]" style="color: #B94545;">المستجيب الأقرب طوارئ (حسب المسافة الحالية):</span>
+                            <span class="block text-[10px]" style="color: #FF9AA5;">المستجيب الأقرب طوارئ (حسب المسافة الحالية):</span>
                             <strong id="detailResponder" class="block mt-0.5 text-sm" style="color: var(--text-primary);">حساب المستجيب القريب...</strong>
                         </div>
                     </div>
-                    <button id="resolveEmergencyBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm" type="button">
+                    <button id="resolveEmergencyBtn" class="w-full font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors" style="background: var(--normal); color: #04241a;" type="button">
                         <i data-lucide="check-circle" class="w-4 h-4"></i>
                         <span>إنهاء حالة الطوارئ وإغلاقها</span>
                     </button>
@@ -327,32 +402,35 @@
                 <!-- شبكة تفاصيل المؤشرات الحيوية المدمجة -->
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">النبض</span>
-                        <span id="detailHeartRate" class="font-bold font-display" style="color: var(--normal);">0 BPM</span>
+                        <div class="flex items-center justify-between">
+                            <span class="block text-[10px]" style="color: var(--text-muted);">النبض</span>
+                            <svg id="heartSparkline" class="sparkline" width="52" height="16"></svg>
+                        </div>
+                        <span id="detailHeartRate" class="font-bold font-mono" style="color: var(--normal);">0 BPM</span>
                     </div>
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">ضغط الدم</span>
-                        <span id="detailBP" class="font-bold font-display" style="color: var(--warning);">120/80</span>
+                        <span id="detailBP" class="font-bold font-mono" style="color: var(--warning);">120/80</span>
                     </div>
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">الأكسجين SpO2</span>
-                        <span id="detailSpo2" class="font-bold font-display" style="color: var(--accent);">98%</span>
+                        <span id="detailSpo2" class="font-bold font-mono" style="color: var(--accent);">98%</span>
                     </div>
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">درجة الحرارة</span>
-                        <span id="detailTemp" class="font-bold font-display" style="color: var(--sos);">37.0°C</span>
+                        <span id="detailTemp" class="font-bold font-mono" style="color: var(--sos);">37.0°C</span>
                     </div>
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">الخطوات</span>
-                        <span id="detailSteps" class="font-bold font-display" style="color: var(--text-primary);">0</span>
+                        <span id="detailSteps" class="font-bold font-mono" style="color: var(--text-primary);">0</span>
                     </div>
                     <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">البطارية</span>
-                        <span id="detailBattery" class="font-bold font-display" style="color: var(--text-primary);">100%</span>
+                        <span id="detailBattery" class="font-bold font-mono" style="color: var(--text-primary);">100%</span>
                     </div>
                     <div class="col-span-2 p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
                         <span class="block text-[10px]" style="color: var(--text-muted);">التحديث</span>
-                        <span id="detailTime" class="font-bold font-display" style="color: var(--text-primary);">--:--:--</span>
+                        <span id="detailTime" class="font-bold font-mono" style="color: var(--text-primary);">--:--:--</span>
                     </div>
                 </div>
 
@@ -365,6 +443,8 @@
         const OFFLINE_THRESHOLD_MS = 60000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 60 ثانية
         let REFRESH_INTERVAL_MS = 15000;
         const SEARCH_DEBOUNCE_MS = 250;
+        const HEART_HISTORY_LIMIT = 20;
+        const ACTIVITY_LOG_LIMIT = 100;
 
         function safeParseFloat(val, defaultVal) {
             if (val === undefined || val === null || val === "") return defaultVal;
@@ -386,7 +466,12 @@
             audioContext: null,
             sirenIntervalId: null,
             fetchController: null,
-            searchDebounceId: null
+            searchDebounceId: null,
+            sidebarTab: 'list',
+            heartHistory: {},
+            previousStatuses: {},
+            activityLog: [],
+            incidentsToday: 0
         };
 
         const mapMarkers = {}; // { empId: { marker, circle, status } }
@@ -401,13 +486,21 @@
             lucide.createIcons();
             toggleAutoRefresh(true);
             startRelativeTimeUpdater();
+            startLiveClock();
         });
+
+        function startLiveClock() {
+            const el = document.getElementById('liveClock');
+            const tick = () => { el.innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false }); };
+            tick();
+            setInterval(tick, 1000);
+        }
 
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
             L.control.zoom({ position: 'topleft' }).addTo(map);
 
-            const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',
                 maxZoom: 20
@@ -418,7 +511,7 @@
                 maxZoom: 19
             });
 
-            L.control.layers({ 'خريطة عادية': streetLayer, 'قمر صناعي': satelliteLayer }, null, { position: 'topleft' }).addTo(map);
+            L.control.layers({ 'خريطة ليلية': darkLayer, 'قمر صناعي': satelliteLayer }, null, { position: 'topleft' }).addTo(map);
 
             clusterGroup = L.markerClusterGroup({
                 maxClusterRadius: 50,
@@ -480,6 +573,17 @@
                 filterEmployees();
             });
 
+            document.getElementById('sidebarTabs').addEventListener('click', (e) => {
+                const btn = e.target.closest('.stab');
+                if (!btn) return;
+                state.sidebarTab = btn.getAttribute('data-tab');
+                document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('employeeList').classList.toggle('hidden', state.sidebarTab !== 'list');
+                document.getElementById('activityLogPanel').classList.toggle('hidden', state.sidebarTab !== 'log');
+                if (state.sidebarTab === 'log') renderActivityLog();
+            });
+
             document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
                 if (state.selectedEmployeeId) {
                     const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
@@ -504,6 +608,14 @@
                 const pts = state.filteredEmployees.map(e => [e.lat, e.lng]);
                 if (pts.length === 0) return;
                 map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') deselectEmployee();
+                if (e.key === '/' && document.activeElement.id !== 'searchInput') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                }
             });
         }
 
@@ -602,6 +714,41 @@
             }, 5000);
         }
 
+        function pushHeartHistory(empId, value) {
+            if (!state.heartHistory[empId]) state.heartHistory[empId] = [];
+            const arr = state.heartHistory[empId];
+            arr.push(value);
+            if (arr.length > HEART_HISTORY_LIMIT) arr.shift();
+        }
+
+        function logEvent(type, message) {
+            state.activityLog.unshift({ time: new Date().toISOString(), type, message });
+            if (state.activityLog.length > ACTIVITY_LOG_LIMIT) state.activityLog.pop();
+            if (state.sidebarTab === 'log') renderActivityLog();
+        }
+
+        function trackStatusTransitions(cleaned) {
+            cleaned.forEach(emp => {
+                const status = effectiveStatus(emp);
+                const prev = state.previousStatuses[emp.emp_id];
+                if (prev !== undefined && prev !== status) {
+                    if (status === 'SOS') {
+                        state.incidentsToday += 1;
+                        logEvent('sos', `استغاثة SOS: ${emp.emp_name} (#${emp.emp_id})`);
+                    } else if (prev === 'SOS') {
+                        logEvent('resolved', `تم إنهاء حالة الطوارئ: ${emp.emp_name} (#${emp.emp_id})`);
+                    } else if (status === 'OFFLINE') {
+                        logEvent('offline', `انقطع الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
+                    } else if (prev === 'OFFLINE') {
+                        logEvent('online', `عاد الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
+                    } else if (status === 'WARNING') {
+                        logEvent('warning', `دخل الموظف حالة تحذير: ${emp.emp_name} (#${emp.emp_id})`);
+                    }
+                }
+                state.previousStatuses[emp.emp_id] = status;
+            });
+        }
+
         async function fetchTelemetryData() {
             const indicator = document.getElementById('refreshIndicator');
             if (indicator) indicator.classList.add('refreshing');
@@ -647,13 +794,17 @@
                     if (emp.status === 'SOS') {
                         emp.nearest_responder = findNearestResponder(emp, cleaned);
                     }
+                    pushHeartHistory(emp.emp_id, emp.heart_rate);
                 });
+
+                trackStatusTransitions(cleaned);
 
                 state.employees = cleaned;
                 filterEmployees();
                 updateStats();
                 checkSosAlerts();
                 updateHeaderPulse();
+                updateInsightBar();
                 document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
                 document.getElementById('connectionErrorBadge').classList.add('hidden');
 
@@ -708,12 +859,13 @@
             state.filteredEmployees.forEach(emp => {
                 const status = effectiveStatus(emp);
                 const card = document.createElement('div');
-                card.className = `employee-card ${state.selectedEmployeeId === emp.emp_id ? 'active-focus' : ''}`;
+                card.className = `employee-card st-${status.toLowerCase()} ${state.selectedEmployeeId === emp.emp_id ? 'active-focus' : ''}`;
                 card.setAttribute('data-id', emp.emp_id);
                 card.setAttribute('tabindex', '0');
 
                 const statusLabel = { SOS: 'SOS', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
                 const lowBattery = parseInt(emp.battery) < 15;
+                const spark = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 44, 14);
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
@@ -721,11 +873,12 @@
                         <span class="badge ${status.toLowerCase()}">${escapeHTML(statusLabel)}</span>
                     </div>
                     <div class="flex justify-between items-center text-xs mt-2" style="color: var(--text-secondary);">
-                        <span class="flex items-center gap-1">❤️ ${emp.heart_rate} BPM</span>
-                        <span class="flex items-center gap-1 ${lowBattery ? 'font-bold' : ''}" style="${lowBattery ? 'color: var(--warning);' : ''}">🔋 ${escapeHTML(emp.battery)}</span>
+                        <span class="flex items-center gap-1 font-mono">${emp.heart_rate} BPM</span>
+                        ${spark}
+                        <span class="flex items-center gap-1 font-mono ${lowBattery ? 'font-bold' : ''}" style="${lowBattery ? 'color: var(--warning);' : ''}">${escapeHTML(emp.battery)}</span>
                         <div class="flex flex-col items-end gap-0.5">
-                            <span class="text-[10px]" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
-                            <span class="text-[9px] font-semibold text-slate-400 relative-time-update" data-timestamp="${emp.timestamp}">${getRelativeTimeString(emp.timestamp)}</span>
+                            <span class="text-[10px] font-mono" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
+                            <span class="text-[9px] font-semibold relative-time-update" style="color: var(--text-muted);" data-timestamp="${emp.timestamp}">${getRelativeTimeString(emp.timestamp)}</span>
                             ${emp.gps_status === 'آخر موقع معروف' ? '<span class="gps-stale-badge">GPS قديم</span>' : ''}
                         </div>
                     </div>
@@ -738,11 +891,88 @@
             });
         }
 
+        function buildSparklineSVG(history, width, height) {
+            width = width || 44; height = height || 14;
+            if (!history || history.length < 2) {
+                return `<svg class="sparkline" width="${width}" height="${height}"></svg>`;
+            }
+            const min = Math.min(...history);
+            const max = Math.max(...history);
+            const range = (max - min) || 1;
+            const stepX = width / (history.length - 1);
+            const points = history.map((v, i) => {
+                const x = i * stepX;
+                const y = height - ((v - min) / range) * (height - 3) - 1.5;
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(' ');
+            const last = history[history.length - 1];
+            const rising = last >= history[0];
+            const color = rising ? 'var(--warning)' : 'var(--accent)';
+            return `<svg class="sparkline" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        }
+
+        function renderActivityLog() {
+            const container = document.getElementById('activityLogPanel');
+            if (state.activityLog.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-xs" style="color: var(--text-muted);">لا توجد أحداث مسجلة بعد.</div>`;
+                return;
+            }
+            const colorMap = { sos: 'var(--sos)', resolved: 'var(--normal)', offline: 'var(--offline)', online: 'var(--accent)', warning: 'var(--warning)' };
+            container.innerHTML = state.activityLog.map(entry => {
+                const time = new Date(entry.time).toLocaleTimeString('ar-SA', { hour12: false });
+                return `<div class="log-entry">
+                    <span class="log-dot" style="background: ${colorMap[entry.type] || 'var(--text-muted)'};"></span>
+                    <div class="flex-1">
+                        <span style="color: var(--text-primary);">${escapeHTML(entry.message)}</span>
+                        <span class="block text-[10px] font-mono" style="color: var(--text-muted);">${time}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function updateInsightBar() {
+            const icon = document.querySelector('#insightBar i');
+            const textEl = document.getElementById('insightText');
+            const chip = document.getElementById('systemStatusChip');
+            const sosCount = state.employees.filter(e => e.status === 'SOS').length;
+            const warningCount = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
+            const offlineCount = state.employees.filter(e => effectiveStatus(e) === 'OFFLINE').length;
+
+            if (sosCount > 0) {
+                textEl.innerText = `تنبيه حرج: ${sosCount} حالة استغاثة نشطة تتطلب استجابة فورية.`;
+                icon.setAttribute('data-lucide', 'siren');
+                icon.style.color = 'var(--sos)';
+                chip.className = 'badge sos'; chip.innerText = 'حالة طوارئ';
+            } else if (offlineCount > 0 && warningCount > 0) {
+                textEl.innerText = `${warningCount} تحذير حركة و ${offlineCount} جهاز غير متصل — يوصى بالمتابعة.`;
+                icon.setAttribute('data-lucide', 'alert-triangle');
+                icon.style.color = 'var(--warning)';
+                chip.className = 'badge warning'; chip.innerText = 'يتطلب متابعة';
+            } else if (warningCount > 0) {
+                textEl.innerText = `${warningCount} موظف في حالة تحذير حركة — يُنصح بالتحقق من حالتهم.`;
+                icon.setAttribute('data-lucide', 'alert-triangle');
+                icon.style.color = 'var(--warning)';
+                chip.className = 'badge warning'; chip.innerText = 'يتطلب متابعة';
+            } else if (offlineCount > 0) {
+                textEl.innerText = `${offlineCount} جهاز غير متصل حالياً — تحقق من تغطية الشبكة أو حالة البطارية.`;
+                icon.setAttribute('data-lucide', 'wifi-off');
+                icon.style.color = 'var(--offline)';
+                chip.className = 'badge offline'; chip.innerText = 'تغطية جزئية';
+            } else {
+                textEl.innerText = 'جميع الموظفين ضمن الحالة الطبيعية، ولا توجد حوادث نشطة حالياً.';
+                icon.setAttribute('data-lucide', 'activity');
+                icon.style.color = 'var(--normal)';
+                chip.className = 'badge normal'; chip.innerText = 'تشغيل طبيعي';
+            }
+            lucide.createIcons();
+        }
+
         function updateStats() {
             document.getElementById('statTotal').innerText = state.employees.length;
             document.getElementById('statNormal').innerText = state.employees.filter(e => effectiveStatus(e) === 'NORMAL').length;
             document.getElementById('statWarning').innerText = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
             document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS').length;
+            document.getElementById('statIncidents').innerText = state.incidentsToday;
         }
 
         function updateHeaderPulse() {
@@ -818,7 +1048,7 @@
                 entry.circle.setLatLng(latLng);
                 entry.circle.setRadius(emp.gps_accuracy);
             } else {
-                entry.circle = L.circle(latLng, { radius: emp.gps_accuracy, color: '#2563EB', weight: 1, fillOpacity: 0.08, interactive: false });
+                entry.circle = L.circle(latLng, { radius: emp.gps_accuracy, color: '#33C7F4', weight: 1, fillOpacity: 0.08, interactive: false });
                 group.addLayer(entry.circle);
             }
         }
@@ -858,10 +1088,10 @@
             return `
                 <div dir="rtl" class="p-1 text-xs">
                     <b class="text-sm block mb-1" style="color: var(--text-primary);">${escapeHTML(emp.emp_name)}</b>
-                    <span class="block mb-1" style="color: var(--text-muted);">رقم: ${escapeHTML(emp.emp_id)}</span>
+                    <span class="block mb-1 font-mono" style="color: var(--text-muted);">رقم: ${escapeHTML(emp.emp_id)}</span>
                     <span class="block mb-1">الحالة: <b style="color: ${color};">${escapeHTML(statusLabel)}</b></span>
-                    <span class="block mb-1">النبض: ${emp.heart_rate} BPM</span>
-                    <span class="block">البطارية: ${escapeHTML(emp.battery)}</span>
+                    <span class="block mb-1 font-mono">النبض: ${emp.heart_rate} BPM</span>
+                    <span class="block font-mono">البطارية: ${escapeHTML(emp.battery)}</span>
                     ${buildGpsInfoHTML(emp)}
                 </div>
             `;
@@ -874,10 +1104,10 @@
             }
             if (emp.gps_accuracy) {
                 const cls = emp.gps_accuracy <= 20 ? 'accuracy-good' : (emp.gps_accuracy <= 75 ? 'accuracy-mid' : 'accuracy-bad');
-                parts.push(`<span class="${cls}">دقة الموقع: ${Math.round(emp.gps_accuracy)} م</span>`);
+                parts.push(`<span class="${cls} font-mono">دقة الموقع: ${Math.round(emp.gps_accuracy)} م</span>`);
             }
             if (emp.heading !== null && emp.heading !== undefined) {
-                parts.push(`<span style="color: var(--text-secondary);">الاتجاه: ${Math.round(emp.heading)}°</span>`);
+                parts.push(`<span class="font-mono" style="color: var(--text-secondary);">الاتجاه: ${Math.round(emp.heading)}°</span>`);
             }
             return parts.length ? `<div class="mt-1.5 pt-1.5 border-t flex flex-wrap gap-1.5" style="border-color: var(--border-soft);">${parts.join('')}</div>` : '';
         }
@@ -918,6 +1148,11 @@
 
             document.getElementById('detailTime').innerText = getRelativeTimeString(emp.timestamp);
             document.getElementById('detailTime').setAttribute('data-timestamp', emp.timestamp);
+
+            const sparkContainer = document.getElementById('heartSparkline');
+            if (sparkContainer) {
+                sparkContainer.outerHTML = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 52, 16).replace('class="sparkline"', 'id="heartSparkline" class="sparkline"');
+            }
 
             const status = effectiveStatus(emp);
             document.getElementById('detailStatusDot').className = `status-dot ${status.toLowerCase()}`;
@@ -986,6 +1221,7 @@
                 updateStats();
                 checkSosAlerts();
                 updateHeaderPulse();
+                updateInsightBar();
                 if (state.selectedEmployeeId === empId) {
                     showEmployeeDetails(emp);
                 }
@@ -1046,14 +1282,12 @@
 
             if (state.isMuted) {
                 muteIcon.setAttribute('data-lucide', 'volume-x');
-                muteIcon.classList.remove('text-emerald-600');
-                muteIcon.classList.add('text-rose-500');
+                muteIcon.style.color = 'var(--sos)';
                 muteText.innerText = 'التنبيه الصوتي مكتوم';
                 stopAlarmSiren();
             } else {
                 muteIcon.setAttribute('data-lucide', 'volume-2');
-                muteIcon.classList.remove('text-rose-500');
-                muteIcon.classList.add('text-emerald-600');
+                muteIcon.style.color = 'var(--normal)';
                 muteText.innerText = 'التنبيه الصوتي نشط';
                 checkSosAlerts();
             }
