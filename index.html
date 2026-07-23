@@ -9,6 +9,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- Leaflet MarkerCluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -151,6 +156,28 @@
         @media (prefers-reduced-motion: reduce) {
             .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing { animation: none !important; }
         }
+
+        /* أدوات الخريطة الإضافية */
+        .map-tool-btn {
+            position: absolute; z-index: 15; background: var(--bg-panel); border: 1px solid var(--border-soft);
+            border-radius: 0.6rem; box-shadow: var(--shadow-sm); padding: 0.55rem; cursor: pointer; color: var(--text-secondary);
+            transition: all .15s ease;
+        }
+        .map-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+        #fitAllBtn { top: 12px; right: 12px; }
+        .marker-cluster-custom {
+            background: rgba(11,59,96,0.88); color: #fff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 12px; font-family: 'Cairo', sans-serif;
+            border: 3px solid rgba(255,255,255,0.9);
+        }
+        .gps-stale-badge {
+            font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+            background: var(--offline-soft); color: var(--offline); white-space: nowrap;
+        }
+        .accuracy-good { color: var(--normal); }
+        .accuracy-mid { color: var(--warning); }
+        .accuracy-bad { color: var(--sos); }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -258,6 +285,10 @@
         <main class="flex-1 relative h-full flex flex-col">
             <div id="map" class="shadow-inner border" style="border-color: var(--border-soft);"></div>
 
+            <button id="fitAllBtn" class="map-tool-btn" title="تكبير لعرض جميع الموظفين" type="button">
+                <i data-lucide="maximize" class="w-4 h-4"></i>
+            </button>
+
             <!-- Detail panel -->
             <div id="detailPanel" class="hidden absolute bottom-4 right-4 left-4 md:left-auto md:w-96 bg-white/95 backdrop-blur border p-4 rounded-2xl z-20 transition-all duration-300" style="border-color: var(--border-soft); box-shadow: var(--shadow-md);">
                 <div class="flex justify-between items-start mb-3 border-b pb-2" style="border-color: var(--border-soft);">
@@ -324,6 +355,8 @@
                         <span id="detailTime" class="font-bold font-display" style="color: var(--text-primary);">--:--:--</span>
                     </div>
                 </div>
+
+                <div id="detailGpsInfo" class="hidden mt-2 flex flex-wrap items-center gap-2"></div>
             </div>
         </main>
     </div>
@@ -356,7 +389,9 @@
             searchDebounceId: null
         };
 
-        const mapMarkers = {};
+        const mapMarkers = {}; // { empId: { marker, circle, status } }
+        let clusterGroup = null;
+        let sosLayerGroup = null;
         let map = null;
         let refreshTimeoutId = null;
 
@@ -372,11 +407,31 @@
             map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
             L.control.zoom({ position: 'topleft' }).addTo(map);
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',
                 maxZoom: 20
             }).addTo(map);
+
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 19
+            });
+
+            L.control.layers({ 'خريطة عادية': streetLayer, 'قمر صناعي': satelliteLayer }, null, { position: 'topleft' }).addTo(map);
+
+            clusterGroup = L.markerClusterGroup({
+                maxClusterRadius: 50,
+                iconCreateFunction: function (cluster) {
+                    return L.divIcon({
+                        html: `<div class="marker-cluster-custom" style="width:38px;height:38px;">${cluster.getChildCount()}</div>`,
+                        className: '', iconSize: [38, 38]
+                    });
+                }
+            }).addTo(map);
+
+            // حالات SOS تبقى دائماً ظاهرة بدون تجميع كي لا تختفي داخل عنقود
+            sosLayerGroup = L.layerGroup().addTo(map);
         }
 
         function initEventListeners() {
@@ -444,6 +499,12 @@
                     : '<i data-lucide="eye-off" class="w-4 h-4"></i>';
                 lucide.createIcons();
             });
+
+            document.getElementById('fitAllBtn').addEventListener('click', () => {
+                const pts = state.filteredEmployees.map(e => [e.lat, e.lng]);
+                if (pts.length === 0) return;
+                map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
+            });
         }
 
         function isDeviceOffline(emp) {
@@ -493,8 +554,8 @@
             });
 
             if (nearest) {
-                const distStr = nearest.distance < 1000 
-                    ? `${Math.round(nearest.distance)} متر` 
+                const distStr = nearest.distance < 1000
+                    ? `${Math.round(nearest.distance)} متر`
                     : `${(nearest.distance / 1000).toFixed(1)} كم`;
                 return `${nearest.emp_name} (#${nearest.emp_id}) · على بعد ${distStr}`;
             }
@@ -505,17 +566,17 @@
             const date = new Date(isoString);
             const now = new Date();
             const secondsDiff = Math.floor((now - date) / 1000);
-            
+
             if (isNaN(secondsDiff) || secondsDiff < 0) return 'الآن';
             if (secondsDiff < 5) return 'الآن';
             if (secondsDiff < 60) return `منذ ${secondsDiff} ثانية`;
-            
+
             const minutesDiff = Math.floor(secondsDiff / 60);
             if (minutesDiff === 1) return 'منذ دقيقة';
             if (minutesDiff === 2) return 'منذ دقيقتين';
             if (minutesDiff <= 10) return `منذ ${minutesDiff} دقائق`;
             if (minutesDiff < 60) return `منذ ${minutesDiff} دقيقة`;
-            
+
             const hoursDiff = Math.floor(minutesDiff / 60);
             if (hoursDiff === 1) return 'منذ ساعة';
             if (hoursDiff === 2) return 'منذ ساعتين';
@@ -575,7 +636,10 @@
                         steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
                         battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
                         status: (emp.status || 'NORMAL').toUpperCase(),
-                        nearest_responder: emp.nearest_responder || 'لا يوجد'
+                        nearest_responder: emp.nearest_responder || 'لا يوجد',
+                        gps_accuracy: (emp.gps_accuracy !== undefined && emp.gps_accuracy !== null && emp.gps_accuracy !== '') ? safeParseFloat(emp.gps_accuracy, null) : null,
+                        heading: (emp.heading !== undefined && emp.heading !== null && emp.heading !== '') ? safeParseFloat(emp.heading, null) : null,
+                        gps_status: emp.gps_status || 'مباشر'
                     };
                 });
 
@@ -662,6 +726,7 @@
                         <div class="flex flex-col items-end gap-0.5">
                             <span class="text-[10px]" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
                             <span class="text-[9px] font-semibold text-slate-400 relative-time-update" data-timestamp="${emp.timestamp}">${getRelativeTimeString(emp.timestamp)}</span>
+                            ${emp.gps_status === 'آخر موقع معروف' ? '<span class="gps-stale-badge">GPS قديم</span>' : ''}
                         </div>
                     </div>
                 `;
@@ -690,7 +755,7 @@
 
             for (const empId in mapMarkers) {
                 if (!activeIds.has(empId)) {
-                    map.removeLayer(mapMarkers[empId]);
+                    removeMarkerFromMap(mapMarkers[empId]);
                     delete mapMarkers[empId];
                 }
             }
@@ -698,6 +763,7 @@
             state.filteredEmployees.forEach(emp => {
                 const latLng = [emp.lat, emp.lng];
                 const status = effectiveStatus(emp);
+                const existing = mapMarkers[emp.emp_id];
 
                 const customIcon = L.divIcon({
                     className: 'gps-pin-wrap',
@@ -706,18 +772,82 @@
                     iconAnchor: [13, 24]
                 });
 
-                if (mapMarkers[emp.emp_id]) {
-                    mapMarkers[emp.emp_id].setLatLng(latLng);
-                    mapMarkers[emp.emp_id].setIcon(customIcon);
-                    mapMarkers[emp.emp_id].setPopupContent(buildPopupHTML(emp));
+                if (existing) {
+                    animateMarkerTo(existing.marker, latLng);
+                    existing.marker.setIcon(customIcon);
+                    existing.marker.setPopupContent(buildPopupHTML(emp));
+                    relocateMarkerGroup(existing, status);
+                    existing.status = status;
+                    updateAccuracyCircle(existing, emp, latLng);
                 } else {
-                    const marker = L.marker(latLng, { icon: customIcon })
-                        .bindPopup(buildPopupHTML(emp))
-                        .addTo(map);
+                    const marker = L.marker(latLng, { icon: customIcon }).bindPopup(buildPopupHTML(emp));
                     marker.on('click', () => selectEmployee(emp));
-                    mapMarkers[emp.emp_id] = marker;
+
+                    const entry = { marker, circle: null, status };
+                    mapMarkers[emp.emp_id] = entry;
+
+                    const targetGroup = status === 'SOS' ? sosLayerGroup : clusterGroup;
+                    targetGroup.addLayer(marker);
+                    updateAccuracyCircle(entry, emp, latLng);
                 }
             });
+        }
+
+        function relocateMarkerGroup(entry, newStatus) {
+            if (entry.status === newStatus) return;
+            const oldGroup = entry.status === 'SOS' ? sosLayerGroup : clusterGroup;
+            const newGroup = newStatus === 'SOS' ? sosLayerGroup : clusterGroup;
+            oldGroup.removeLayer(entry.marker);
+            newGroup.addLayer(entry.marker);
+            if (entry.circle) {
+                oldGroup.removeLayer(entry.circle);
+                newGroup.addLayer(entry.circle);
+            }
+        }
+
+        // دائرة نصف قطرها = دقة GPS المُبلَّغة (متر)، توضّح مدى موثوقية الموقع المعروض
+        function updateAccuracyCircle(entry, emp, latLng) {
+            const group = entry.status === 'SOS' ? sosLayerGroup : clusterGroup;
+            const hasAccuracy = emp.gps_accuracy && emp.gps_accuracy > 0;
+
+            if (!hasAccuracy) {
+                if (entry.circle) { group.removeLayer(entry.circle); entry.circle = null; }
+                return;
+            }
+            if (entry.circle) {
+                entry.circle.setLatLng(latLng);
+                entry.circle.setRadius(emp.gps_accuracy);
+            } else {
+                entry.circle = L.circle(latLng, { radius: emp.gps_accuracy, color: '#2563EB', weight: 1, fillOpacity: 0.08, interactive: false });
+                group.addLayer(entry.circle);
+            }
+        }
+
+        function removeMarkerFromMap(entry) {
+            const group = entry.status === 'SOS' ? sosLayerGroup : clusterGroup;
+            group.removeLayer(entry.marker);
+            if (entry.circle) group.removeLayer(entry.circle);
+        }
+
+        // حركة انتقال سلسة للمؤشر بدل القفز المفاجئ عند كل تحديث
+        function animateMarkerTo(marker, newLatLng) {
+            const startLatLng = marker.getLatLng();
+            const targetLatLng = L.latLng(newLatLng);
+            if (startLatLng.distanceTo(targetLatLng) < 1) {
+                marker.setLatLng(targetLatLng);
+                return;
+            }
+            const duration = 500;
+            const startTime = performance.now();
+
+            function step(now) {
+                const t = Math.min(1, (now - startTime) / duration);
+                const lat = startLatLng.lat + (targetLatLng.lat - startLatLng.lat) * t;
+                const lng = startLatLng.lng + (targetLatLng.lng - startLatLng.lng) * t;
+                marker.setLatLng([lat, lng]);
+                if (t < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
         }
 
         function buildPopupHTML(emp) {
@@ -732,14 +862,30 @@
                     <span class="block mb-1">الحالة: <b style="color: ${color};">${escapeHTML(statusLabel)}</b></span>
                     <span class="block mb-1">النبض: ${emp.heart_rate} BPM</span>
                     <span class="block">البطارية: ${escapeHTML(emp.battery)}</span>
+                    ${buildGpsInfoHTML(emp)}
                 </div>
             `;
+        }
+
+        function buildGpsInfoHTML(emp) {
+            const parts = [];
+            if (emp.gps_status === 'آخر موقع معروف') {
+                parts.push(`<span class="gps-stale-badge">موقع مخزّن سابقاً (GPS غير متاح حالياً)</span>`);
+            }
+            if (emp.gps_accuracy) {
+                const cls = emp.gps_accuracy <= 20 ? 'accuracy-good' : (emp.gps_accuracy <= 75 ? 'accuracy-mid' : 'accuracy-bad');
+                parts.push(`<span class="${cls}">دقة الموقع: ${Math.round(emp.gps_accuracy)} م</span>`);
+            }
+            if (emp.heading !== null && emp.heading !== undefined) {
+                parts.push(`<span style="color: var(--text-secondary);">الاتجاه: ${Math.round(emp.heading)}°</span>`);
+            }
+            return parts.length ? `<div class="mt-1.5 pt-1.5 border-t flex flex-wrap gap-1.5" style="border-color: var(--border-soft);">${parts.join('')}</div>` : '';
         }
 
         function focusOnEmployee(emp) {
             selectEmployee(emp);
             map.setView([emp.lat, emp.lng], 16, { animate: true, duration: 1.2 });
-            if (mapMarkers[emp.emp_id]) mapMarkers[emp.emp_id].openPopup();
+            if (mapMarkers[emp.emp_id]) mapMarkers[emp.emp_id].marker.openPopup();
         }
 
         function selectEmployee(emp) {
@@ -782,6 +928,15 @@
             }
 
             document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
+
+            const gpsInfoEl = document.getElementById('detailGpsInfo');
+            const gpsInfo = buildGpsInfoHTML(emp).replace(/^<div[^>]*>|<\/div>$/g, '');
+            if (gpsInfo) {
+                gpsInfoEl.innerHTML = gpsInfo;
+                gpsInfoEl.classList.remove('hidden');
+            } else {
+                gpsInfoEl.classList.add('hidden');
+            }
         }
 
         function deselectEmployee() {
@@ -839,9 +994,9 @@
             try {
                 const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
                 const response = await fetch(url);
-                
+
                 if (!response.ok) throw new Error(`خادم السكربت غير متاح: ${response.status}`);
-                
+
                 await fetchTelemetryData();
                 alert(`تم إنهاء حالة الطوارئ للموظف #${empId} بنجاح. يرجى إيقاف زر الاستغاثة (SOS) من ساعة الموظف الميداني لكي لا يعاد تفعيل الإنذار تلقائياً.`);
             } catch (err) {
@@ -888,7 +1043,7 @@
             state.isMuted = !state.isMuted;
             const muteIcon = document.getElementById('muteIcon');
             const muteText = document.getElementById('muteText');
-            
+
             if (state.isMuted) {
                 muteIcon.setAttribute('data-lucide', 'volume-x');
                 muteIcon.classList.remove('text-emerald-600');
