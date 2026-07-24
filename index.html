@@ -20,7 +20,7 @@
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Fonts -->
+    <!-- Fonts: Cairo for display/numbers, IBM Plex Sans Arabic for body copy, JetBrains Mono for telemetry -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -94,6 +94,7 @@
         .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
         .leaflet-container a.leaflet-popup-close-button { color: var(--text-muted) !important; }
 
+        /* Map marker pins */
         .gps-pin {
             width: 24px; height: 24px;
             border-radius: 50% 50% 50% 0;
@@ -105,6 +106,7 @@
         .gps-pin.warning { background-color: var(--warning); box-shadow: 0 0 0 3px rgba(245,166,35,0.28), 0 2px 8px rgba(0,0,0,0.5); }
         .gps-pin.sos { background-color: var(--sos); box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 2px 8px rgba(0,0,0,0.5); animation: pulse-marker 1s infinite; }
         .gps-pin.offline { background-color: var(--offline); box-shadow: 0 0 0 3px rgba(100,116,139,0.22), 0 2px 8px rgba(0,0,0,0.5); }
+        .gps-pin.resolving { background-color: var(--accent); box-shadow: 0 0 0 3px rgba(51,199,244,0.3), 0 2px 8px rgba(0,0,0,0.5); }
         @keyframes pulse-marker {
             0% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0.55); }
             70% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 16px rgba(255,59,78,0); }
@@ -131,12 +133,14 @@
         .employee-card.st-warning { border-inline-start-color: var(--warning); }
         .employee-card.st-normal { border-inline-start-color: var(--normal); }
         .employee-card.st-offline { border-inline-start-color: var(--offline); opacity: 0.75; }
+        .employee-card.st-resolving { border-inline-start-color: var(--accent); }
 
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
         .status-dot.normal { background-color: var(--normal); box-shadow: 0 0 6px rgba(34,212,136,0.7); }
         .status-dot.warning { background-color: var(--warning); box-shadow: 0 0 6px rgba(245,166,35,0.7); }
         .status-dot.sos { background-color: var(--sos); box-shadow: 0 0 6px rgba(255,59,78,0.8); animation: ping-dot 1s infinite; }
         .status-dot.offline { background-color: var(--offline); }
+        .status-dot.resolving { background-color: var(--accent); box-shadow: 0 0 6px rgba(51,199,244,0.75); }
         @keyframes ping-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
         .badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: 0.3px; font-family: 'Cairo', sans-serif; }
@@ -144,6 +148,7 @@
         .badge.warning { background: var(--warning-soft); color: var(--warning); }
         .badge.sos { background: var(--sos); color: #1a0405; }
         .badge.offline { background: var(--offline-soft); color: var(--offline); }
+        .badge.resolving { background: var(--accent-soft); color: var(--accent); }
 
         .chip {
             font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
@@ -152,6 +157,7 @@
         }
         .chip:hover { border-color: var(--accent); color: var(--accent); }
         .chip.active { background: var(--accent); color: #04222c; border-color: var(--accent); }
+        .chip:disabled, button:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .stab {
             flex: 1; text-align: center; font-size: 11px; font-weight: 600; padding: 8px 4px;
@@ -163,6 +169,7 @@
         .refreshing { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+        /* Title pulse + tactical scan ring signature */
         .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); }
         .live-pulse::after {
             content: ''; position: absolute; inset: -3px; border-radius: 50%;
@@ -194,6 +201,7 @@
             .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing, .scan-ring::before { animation: none !important; }
         }
 
+        /* أدوات الخريطة الإضافية */
         .map-tool-btn {
             position: absolute; z-index: 15; background: var(--bg-panel); border: 1px solid var(--border-soft);
             border-radius: 0.6rem; box-shadow: var(--shadow-sm); padding: 0.55rem; cursor: pointer; color: var(--text-secondary);
@@ -393,7 +401,12 @@
 
                 <div id="offlineNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--offline-soft); color: var(--offline);">
                     <i data-lucide="wifi-off" class="w-4 h-4 flex-shrink-0"></i>
-                    <span>لم يتم استلام تحديث من هذا الجهاز منذ أكثر من دقيقة</span>
+                    <span>لم يتم استلام تحديث من هذا الجهاز منذ أكثر من دقيقة ونصف</span>
+                </div>
+
+                <div id="resolvingNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--accent-soft); color: var(--accent);">
+                    <i data-lucide="clock" class="w-4 h-4 flex-shrink-0"></i>
+                    <span>تم إنهاء الحالة، لكن الجهاز لا يزال يرسل إشارة استغاثة — يرجى التأكد من إيقاف زر SOS يدوياً</span>
                 </div>
 
                 <!-- شبكة تفاصيل المؤشرات الحيوية المدمجة -->
@@ -437,25 +450,18 @@
     </div>
 
     <script>
-        const OFFLINE_THRESHOLD_MS = 60000;
+        const OFFLINE_THRESHOLD_MS = 90000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 90 ثانية (تمت زيادتها لتقليل الفصل المتكرر بسبب تأخر الشبكة البسيط)
         let REFRESH_INTERVAL_MS = 15000;
         const SEARCH_DEBOUNCE_MS = 250;
         const HEART_HISTORY_LIMIT = 20;
         const ACTIVITY_LOG_LIMIT = 100;
+        const SOS_RESOLVE_GRACE_MS = 120000; // بعد إنهاء حالة الطوارئ، تُكتم إعادة الإنذار لمدة دقيقتين ريثما يُوقف الموظف زر SOS من جهازه فعلياً
 
         function safeParseFloat(val, defaultVal) {
             if (val === undefined || val === null || val === "") return defaultVal;
             const str = val.toString().replace(/٫/g, ".").replace(/,/g, ".");
             const num = parseFloat(str);
             return isNaN(num) ? defaultVal : num;
-        }
-
-        // استخراج رمز الموظف الصريح (مثل WATCH_001) حتى لو ورد النص كاملاً في المعرف
-        function extractCleanEmpId(rawId) {
-            if (!rawId) return 'WATCH_001';
-            const str = rawId.toString().trim().toUpperCase();
-            const match = str.match(/WATCH_\d+/i);
-            return match ? match[0].toUpperCase() : str;
         }
 
         let state = {
@@ -472,15 +478,15 @@
             sirenIntervalId: null,
             fetchController: null,
             searchDebounceId: null,
-            consecutiveFailures: 0,
             sidebarTab: 'list',
             heartHistory: {},
             previousStatuses: {},
             activityLog: [],
-            incidentsToday: 0
+            incidentsToday: 0,
+            resolvedSuppression: {}
         };
 
-        const mapMarkers = {};
+        const mapMarkers = {}; // { empId: { marker, circle, status } }
         let clusterGroup = null;
         let sosLayerGroup = null;
         let map = null;
@@ -503,11 +509,11 @@
         }
 
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([24.7136, 46.6753], 12);
             L.control.zoom({ position: 'topleft' }).addTo(map);
 
             const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',
                 maxZoom: 20
             }).addTo(map);
@@ -529,6 +535,7 @@
                 }
             }).addTo(map);
 
+            // حالات SOS تبقى دائماً ظاهرة بدون تجميع كي لا تختفي داخل عنقود
             sosLayerGroup = L.layerGroup().addTo(map);
         }
 
@@ -591,7 +598,7 @@
 
             document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
                 if (state.selectedEmployeeId) {
-                    const emp = state.employees.find(e => extractCleanEmpId(e.emp_id) === extractCleanEmpId(state.selectedEmployeeId));
+                    const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
                     if (emp && confirm(`هل تم التعامل مع حالة الموظف ${emp.emp_name} وترغب بإغلاق حالة الطوارئ؟`)) {
                         resolveEmergencyRemote(emp.emp_id);
                     }
@@ -622,12 +629,6 @@
                     document.getElementById('searchInput').focus();
                 }
             });
-
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible' && state.autoRefresh) {
-                    fetchTelemetryData();
-                }
-            });
         }
 
         function isDeviceOffline(emp) {
@@ -636,10 +637,31 @@
             return (Date.now() - ts) > OFFLINE_THRESHOLD_MS;
         }
 
+        function isSuppressed(emp) {
+            const resolvedAt = state.resolvedSuppression[emp.emp_id];
+            if (!resolvedAt) return false;
+            if ((Date.now() - resolvedAt) >= SOS_RESOLVE_GRACE_MS) {
+                delete state.resolvedSuppression[emp.emp_id];
+                return false;
+            }
+            return true;
+        }
+
         function effectiveStatus(emp) {
-            if (emp.status === 'SOS') return 'SOS';
+            if (emp.status === 'SOS') {
+                // إذا أُنهيت الحالة يدوياً قبل قليل ولا يزال الجهاز يرسل SOS (لم يُطفأ زر الاستغاثة فعلياً)،
+                // تُعرض كحالة "قيد التأكيد" بدل إعادة تفعيل الإنذار فوراً
+                return isSuppressed(emp) ? 'RESOLVING' : 'SOS';
+            }
             if (isDeviceOffline(emp)) return 'OFFLINE';
             return emp.status;
+        }
+
+        function matchesStatusFilter(emp, filter) {
+            if (filter === 'ALL') return true;
+            const status = effectiveStatus(emp);
+            if (filter === 'SOS') return status === 'SOS' || status === 'RESOLVING';
+            return status === filter;
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -662,7 +684,7 @@
             let minDistance = Infinity;
 
             allEmployees.forEach(other => {
-                if (extractCleanEmpId(other.emp_id) === extractCleanEmpId(sosEmp.emp_id)) return;
+                if (other.emp_id === sosEmp.emp_id) return;
                 if (other.status === 'SOS') return;
 
                 const dist = calculateDistance(sosEmp.lat, sosEmp.lng, other.lat, other.lng);
@@ -670,7 +692,7 @@
                     minDistance = dist;
                     nearest = {
                         emp_name: other.emp_name,
-                        emp_id: extractCleanEmpId(other.emp_id),
+                        emp_id: other.emp_id,
                         distance: dist
                     };
                 }
@@ -711,20 +733,23 @@
             setInterval(() => {
                 document.querySelectorAll('.relative-time-update').forEach(el => {
                     const ts = el.getAttribute('data-timestamp');
-                    if (ts) el.innerText = getRelativeTimeString(ts);
+                    if (ts) {
+                        el.innerText = getRelativeTimeString(ts);
+                    }
                 });
                 const detailTimeEl = document.getElementById('detailTime');
                 if (detailTimeEl) {
                     const ts = detailTimeEl.getAttribute('data-timestamp');
-                    if (ts) detailTimeEl.innerText = getRelativeTimeString(ts);
+                    if (ts) {
+                        detailTimeEl.innerText = getRelativeTimeString(ts);
+                    }
                 }
             }, 5000);
         }
 
         function pushHeartHistory(empId, value) {
-            const cleanId = extractCleanEmpId(empId);
-            if (!state.heartHistory[cleanId]) state.heartHistory[cleanId] = [];
-            const arr = state.heartHistory[cleanId];
+            if (!state.heartHistory[empId]) state.heartHistory[empId] = [];
+            const arr = state.heartHistory[empId];
             arr.push(value);
             if (arr.length > HEART_HISTORY_LIMIT) arr.shift();
         }
@@ -738,24 +763,22 @@
         function trackStatusTransitions(cleaned) {
             cleaned.forEach(emp => {
                 const status = effectiveStatus(emp);
-                const cleanId = extractCleanEmpId(emp.emp_id);
-                const prev = state.previousStatuses[cleanId];
-
+                const prev = state.previousStatuses[emp.emp_id];
                 if (prev !== undefined && prev !== status) {
                     if (status === 'SOS') {
                         state.incidentsToday += 1;
-                        logEvent('sos', `استغاثة SOS: ${emp.emp_name} (#${cleanId})`);
-                    } else if (prev === 'SOS') {
-                        logEvent('resolved', `تم إنهاء حالة الطوارئ: ${emp.emp_name} (#${cleanId})`);
+                        logEvent('sos', `استغاثة SOS: ${emp.emp_name} (#${emp.emp_id})`);
+                    } else if (prev === 'SOS' || prev === 'RESOLVING') {
+                        logEvent('resolved', `تم إنهاء حالة الطوارئ: ${emp.emp_name} (#${emp.emp_id})`);
                     } else if (status === 'OFFLINE') {
-                        logEvent('offline', `انقطع الاتصال بالجهاز: ${emp.emp_name} (#${cleanId})`);
+                        logEvent('offline', `انقطع الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
                     } else if (prev === 'OFFLINE') {
-                        logEvent('online', `عاد الاتصال بالجهاز: ${emp.emp_name} (#${cleanId})`);
+                        logEvent('online', `عاد الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
                     } else if (status === 'WARNING') {
-                        logEvent('warning', `دخل الموظف حالة تحذير: ${emp.emp_name} (#${cleanId})`);
+                        logEvent('warning', `دخل الموظف حالة تحذير: ${emp.emp_name} (#${emp.emp_id})`);
                     }
                 }
-                state.previousStatuses[cleanId] = status;
+                state.previousStatuses[emp.emp_id] = status;
             });
         }
 
@@ -775,19 +798,18 @@
                 const cleaned = rawData.filter(emp => {
                     const id = (emp.emp_id || '').toString().trim();
                     const name = (emp.emp_name || '').toString().trim();
-                    return id || name;
+                    if (!id && !name) return false;
+                    return true;
                 }).map(emp => {
-                    const latNum = safeParseFloat(emp.lat, 24.8198);
-                    const lngNum = safeParseFloat(emp.lng, 46.8582);
-                    const cleanId = extractCleanEmpId(emp.emp_id);
-
+                    const latNum = safeParseFloat(emp.lat, 24.7136);
+                    const lngNum = safeParseFloat(emp.lng, 46.6753);
                     return {
                         timestamp: emp.timestamp || new Date().toISOString(),
-                        emp_id: cleanId,
-                        emp_name: emp.emp_name || 'أحمد منصور',
+                        emp_id: (emp.emp_id || 'N/A').toString(),
+                        emp_name: emp.emp_name || 'موظف غير معروف',
                         lat: latNum,
                         lng: lngNum,
-                        heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 75,
+                        heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
                         blood_pressure: emp.blood_pressure || '120/80',
                         spo2: emp.spo2 || '98%',
                         temperature: emp.temperature || '37.0°C',
@@ -817,11 +839,10 @@
                 updateHeaderPulse();
                 updateInsightBar();
                 document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
-                state.consecutiveFailures = 0;
                 document.getElementById('connectionErrorBadge').classList.add('hidden');
 
                 if (state.selectedEmployeeId) {
-                    const currentEmp = state.employees.find(e => extractCleanEmpId(e.emp_id) === extractCleanEmpId(state.selectedEmployeeId));
+                    const currentEmp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
                     if (currentEmp) {
                         showEmployeeDetails(currentEmp);
                     } else {
@@ -832,10 +853,7 @@
             } catch (error) {
                 if (error.name === 'AbortError') return;
                 console.error('حدث خطأ أثناء جلب البيانات:', error);
-                state.consecutiveFailures++;
-                if (state.consecutiveFailures >= 2) {
-                    document.getElementById('connectionErrorBadge').classList.remove('hidden');
-                }
+                document.getElementById('connectionErrorBadge').classList.remove('hidden');
             } finally {
                 if (indicator) setTimeout(() => indicator.classList.remove('refreshing'), 500);
             }
@@ -848,12 +866,11 @@
                     emp.emp_id.toLowerCase().includes(state.searchQuery);
                 if (!matchesSearch) return false;
 
-                if (state.statusFilter === 'ALL') return true;
-                return effectiveStatus(emp) === state.statusFilter;
+                return matchesStatusFilter(emp, state.statusFilter);
             });
 
             state.filteredEmployees.sort((a, b) => {
-                const priority = { SOS: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
+                const priority = { SOS: 5, RESOLVING: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
                 return (priority[effectiveStatus(b)] || 0) - (priority[effectiveStatus(a)] || 0);
             });
 
@@ -874,13 +891,13 @@
             state.filteredEmployees.forEach(emp => {
                 const status = effectiveStatus(emp);
                 const card = document.createElement('div');
-                card.className = `employee-card st-${status.toLowerCase()} ${extractCleanEmpId(state.selectedEmployeeId) === extractCleanEmpId(emp.emp_id) ? 'active-focus' : ''}`;
+                card.className = `employee-card st-${status.toLowerCase()} ${state.selectedEmployeeId === emp.emp_id ? 'active-focus' : ''}`;
                 card.setAttribute('data-id', emp.emp_id);
                 card.setAttribute('tabindex', '0');
 
-                const statusLabel = { SOS: 'SOS', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
+                const statusLabel = { SOS: 'SOS', RESOLVING: 'قيد التأكيد', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
                 const lowBattery = parseInt(emp.battery) < 15;
-                const spark = buildSparklineSVG(state.heartHistory[extractCleanEmpId(emp.emp_id)] || [], 44, 14);
+                const spark = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 44, 14);
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
@@ -895,6 +912,7 @@
                             <span class="text-[10px] font-mono" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
                             <span class="text-[9px] font-semibold relative-time-update" style="color: var(--text-muted);" data-timestamp="${emp.timestamp}">${getRelativeTimeString(emp.timestamp)}</span>
                             ${emp.gps_status === 'آخر موقع معروف' ? '<span class="gps-stale-badge">GPS قديم</span>' : ''}
+                            ${emp.gps_status === 'تم التعديل يدوياً' ? '<span class="gps-stale-badge" style="background: var(--accent-soft); color: var(--accent);">موقع معدَّل</span>' : ''}
                         </div>
                     </div>
                 `;
@@ -949,7 +967,8 @@
             const icon = document.querySelector('#insightBar i');
             const textEl = document.getElementById('insightText');
             const chip = document.getElementById('systemStatusChip');
-            const sosCount = state.employees.filter(e => e.status === 'SOS').length;
+            const sosCount = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e)).length;
+            const resolvingCount = state.employees.filter(e => effectiveStatus(e) === 'RESOLVING').length;
             const warningCount = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
             const offlineCount = state.employees.filter(e => effectiveStatus(e) === 'OFFLINE').length;
 
@@ -958,6 +977,11 @@
                 icon.setAttribute('data-lucide', 'siren');
                 icon.style.color = 'var(--sos)';
                 chip.className = 'badge sos'; chip.innerText = 'حالة طوارئ';
+            } else if (resolvingCount > 0) {
+                textEl.innerText = `تم إنهاء ${resolvingCount} حالة استغاثة، بانتظار إيقاف الجهاز الميداني يدوياً لتأكيد الإغلاق.`;
+                icon.setAttribute('data-lucide', 'clock');
+                icon.style.color = 'var(--accent)';
+                chip.className = 'badge resolving'; chip.innerText = 'قيد التأكيد';
             } else if (offlineCount > 0 && warningCount > 0) {
                 textEl.innerText = `${warningCount} تحذير حركة و ${offlineCount} جهاز غير متصل — يوصى بالمتابعة.`;
                 icon.setAttribute('data-lucide', 'alert-triangle');
@@ -986,17 +1010,17 @@
             document.getElementById('statTotal').innerText = state.employees.length;
             document.getElementById('statNormal').innerText = state.employees.filter(e => effectiveStatus(e) === 'NORMAL').length;
             document.getElementById('statWarning').innerText = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
-            document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS').length;
+            document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e)).length;
             document.getElementById('statIncidents').innerText = state.incidentsToday;
         }
 
         function updateHeaderPulse() {
-            const hasSos = state.employees.some(e => e.status === 'SOS');
+            const hasSos = state.employees.some(e => e.status === 'SOS' && !isSuppressed(e));
             document.getElementById('headerPulse').classList.toggle('sos', hasSos);
         }
 
         function updateMapMarkers() {
-            const activeIds = new Set(state.filteredEmployees.map(e => extractCleanEmpId(e.emp_id)));
+            const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
 
             for (const empId in mapMarkers) {
                 if (!activeIds.has(empId)) {
@@ -1006,10 +1030,9 @@
             }
 
             state.filteredEmployees.forEach(emp => {
-                const cleanId = extractCleanEmpId(emp.emp_id);
                 const latLng = [emp.lat, emp.lng];
                 const status = effectiveStatus(emp);
-                const existing = mapMarkers[cleanId];
+                const existing = mapMarkers[emp.emp_id];
 
                 const customIcon = L.divIcon({
                     className: 'gps-pin-wrap',
@@ -1030,7 +1053,7 @@
                     marker.on('click', () => selectEmployee(emp));
 
                     const entry = { marker, circle: null, status };
-                    mapMarkers[cleanId] = entry;
+                    mapMarkers[emp.emp_id] = entry;
 
                     const targetGroup = status === 'SOS' ? sosLayerGroup : clusterGroup;
                     targetGroup.addLayer(marker);
@@ -1051,6 +1074,7 @@
             }
         }
 
+        // دائرة نصف قطرها = دقة GPS المُبلَّغة (متر)، توضّح مدى موثوقية الموقع المعروض
         function updateAccuracyCircle(entry, emp, latLng) {
             const group = entry.status === 'SOS' ? sosLayerGroup : clusterGroup;
             const hasAccuracy = emp.gps_accuracy && emp.gps_accuracy > 0;
@@ -1074,6 +1098,7 @@
             if (entry.circle) group.removeLayer(entry.circle);
         }
 
+        // حركة انتقال سلسة للمؤشر بدل القفز المفاجئ عند كل تحديث
         function animateMarkerTo(marker, newLatLng) {
             const startLatLng = marker.getLatLng();
             const targetLatLng = L.latLng(newLatLng);
@@ -1096,8 +1121,8 @@
 
         function buildPopupHTML(emp) {
             const status = effectiveStatus(emp);
-            const statusLabel = { SOS: 'طوارئ SOS', WARNING: 'تحذير حركة', NORMAL: 'مستقر', OFFLINE: 'غير متصل' }[status] || status;
-            const color = { SOS: 'var(--sos)', WARNING: 'var(--warning)', NORMAL: 'var(--normal)', OFFLINE: 'var(--offline)' }[status];
+            const statusLabel = { SOS: 'طوارئ SOS', RESOLVING: 'قيد التأكيد', WARNING: 'تحذير حركة', NORMAL: 'مستقر', OFFLINE: 'غير متصل' }[status] || status;
+            const color = { SOS: 'var(--sos)', RESOLVING: 'var(--accent)', WARNING: 'var(--warning)', NORMAL: 'var(--normal)', OFFLINE: 'var(--offline)' }[status];
 
             return `
                 <div dir="rtl" class="p-1 text-xs">
@@ -1116,6 +1141,9 @@
             if (emp.gps_status === 'آخر موقع معروف') {
                 parts.push(`<span class="gps-stale-badge">موقع مخزّن سابقاً (GPS غير متاح حالياً)</span>`);
             }
+            if (emp.gps_status === 'تم التعديل يدوياً') {
+                parts.push(`<span class="gps-stale-badge" style="background: var(--accent-soft); color: var(--accent);">تم تعديل هذا الموقع يدوياً من لوحة التحكم</span>`);
+            }
             if (emp.gps_accuracy) {
                 const cls = emp.gps_accuracy <= 20 ? 'accuracy-good' : (emp.gps_accuracy <= 75 ? 'accuracy-mid' : 'accuracy-bad');
                 parts.push(`<span class="${cls} font-mono">دقة الموقع: ${Math.round(emp.gps_accuracy)} م</span>`);
@@ -1129,15 +1157,14 @@
         function focusOnEmployee(emp) {
             selectEmployee(emp);
             map.setView([emp.lat, emp.lng], 16, { animate: true, duration: 1.2 });
-            const cleanId = extractCleanEmpId(emp.emp_id);
-            if (mapMarkers[cleanId]) mapMarkers[cleanId].marker.openPopup();
+            if (mapMarkers[emp.emp_id]) mapMarkers[emp.emp_id].marker.openPopup();
         }
 
         function selectEmployee(emp) {
             state.selectedEmployeeId = emp.emp_id;
 
             document.querySelectorAll('.employee-card').forEach(card => {
-                if (extractCleanEmpId(card.getAttribute('data-id')) === extractCleanEmpId(emp.emp_id)) {
+                if (card.getAttribute('data-id') === emp.emp_id) {
                     card.classList.add('active-focus');
                     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
@@ -1166,18 +1193,19 @@
 
             const sparkContainer = document.getElementById('heartSparkline');
             if (sparkContainer) {
-                sparkContainer.outerHTML = buildSparklineSVG(state.heartHistory[extractCleanEmpId(emp.emp_id)] || [], 52, 16).replace('class="sparkline"', 'id="heartSparkline" class="sparkline"');
+                sparkContainer.outerHTML = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 52, 16).replace('class="sparkline"', 'id="heartSparkline" class="sparkline"');
             }
 
             const status = effectiveStatus(emp);
             document.getElementById('detailStatusDot').className = `status-dot ${status.toLowerCase()}`;
 
-            document.getElementById('responderBox').classList.toggle('hidden', emp.status !== 'SOS');
-            if (emp.status === 'SOS') {
+            document.getElementById('responderBox').classList.toggle('hidden', status !== 'SOS');
+            if (status === 'SOS') {
                 document.getElementById('detailResponder').innerText = emp.nearest_responder;
             }
 
             document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
+            document.getElementById('resolvingNotice').classList.toggle('hidden', status !== 'RESOLVING');
 
             const gpsInfoEl = document.getElementById('detailGpsInfo');
             const gpsInfo = buildGpsInfoHTML(emp).replace(/^<div[^>]*>|<\/div>$/g, '');
@@ -1218,7 +1246,7 @@
         }
 
         function checkSosAlerts() {
-            const sosEmployees = state.employees.filter(e => e.status === 'SOS');
+            const sosEmployees = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e));
             if (sosEmployees.length > 0) {
                 playAlarmSiren();
             } else {
@@ -1226,12 +1254,10 @@
             }
         }
 
-        // إغلاق حالة الطوارئ ونقل السجل للسيرفر
+        // إغلاق حالة الطوارئ وإرسال طلب GET
         async function resolveEmergencyRemote(empId) {
-            const cleanId = extractCleanEmpId(empId);
-            const emp = state.employees.find(e => extractCleanEmpId(e.emp_id) === cleanId);
-            
-            // تحديث محلي فوري لإيقاف الإنذار البصري والصوتي دون انتظار الشبكة
+            state.resolvedSuppression[empId] = Date.now();
+            const emp = state.employees.find(e => e.emp_id === empId);
             if (emp) {
                 emp.status = 'NORMAL';
                 emp.nearest_responder = 'لا يوجد';
@@ -1246,16 +1272,16 @@
             }
 
             try {
-                const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(cleanId)}`;
+                const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
                 const response = await fetch(url);
 
                 if (!response.ok) throw new Error(`خادم السكربت غير متاح: ${response.status}`);
 
                 await fetchTelemetryData();
-                alert(`تم إنهاء حالة الطوارئ ونقل السجل إلى Emergency_Log للموظف #${cleanId} بنجاح.`);
+                alert(`تم إنهاء حالة الطوارئ للموظف #${empId} بنجاح. يرجى إيقاف زر الاستغاثة (SOS) من ساعة الموظف الميداني لكي لا يعاد تفعيل الإنذار تلقائياً.`);
             } catch (err) {
                 console.error('فشل إغلاق حالة الطوارئ:', err);
-                alert('تم إيقاف الإنذار محلياً، يرجى التأكد من استجابة الخادم عند توفر الاتصال.');
+                alert('تم التحديث محلياً ولكن تعذر إغلاقه على السيرفر. تحقق من الاتصال وحاول مرة أخرى.');
             }
         }
 
