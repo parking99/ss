@@ -106,6 +106,7 @@
         .gps-pin.warning { background-color: var(--warning); box-shadow: 0 0 0 3px rgba(245,166,35,0.28), 0 2px 8px rgba(0,0,0,0.5); }
         .gps-pin.sos { background-color: var(--sos); box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 2px 8px rgba(0,0,0,0.5); animation: pulse-marker 1s infinite; }
         .gps-pin.offline { background-color: var(--offline); box-shadow: 0 0 0 3px rgba(100,116,139,0.22), 0 2px 8px rgba(0,0,0,0.5); }
+        .gps-pin.resolving { background-color: var(--accent); box-shadow: 0 0 0 3px rgba(51,199,244,0.3), 0 2px 8px rgba(0,0,0,0.5); }
         @keyframes pulse-marker {
             0% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0.55); }
             70% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 16px rgba(255,59,78,0); }
@@ -132,12 +133,14 @@
         .employee-card.st-warning { border-inline-start-color: var(--warning); }
         .employee-card.st-normal { border-inline-start-color: var(--normal); }
         .employee-card.st-offline { border-inline-start-color: var(--offline); opacity: 0.75; }
+        .employee-card.st-resolving { border-inline-start-color: var(--accent); }
 
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
         .status-dot.normal { background-color: var(--normal); box-shadow: 0 0 6px rgba(34,212,136,0.7); }
         .status-dot.warning { background-color: var(--warning); box-shadow: 0 0 6px rgba(245,166,35,0.7); }
         .status-dot.sos { background-color: var(--sos); box-shadow: 0 0 6px rgba(255,59,78,0.8); animation: ping-dot 1s infinite; }
         .status-dot.offline { background-color: var(--offline); }
+        .status-dot.resolving { background-color: var(--accent); box-shadow: 0 0 6px rgba(51,199,244,0.75); }
         @keyframes ping-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
         .badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: 0.3px; font-family: 'Cairo', sans-serif; }
@@ -145,6 +148,7 @@
         .badge.warning { background: var(--warning-soft); color: var(--warning); }
         .badge.sos { background: var(--sos); color: #1a0405; }
         .badge.offline { background: var(--offline-soft); color: var(--offline); }
+        .badge.resolving { background: var(--accent-soft); color: var(--accent); }
 
         .chip {
             font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
@@ -396,7 +400,12 @@
 
                 <div id="offlineNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--offline-soft); color: var(--offline);">
                     <i data-lucide="wifi-off" class="w-4 h-4 flex-shrink-0"></i>
-                    <span>لم يتم استلام تحديث من هذا الجهاز منذ أكثر من دقيقة</span>
+                    <span>لم يتم استلام تحديث من هذا الجهاز منذ أكثر من دقيقة ونصف</span>
+                </div>
+
+                <div id="resolvingNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--accent-soft); color: var(--accent);">
+                    <i data-lucide="clock" class="w-4 h-4 flex-shrink-0"></i>
+                    <span>تم إنهاء الحالة، لكن الجهاز لا يزال يرسل إشارة استغاثة — يرجى التأكد من إيقاف زر SOS يدوياً</span>
                 </div>
 
                 <!-- شبكة تفاصيل المؤشرات الحيوية المدمجة -->
@@ -440,11 +449,12 @@
     </div>
 
     <script>
-        const OFFLINE_THRESHOLD_MS = 60000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 60 ثانية
+        const OFFLINE_THRESHOLD_MS = 90000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 90 ثانية (تمت زيادتها لتقليل الفصل المتكرر بسبب تأخر الشبكة البسيط)
         let REFRESH_INTERVAL_MS = 15000;
         const SEARCH_DEBOUNCE_MS = 250;
         const HEART_HISTORY_LIMIT = 20;
         const ACTIVITY_LOG_LIMIT = 100;
+        const SOS_RESOLVE_GRACE_MS = 120000; // بعد إنهاء حالة الطوارئ، تُكتم إعادة الإنذار لمدة دقيقتين ريثما يُوقف الموظف زر SOS من جهازه فعلياً
 
         function safeParseFloat(val, defaultVal) {
             if (val === undefined || val === null || val === "") return defaultVal;
@@ -471,7 +481,8 @@
             heartHistory: {},
             previousStatuses: {},
             activityLog: [],
-            incidentsToday: 0
+            incidentsToday: 0,
+            resolvedSuppression: {}
         };
 
         const mapMarkers = {}; // { empId: { marker, circle, status } }
@@ -625,10 +636,31 @@
             return (Date.now() - ts) > OFFLINE_THRESHOLD_MS;
         }
 
+        function isSuppressed(emp) {
+            const resolvedAt = state.resolvedSuppression[emp.emp_id];
+            if (!resolvedAt) return false;
+            if ((Date.now() - resolvedAt) >= SOS_RESOLVE_GRACE_MS) {
+                delete state.resolvedSuppression[emp.emp_id];
+                return false;
+            }
+            return true;
+        }
+
         function effectiveStatus(emp) {
-            if (emp.status === 'SOS') return 'SOS';
+            if (emp.status === 'SOS') {
+                // إذا أُنهيت الحالة يدوياً قبل قليل ولا يزال الجهاز يرسل SOS (لم يُطفأ زر الاستغاثة فعلياً)،
+                // تُعرض كحالة "قيد التأكيد" بدل إعادة تفعيل الإنذار فوراً
+                return isSuppressed(emp) ? 'RESOLVING' : 'SOS';
+            }
             if (isDeviceOffline(emp)) return 'OFFLINE';
             return emp.status;
+        }
+
+        function matchesStatusFilter(emp, filter) {
+            if (filter === 'ALL') return true;
+            const status = effectiveStatus(emp);
+            if (filter === 'SOS') return status === 'SOS' || status === 'RESOLVING';
+            return status === filter;
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -735,7 +767,7 @@
                     if (status === 'SOS') {
                         state.incidentsToday += 1;
                         logEvent('sos', `استغاثة SOS: ${emp.emp_name} (#${emp.emp_id})`);
-                    } else if (prev === 'SOS') {
+                    } else if (prev === 'SOS' || prev === 'RESOLVING') {
                         logEvent('resolved', `تم إنهاء حالة الطوارئ: ${emp.emp_name} (#${emp.emp_id})`);
                     } else if (status === 'OFFLINE') {
                         logEvent('offline', `انقطع الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
@@ -833,12 +865,11 @@
                     emp.emp_id.toLowerCase().includes(state.searchQuery);
                 if (!matchesSearch) return false;
 
-                if (state.statusFilter === 'ALL') return true;
-                return effectiveStatus(emp) === state.statusFilter;
+                return matchesStatusFilter(emp, state.statusFilter);
             });
 
             state.filteredEmployees.sort((a, b) => {
-                const priority = { SOS: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
+                const priority = { SOS: 5, RESOLVING: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
                 return (priority[effectiveStatus(b)] || 0) - (priority[effectiveStatus(a)] || 0);
             });
 
@@ -863,7 +894,7 @@
                 card.setAttribute('data-id', emp.emp_id);
                 card.setAttribute('tabindex', '0');
 
-                const statusLabel = { SOS: 'SOS', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
+                const statusLabel = { SOS: 'SOS', RESOLVING: 'قيد التأكيد', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
                 const lowBattery = parseInt(emp.battery) < 15;
                 const spark = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 44, 14);
 
@@ -934,7 +965,8 @@
             const icon = document.querySelector('#insightBar i');
             const textEl = document.getElementById('insightText');
             const chip = document.getElementById('systemStatusChip');
-            const sosCount = state.employees.filter(e => e.status === 'SOS').length;
+            const sosCount = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e)).length;
+            const resolvingCount = state.employees.filter(e => effectiveStatus(e) === 'RESOLVING').length;
             const warningCount = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
             const offlineCount = state.employees.filter(e => effectiveStatus(e) === 'OFFLINE').length;
 
@@ -943,6 +975,11 @@
                 icon.setAttribute('data-lucide', 'siren');
                 icon.style.color = 'var(--sos)';
                 chip.className = 'badge sos'; chip.innerText = 'حالة طوارئ';
+            } else if (resolvingCount > 0) {
+                textEl.innerText = `تم إنهاء ${resolvingCount} حالة استغاثة، بانتظار إيقاف الجهاز الميداني يدوياً لتأكيد الإغلاق.`;
+                icon.setAttribute('data-lucide', 'clock');
+                icon.style.color = 'var(--accent)';
+                chip.className = 'badge resolving'; chip.innerText = 'قيد التأكيد';
             } else if (offlineCount > 0 && warningCount > 0) {
                 textEl.innerText = `${warningCount} تحذير حركة و ${offlineCount} جهاز غير متصل — يوصى بالمتابعة.`;
                 icon.setAttribute('data-lucide', 'alert-triangle');
@@ -971,12 +1008,12 @@
             document.getElementById('statTotal').innerText = state.employees.length;
             document.getElementById('statNormal').innerText = state.employees.filter(e => effectiveStatus(e) === 'NORMAL').length;
             document.getElementById('statWarning').innerText = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
-            document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS').length;
+            document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e)).length;
             document.getElementById('statIncidents').innerText = state.incidentsToday;
         }
 
         function updateHeaderPulse() {
-            const hasSos = state.employees.some(e => e.status === 'SOS');
+            const hasSos = state.employees.some(e => e.status === 'SOS' && !isSuppressed(e));
             document.getElementById('headerPulse').classList.toggle('sos', hasSos);
         }
 
@@ -1082,8 +1119,8 @@
 
         function buildPopupHTML(emp) {
             const status = effectiveStatus(emp);
-            const statusLabel = { SOS: 'طوارئ SOS', WARNING: 'تحذير حركة', NORMAL: 'مستقر', OFFLINE: 'غير متصل' }[status] || status;
-            const color = { SOS: 'var(--sos)', WARNING: 'var(--warning)', NORMAL: 'var(--normal)', OFFLINE: 'var(--offline)' }[status];
+            const statusLabel = { SOS: 'طوارئ SOS', RESOLVING: 'قيد التأكيد', WARNING: 'تحذير حركة', NORMAL: 'مستقر', OFFLINE: 'غير متصل' }[status] || status;
+            const color = { SOS: 'var(--sos)', RESOLVING: 'var(--accent)', WARNING: 'var(--warning)', NORMAL: 'var(--normal)', OFFLINE: 'var(--offline)' }[status];
 
             return `
                 <div dir="rtl" class="p-1 text-xs">
@@ -1157,12 +1194,13 @@
             const status = effectiveStatus(emp);
             document.getElementById('detailStatusDot').className = `status-dot ${status.toLowerCase()}`;
 
-            document.getElementById('responderBox').classList.toggle('hidden', emp.status !== 'SOS');
-            if (emp.status === 'SOS') {
+            document.getElementById('responderBox').classList.toggle('hidden', status !== 'SOS');
+            if (status === 'SOS') {
                 document.getElementById('detailResponder').innerText = emp.nearest_responder;
             }
 
             document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
+            document.getElementById('resolvingNotice').classList.toggle('hidden', status !== 'RESOLVING');
 
             const gpsInfoEl = document.getElementById('detailGpsInfo');
             const gpsInfo = buildGpsInfoHTML(emp).replace(/^<div[^>]*>|<\/div>$/g, '');
@@ -1203,7 +1241,7 @@
         }
 
         function checkSosAlerts() {
-            const sosEmployees = state.employees.filter(e => e.status === 'SOS');
+            const sosEmployees = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e));
             if (sosEmployees.length > 0) {
                 playAlarmSiren();
             } else {
@@ -1213,6 +1251,7 @@
 
         // إغلاق حالة الطوارئ وإرسال طلب GET
         async function resolveEmergencyRemote(empId) {
+            state.resolvedSuppression[empId] = Date.now();
             const emp = state.employees.find(e => e.emp_id === empId);
             if (emp) {
                 emp.status = 'NORMAL';
