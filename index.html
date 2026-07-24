@@ -445,6 +445,26 @@
                 </div>
 
                 <div id="detailGpsInfo" class="hidden mt-2 flex flex-wrap items-center gap-2"></div>
+
+                <div class="mt-3 pt-3 border-t" style="border-color: var(--border-soft);">
+                    <span class="block text-[10px] mb-1.5" style="color: var(--text-muted);">إرسال رسالة/أمر لجهاز الموظف</span>
+
+                    <div id="noTokenNotice" class="hidden mb-2 p-2 rounded-lg text-[11px] flex items-center gap-1.5" style="background: var(--offline-soft); color: var(--offline);">
+                        <i data-lucide="link-2-off" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                        <span>لا يوجد توكن جهاز مسجل بعد لهذا الموظف</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-1.5 mb-2" id="quickCommandChips">
+                        <button class="chip quick-cmd" data-command="ALERT" data-default-msg="تنبيه إداري من غرفة العمليات">تنبيه</button>
+                        <button class="chip quick-cmd" data-command="CHECK_IN" data-default-msg="يرجى تأكيد سلامتك الآن">تحقق من السلامة</button>
+                        <button class="chip quick-cmd" data-command="RECALL" data-default-msg="يرجى العودة فوراً لأقرب نقطة تجمع">استدعاء فوري</button>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <input type="text" id="messageTextInput" placeholder="نص الرسالة (اختياري)..." class="flex-1 rounded-lg px-2.5 py-1.5 text-[11px] outline-none border" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-primary);">
+                        <button id="sendMessageBtn" class="px-3 py-1.5 rounded-lg text-[11px] font-bold flex-shrink-0" style="background: var(--accent); color: #04222c;" type="button">إرسال</button>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -483,7 +503,8 @@
             previousStatuses: {},
             activityLog: [],
             incidentsToday: 0,
-            resolvedSuppression: {}
+            resolvedSuppression: {},
+            selectedCommand: 'ALERT'
         };
 
         const mapMarkers = {}; // { empId: { marker, circle, status } }
@@ -621,6 +642,17 @@
                 if (pts.length === 0) return;
                 map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
             });
+
+            document.getElementById('quickCommandChips').addEventListener('click', (e) => {
+                const btn = e.target.closest('.quick-cmd');
+                if (!btn) return;
+                document.querySelectorAll('.quick-cmd').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                state.selectedCommand = btn.getAttribute('data-command');
+                document.getElementById('messageTextInput').value = btn.getAttribute('data-default-msg') || '';
+            });
+
+            document.getElementById('sendMessageBtn').addEventListener('click', sendMessageToSelectedEmployee);
 
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') deselectEmployee();
@@ -819,7 +851,8 @@
                         nearest_responder: emp.nearest_responder || 'لا يوجد',
                         gps_accuracy: (emp.gps_accuracy !== undefined && emp.gps_accuracy !== null && emp.gps_accuracy !== '') ? safeParseFloat(emp.gps_accuracy, null) : null,
                         heading: (emp.heading !== undefined && emp.heading !== null && emp.heading !== '') ? safeParseFloat(emp.heading, null) : null,
-                        gps_status: emp.gps_status || 'مباشر'
+                        gps_status: emp.gps_status || 'مباشر',
+                        fcm_token: emp.fcm_token || ''
                     };
                 });
 
@@ -1214,6 +1247,47 @@
                 gpsInfoEl.classList.remove('hidden');
             } else {
                 gpsInfoEl.classList.add('hidden');
+            }
+
+            const hasToken = !!emp.fcm_token;
+            document.getElementById('noTokenNotice').classList.toggle('hidden', hasToken);
+            document.getElementById('sendMessageBtn').disabled = !hasToken;
+            document.getElementById('messageTextInput').disabled = !hasToken;
+            document.querySelectorAll('.quick-cmd').forEach(c => {
+                c.disabled = !hasToken;
+                c.classList.remove('active');
+            });
+            document.getElementById('messageTextInput').value = '';
+            state.selectedCommand = 'ALERT';
+        }
+
+        async function sendMessageToSelectedEmployee() {
+            const empId = state.selectedEmployeeId;
+            if (!empId) return;
+            const emp = state.employees.find(e => e.emp_id === empId);
+            if (!emp || !emp.fcm_token) return;
+
+            const command = state.selectedCommand || 'ALERT';
+            const message = document.getElementById('messageTextInput').value.trim();
+            const sendBtn = document.getElementById('sendMessageBtn');
+            sendBtn.disabled = true;
+            sendBtn.innerText = 'جارٍ الإرسال...';
+
+            try {
+                const url = `${state.apiUrl}?action=send_message&emp_id=${encodeURIComponent(empId)}&command=${encodeURIComponent(command)}&message=${encodeURIComponent(message)}`;
+                const response = await fetch(url);
+                const result = await response.json().catch(() => null);
+                if (!response.ok || (result && result.result === 'error')) {
+                    throw new Error((result && result.message) || `تعذر الإرسال: ${response.status}`);
+                }
+                document.getElementById('messageTextInput').value = '';
+                document.querySelectorAll('.quick-cmd').forEach(c => c.classList.remove('active'));
+            } catch (err) {
+                console.error('فشل إرسال الرسالة:', err);
+                alert('تعذر إرسال الرسالة. تحقق من الاتصال وحاول مرة أخرى.');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerText = 'إرسال';
             }
         }
 
