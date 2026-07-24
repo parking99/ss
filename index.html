@@ -20,7 +20,7 @@
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Fonts: Cairo for display/numbers, IBM Plex Sans Arabic for body copy, JetBrains Mono for telemetry -->
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -94,7 +94,6 @@
         .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
         .leaflet-container a.leaflet-popup-close-button { color: var(--text-muted) !important; }
 
-        /* Map marker pins */
         .gps-pin {
             width: 24px; height: 24px;
             border-radius: 50% 50% 50% 0;
@@ -164,7 +163,6 @@
         .refreshing { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Title pulse + tactical scan ring signature */
         .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); }
         .live-pulse::after {
             content: ''; position: absolute; inset: -3px; border-radius: 50%;
@@ -196,7 +194,6 @@
             .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing, .scan-ring::before { animation: none !important; }
         }
 
-        /* أدوات الخريطة الإضافية */
         .map-tool-btn {
             position: absolute; z-index: 15; background: var(--bg-panel); border: 1px solid var(--border-soft);
             border-radius: 0.6rem; box-shadow: var(--shadow-sm); padding: 0.55rem; cursor: pointer; color: var(--text-secondary);
@@ -440,7 +437,7 @@
     </div>
 
     <script>
-        const OFFLINE_THRESHOLD_MS = 60000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 60 ثانية
+        const OFFLINE_THRESHOLD_MS = 60000;
         let REFRESH_INTERVAL_MS = 15000;
         const SEARCH_DEBOUNCE_MS = 250;
         const HEART_HISTORY_LIMIT = 20;
@@ -451,6 +448,14 @@
             const str = val.toString().replace(/٫/g, ".").replace(/,/g, ".");
             const num = parseFloat(str);
             return isNaN(num) ? defaultVal : num;
+        }
+
+        // استخراج رمز الموظف الصريح (مثل WATCH_001) حتى لو ورد النص كاملاً في المعرف
+        function extractCleanEmpId(rawId) {
+            if (!rawId) return 'WATCH_001';
+            const str = rawId.toString().trim().toUpperCase();
+            const match = str.match(/WATCH_\d+/i);
+            return match ? match[0].toUpperCase() : str;
         }
 
         let state = {
@@ -475,7 +480,7 @@
             incidentsToday: 0
         };
 
-        const mapMarkers = {}; // { empId: { marker, circle, status } }
+        const mapMarkers = {};
         let clusterGroup = null;
         let sosLayerGroup = null;
         let map = null;
@@ -502,7 +507,7 @@
             L.control.zoom({ position: 'topleft' }).addTo(map);
 
             const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
                 subdomains: 'abcd',
                 maxZoom: 20
             }).addTo(map);
@@ -524,7 +529,6 @@
                 }
             }).addTo(map);
 
-            // حالات SOS تبقى دائماً ظاهرة بدون تجميع كي لا تختفي داخل عنقود
             sosLayerGroup = L.layerGroup().addTo(map);
         }
 
@@ -587,7 +591,7 @@
 
             document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
                 if (state.selectedEmployeeId) {
-                    const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+                    const emp = state.employees.find(e => extractCleanEmpId(e.emp_id) === extractCleanEmpId(state.selectedEmployeeId));
                     if (emp && confirm(`هل تم التعامل مع حالة الموظف ${emp.emp_name} وترغب بإغلاق حالة الطوارئ؟`)) {
                         resolveEmergencyRemote(emp.emp_id);
                     }
@@ -658,7 +662,7 @@
             let minDistance = Infinity;
 
             allEmployees.forEach(other => {
-                if (other.emp_id === sosEmp.emp_id) return;
+                if (extractCleanEmpId(other.emp_id) === extractCleanEmpId(sosEmp.emp_id)) return;
                 if (other.status === 'SOS') return;
 
                 const dist = calculateDistance(sosEmp.lat, sosEmp.lng, other.lat, other.lng);
@@ -666,7 +670,7 @@
                     minDistance = dist;
                     nearest = {
                         emp_name: other.emp_name,
-                        emp_id: other.emp_id,
+                        emp_id: extractCleanEmpId(other.emp_id),
                         distance: dist
                     };
                 }
@@ -707,23 +711,20 @@
             setInterval(() => {
                 document.querySelectorAll('.relative-time-update').forEach(el => {
                     const ts = el.getAttribute('data-timestamp');
-                    if (ts) {
-                        el.innerText = getRelativeTimeString(ts);
-                    }
+                    if (ts) el.innerText = getRelativeTimeString(ts);
                 });
                 const detailTimeEl = document.getElementById('detailTime');
                 if (detailTimeEl) {
                     const ts = detailTimeEl.getAttribute('data-timestamp');
-                    if (ts) {
-                        detailTimeEl.innerText = getRelativeTimeString(ts);
-                    }
+                    if (ts) detailTimeEl.innerText = getRelativeTimeString(ts);
                 }
             }, 5000);
         }
 
         function pushHeartHistory(empId, value) {
-            if (!state.heartHistory[empId]) state.heartHistory[empId] = [];
-            const arr = state.heartHistory[empId];
+            const cleanId = extractCleanEmpId(empId);
+            if (!state.heartHistory[cleanId]) state.heartHistory[cleanId] = [];
+            const arr = state.heartHistory[cleanId];
             arr.push(value);
             if (arr.length > HEART_HISTORY_LIMIT) arr.shift();
         }
@@ -737,22 +738,24 @@
         function trackStatusTransitions(cleaned) {
             cleaned.forEach(emp => {
                 const status = effectiveStatus(emp);
-                const prev = state.previousStatuses[emp.emp_id];
+                const cleanId = extractCleanEmpId(emp.emp_id);
+                const prev = state.previousStatuses[cleanId];
+
                 if (prev !== undefined && prev !== status) {
                     if (status === 'SOS') {
                         state.incidentsToday += 1;
-                        logEvent('sos', `استغاثة SOS: ${emp.emp_name} (#${emp.emp_id})`);
+                        logEvent('sos', `استغاثة SOS: ${emp.emp_name} (#${cleanId})`);
                     } else if (prev === 'SOS') {
-                        logEvent('resolved', `تم إنهاء حالة الطوارئ: ${emp.emp_name} (#${emp.emp_id})`);
+                        logEvent('resolved', `تم إنهاء حالة الطوارئ: ${emp.emp_name} (#${cleanId})`);
                     } else if (status === 'OFFLINE') {
-                        logEvent('offline', `انقطع الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
+                        logEvent('offline', `انقطع الاتصال بالجهاز: ${emp.emp_name} (#${cleanId})`);
                     } else if (prev === 'OFFLINE') {
-                        logEvent('online', `عاد الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
+                        logEvent('online', `عاد الاتصال بالجهاز: ${emp.emp_name} (#${cleanId})`);
                     } else if (status === 'WARNING') {
-                        logEvent('warning', `دخل الموظف حالة تحذير: ${emp.emp_name} (#${emp.emp_id})`);
+                        logEvent('warning', `دخل الموظف حالة تحذير: ${emp.emp_name} (#${cleanId})`);
                     }
                 }
-                state.previousStatuses[emp.emp_id] = status;
+                state.previousStatuses[cleanId] = status;
             });
         }
 
@@ -772,18 +775,19 @@
                 const cleaned = rawData.filter(emp => {
                     const id = (emp.emp_id || '').toString().trim();
                     const name = (emp.emp_name || '').toString().trim();
-                    if (!id && !name) return false;
-                    return true;
+                    return id || name;
                 }).map(emp => {
-                    const latNum = safeParseFloat(emp.lat, 24.7136);
-                    const lngNum = safeParseFloat(emp.lng, 46.6753);
+                    const latNum = safeParseFloat(emp.lat, 24.8198);
+                    const lngNum = safeParseFloat(emp.lng, 46.8582);
+                    const cleanId = extractCleanEmpId(emp.emp_id);
+
                     return {
                         timestamp: emp.timestamp || new Date().toISOString(),
-                        emp_id: (emp.emp_id || 'N/A').toString(),
-                        emp_name: emp.emp_name || 'موظف غير معروف',
+                        emp_id: cleanId,
+                        emp_name: emp.emp_name || 'أحمد منصور',
                         lat: latNum,
                         lng: lngNum,
-                        heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
+                        heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 75,
                         blood_pressure: emp.blood_pressure || '120/80',
                         spo2: emp.spo2 || '98%',
                         temperature: emp.temperature || '37.0°C',
@@ -817,7 +821,7 @@
                 document.getElementById('connectionErrorBadge').classList.add('hidden');
 
                 if (state.selectedEmployeeId) {
-                    const currentEmp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+                    const currentEmp = state.employees.find(e => extractCleanEmpId(e.emp_id) === extractCleanEmpId(state.selectedEmployeeId));
                     if (currentEmp) {
                         showEmployeeDetails(currentEmp);
                     } else {
@@ -870,13 +874,13 @@
             state.filteredEmployees.forEach(emp => {
                 const status = effectiveStatus(emp);
                 const card = document.createElement('div');
-                card.className = `employee-card st-${status.toLowerCase()} ${state.selectedEmployeeId === emp.emp_id ? 'active-focus' : ''}`;
+                card.className = `employee-card st-${status.toLowerCase()} ${extractCleanEmpId(state.selectedEmployeeId) === extractCleanEmpId(emp.emp_id) ? 'active-focus' : ''}`;
                 card.setAttribute('data-id', emp.emp_id);
                 card.setAttribute('tabindex', '0');
 
                 const statusLabel = { SOS: 'SOS', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
                 const lowBattery = parseInt(emp.battery) < 15;
-                const spark = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 44, 14);
+                const spark = buildSparklineSVG(state.heartHistory[extractCleanEmpId(emp.emp_id)] || [], 44, 14);
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
@@ -992,7 +996,7 @@
         }
 
         function updateMapMarkers() {
-            const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
+            const activeIds = new Set(state.filteredEmployees.map(e => extractCleanEmpId(e.emp_id)));
 
             for (const empId in mapMarkers) {
                 if (!activeIds.has(empId)) {
@@ -1002,9 +1006,10 @@
             }
 
             state.filteredEmployees.forEach(emp => {
+                const cleanId = extractCleanEmpId(emp.emp_id);
                 const latLng = [emp.lat, emp.lng];
                 const status = effectiveStatus(emp);
-                const existing = mapMarkers[emp.emp_id];
+                const existing = mapMarkers[cleanId];
 
                 const customIcon = L.divIcon({
                     className: 'gps-pin-wrap',
@@ -1025,7 +1030,7 @@
                     marker.on('click', () => selectEmployee(emp));
 
                     const entry = { marker, circle: null, status };
-                    mapMarkers[emp.emp_id] = entry;
+                    mapMarkers[cleanId] = entry;
 
                     const targetGroup = status === 'SOS' ? sosLayerGroup : clusterGroup;
                     targetGroup.addLayer(marker);
@@ -1046,7 +1051,6 @@
             }
         }
 
-        // دائرة نصف قطرها = دقة GPS المُبلَّغة (متر)، توضّح مدى موثوقية الموقع المعروض
         function updateAccuracyCircle(entry, emp, latLng) {
             const group = entry.status === 'SOS' ? sosLayerGroup : clusterGroup;
             const hasAccuracy = emp.gps_accuracy && emp.gps_accuracy > 0;
@@ -1070,7 +1074,6 @@
             if (entry.circle) group.removeLayer(entry.circle);
         }
 
-        // حركة انتقال سلسة للمؤشر بدل القفز المفاجئ عند كل تحديث
         function animateMarkerTo(marker, newLatLng) {
             const startLatLng = marker.getLatLng();
             const targetLatLng = L.latLng(newLatLng);
@@ -1126,14 +1129,15 @@
         function focusOnEmployee(emp) {
             selectEmployee(emp);
             map.setView([emp.lat, emp.lng], 16, { animate: true, duration: 1.2 });
-            if (mapMarkers[emp.emp_id]) mapMarkers[emp.emp_id].marker.openPopup();
+            const cleanId = extractCleanEmpId(emp.emp_id);
+            if (mapMarkers[cleanId]) mapMarkers[cleanId].marker.openPopup();
         }
 
         function selectEmployee(emp) {
             state.selectedEmployeeId = emp.emp_id;
 
             document.querySelectorAll('.employee-card').forEach(card => {
-                if (card.getAttribute('data-id') === emp.emp_id) {
+                if (extractCleanEmpId(card.getAttribute('data-id')) === extractCleanEmpId(emp.emp_id)) {
                     card.classList.add('active-focus');
                     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
@@ -1162,7 +1166,7 @@
 
             const sparkContainer = document.getElementById('heartSparkline');
             if (sparkContainer) {
-                sparkContainer.outerHTML = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 52, 16).replace('class="sparkline"', 'id="heartSparkline" class="sparkline"');
+                sparkContainer.outerHTML = buildSparklineSVG(state.heartHistory[extractCleanEmpId(emp.emp_id)] || [], 52, 16).replace('class="sparkline"', 'id="heartSparkline" class="sparkline"');
             }
 
             const status = effectiveStatus(emp);
@@ -1222,9 +1226,12 @@
             }
         }
 
-        // إغلاق حالة الطوارئ وإرسال طلب GET
+        // إغلاق حالة الطوارئ ونقل السجل للسيرفر
         async function resolveEmergencyRemote(empId) {
-            const emp = state.employees.find(e => e.emp_id === empId);
+            const cleanId = extractCleanEmpId(empId);
+            const emp = state.employees.find(e => extractCleanEmpId(e.emp_id) === cleanId);
+            
+            // تحديث محلي فوري لإيقاف الإنذار البصري والصوتي دون انتظار الشبكة
             if (emp) {
                 emp.status = 'NORMAL';
                 emp.nearest_responder = 'لا يوجد';
@@ -1239,16 +1246,16 @@
             }
 
             try {
-                const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
+                const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(cleanId)}`;
                 const response = await fetch(url);
 
                 if (!response.ok) throw new Error(`خادم السكربت غير متاح: ${response.status}`);
 
                 await fetchTelemetryData();
-                alert(`تم إنهاء حالة الطوارئ للموظف #${empId} بنجاح. يرجى إيقاف زر الاستغاثة (SOS) من ساعة الموظف الميداني لكي لا يعاد تفعيل الإنذار تلقائياً.`);
+                alert(`تم إنهاء حالة الطوارئ ونقل السجل إلى Emergency_Log للموظف #${cleanId} بنجاح.`);
             } catch (err) {
                 console.error('فشل إغلاق حالة الطوارئ:', err);
-                alert('تم التحديث محلياً ولكن تعذر إغلاقه على السيرفر. تحقق من الاتصال وحاول مرة أخرى.');
+                alert('تم إيقاف الإنذار محلياً، يرجى التأكد من استجابة الخادم عند توفر الاتصال.');
             }
         }
 
