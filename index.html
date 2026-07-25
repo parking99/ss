@@ -711,7 +711,8 @@ class Component extends DCLogic {
     if (!this.map) return;
     const want = this.state.showTraffic && this.state.trafficApiKey;
     if (want && !this.trafficLayer) {
-      this.trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${this.state.trafficApiKey}`, { maxZoom: 22, minZoom: 13, opacity: 0.95, zIndex: 5 });
+      this.trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${this.state.trafficApiKey}`, { maxZoom: 22, minZoom: 15, opacity: 0.85, zIndex: 5 });
+      this.trafficLayer.on('tileload', function (e) { e.tile.style.imageRendering = 'crisp-edges'; });
       this.trafficLayer.addTo(this.map);
     } else if (want && this.trafficLayer) {
       if (!this.map.hasLayer(this.trafficLayer)) this.trafficLayer.addTo(this.map);
