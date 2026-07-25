@@ -172,7 +172,7 @@
             </div>
 
             <div id="insightBar" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);font-size:11.5px;line-height:1.6;">
-                <i data-lucide="activity" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;color:var(--normal);"></i>
+                <i id="insightIcon" data-lucide="activity" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;color:var(--normal);"></i>
                 <span id="insightText" style="color:var(--text-secondary);">جاري تحليل الوضع الميداني...</span>
             </div>
 
@@ -866,7 +866,7 @@ function updateHeaderPulseAndInsight() {
 
   document.getElementById('headerPulse').classList.toggle('sos', statSos > 0);
 
-  const icon = document.querySelector('#insightBar i');
+  const icon = document.getElementById('insightIcon');
   const textEl = document.getElementById('insightText');
   const chip = document.getElementById('systemChip');
   let text, iconName, color, chipLabel, chipBg, chipFg;
