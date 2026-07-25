@@ -1,419 +1,550 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>   المركز الذكي</title>
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            --bg-void: #060911; --bg-page: #0A0F19; --bg-panel: #101827; --bg-subtle: #0B121E; --bg-elevated: #16202F;
-            --border-soft: #202C40; --border-strong: #2E3D56;
-            --text-primary: #EAF0FB; --text-secondary: #8291A8; --text-muted: #4F5E76;
-            --navy: #3E8EDE; --navy-soft: rgba(62,142,222,0.12);
-            --accent: #33C7F4; --accent-soft: rgba(51,199,244,0.12);
-            --normal: #22D488; --normal-soft: rgba(34,212,136,0.12);
-            --warning: #F5A623; --warning-soft: rgba(245,166,35,0.14);
-            --sos: #FF3B4E; --sos-soft: rgba(255,59,78,0.16);
-            --offline: #64748B; --offline-soft: rgba(100,116,139,0.14);
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.35); --shadow-md: 0 16px 40px rgba(0,0,0,0.55);
-        }
-        * { box-sizing: border-box; font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
-        .font-display { font-family: 'Cairo', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; direction: ltr; unicode-bidi: isolate; }
-        html, body { margin: 0; padding: 0; }
-        body {
-            background-color: var(--bg-void); color: var(--text-primary);
-            background-image: linear-gradient(var(--bg-page), var(--bg-page)),
-                repeating-linear-gradient(0deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px),
-                repeating-linear-gradient(90deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px);
-        }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-
-        #map { height: 100%; width: 100%; z-index: 1; background: var(--bg-subtle); }
-        .leaflet-control-zoom a { background-color: var(--bg-panel) !important; color: var(--text-primary) !important; border-color: var(--border-soft) !important; }
-        .leaflet-control-zoom a:hover { color: var(--accent) !important; }
-        .leaflet-control-layers { background-color: var(--bg-panel) !important; color: var(--text-primary) !important; border: 1px solid var(--border-soft) !important; box-shadow: var(--shadow-md) !important; }
-        .leaflet-control-layers-expanded { color: var(--text-primary) !important; }
-        .leaflet-popup-content-wrapper { background-color: var(--bg-elevated) !important; color: var(--text-primary) !important; border-radius: 0.75rem !important; border: 1px solid var(--border-soft); box-shadow: var(--shadow-md) !important; }
-        .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
-        .leaflet-container a.leaflet-popup-close-button { color: var(--text-muted) !important; }
-
-        @keyframes pulseMarker { 0% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0.55); } 70% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 16px rgba(255,59,78,0); } 100% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0); } }
-        @keyframes pingDot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-        @keyframes livePulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
-        @keyframes livePulseSos { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(3.2); opacity: 0; } }
-        @keyframes spinCw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); }
-        .live-pulse::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid rgba(34,212,136,0.55); animation: livePulse 2s ease-out infinite; }
-        .live-pulse.sos { background: var(--sos); }
-        .live-pulse.sos::after { border-color: rgba(255,59,78,0.65); animation: livePulseSos 1s ease-out infinite; }
-
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-        .badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: .3px; font-family: 'Cairo', sans-serif; }
-        .chip { font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-soft); background: var(--bg-panel); color: var(--text-secondary); cursor: pointer; transition: all .15s ease; white-space: nowrap; }
-        .chip:hover { border-color: var(--accent); color: var(--accent); }
-        .chip.active { background: var(--accent); color: #04222c; border-color: var(--accent); }
-        .chip:disabled, button:disabled { opacity: .4; cursor: not-allowed; }
-
-        .stab { flex: 1; text-align: center; font-size: 11px; font-weight: 600; padding: 8px 4px; border-radius: .6rem; border: 1px solid transparent; cursor: pointer; transition: all .15s ease; color: var(--text-secondary); background: var(--bg-subtle); }
-        .stab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-
-        .view-tab { padding: 9px 20px; border-radius: 10px 10px 0 0; border: 1px solid var(--border-soft); border-bottom: none; font-size: 13px; font-weight: 700; cursor: pointer; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
-        .view-tab.active { background: var(--bg-panel); color: var(--accent); }
-
-        .employee-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-inline-start: 3px solid var(--border-soft); border-radius: .7rem; padding: .8rem .9rem; cursor: pointer; transition: all .15s ease; }
-        .employee-card:hover { border-color: var(--accent); border-inline-start-color: var(--accent); background: var(--bg-elevated); }
-        .employee-card.active-focus { border-color: var(--accent); border-inline-start-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px rgba(51,199,244,.25); }
-
-        .map-tool-btn { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 9px; box-shadow: var(--shadow-sm); padding: 9px; cursor: pointer; color: var(--text-secondary); display: flex; transition: all .15s ease; }
-        .map-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .map-tool-btn.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-        .map-tool-btn.heat-on { border-color: var(--sos); background: var(--sos-soft); color: var(--sos); }
-
-        .sparkline { display: block; overflow: visible; }
-        .marker-cluster-custom { width: 38px; height: 38px; border-radius: 50%; background: rgba(16,24,39,.92); border: 2px solid var(--accent); box-shadow: 0 0 12px rgba(51,199,244,.35); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--accent); }
-
-        .an-card { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border-soft); background: var(--bg-panel); }
-        .fatigue-bar-wrap { flex: 1; height: 8px; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; }
-        .fatigue-bar-fill { height: 100%; border-radius: 999px; }
-        .log-entry { display: flex; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--border-soft); font-size: 11.5px; }
-        .log-entry:last-child { border-bottom: none; }
-        .log-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
-
-        input:focus-visible, button:focus-visible, .employee-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-        .hidden { display: none !important; }
-        @media (prefers-reduced-motion: reduce) { .live-pulse::after, .refreshing { animation: none !important; } }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
 </head>
-<body style="height:100vh;width:100%;display:flex;flex-direction:column;overflow:hidden;">
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #060911; }
+  body { font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
+  a { color: #33C7F4; }
+  a:hover { color: #6fdcff; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #2E3D56; border-radius: 999px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes pulseMarker { 0% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0.55); } 70% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 16px rgba(255,59,78,0); } 100% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0); } }
+  @keyframes pingDot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes livePulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
+  @keyframes livePulseSos { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(3.2); opacity: 0; } }
+  @keyframes scanSpin { to { transform: rotate(360deg); } }
+  @keyframes spinCw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes rainDrift { 0% { background-position: 0 0; } 100% { background-position: 0 200px; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  #map { height: 100%; width: 100%; z-index: 1; background: #0B121E; }
+  .leaflet-control-zoom a { background-color: #101827 !important; color: #EAF0FB !important; border-color: #202C40 !important; }
+  .leaflet-control-zoom a:hover { color: #33C7F4 !important; }
+  .leaflet-control-layers { background-color: #101827 !important; color: #EAF0FB !important; border: 1px solid #202C40 !important; box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important; }
+  .leaflet-control-layers-expanded { color: #EAF0FB !important; }
+  .leaflet-popup-content-wrapper { background-color: #16202F !important; color: #EAF0FB !important; border-radius: 0.75rem !important; border: 1px solid #202C40; box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important; }
+  .leaflet-popup-tip { background-color: #16202F !important; }
+  .leaflet-container a.leaflet-popup-close-button { color: #4F5E76 !important; }
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="height:100vh;width:100%;display:flex;flex-direction:column;overflow:hidden;background-color:#060911;background-image:linear-gradient(#0A0F19,#0A0F19),repeating-linear-gradient(0deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px),repeating-linear-gradient(90deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px);color:#EAF0FB;">
 
-    <!-- Header -->
-    <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
-        <div style="display:flex;align-items:center;gap:12px;">
-            <div style="padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--navy-soft);color:var(--navy);display:flex;">
-                <i data-lucide="shield-check" style="width:24px;height:24px;"></i>
+  <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #202C40;background:#101827;z-index:40;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="padding:10px;border-radius:12px;border:1px solid #202C40;background:rgba(62,142,222,0.12);color:#3E8EDE;display:flex;">
+        <i data-lucide="shield-check" style="width:24px;height:24px;"></i>
+      </div>
+      <div>
+        <h1 style="margin:0;font-family:'Cairo',sans-serif;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;color:#EAF0FB;">
+          <span style="position:relative;width:11px;height:11px;border-radius:50%;background:{{ hasSos }};display:inline-block;"></span>
+          مركز القيادة والمراقبة الأمنية الذكي
+        </h1>
+        <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;color:#8291A8;">
+          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;font-family:'Cairo',sans-serif;background:{{ systemChip.bg }};color:{{ systemChip.fg }};">{{ systemChip.label }}</span>
+          تتبع حي بالذكاء التحليلي · آخر تحديث
+          <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#EAF0FB;">{{ lastUpdateLabel }}</span>
+          <sc-if value="{{ connectionError }}">
+            <span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(255,59,78,0.16);color:#FF3B4E;">اتصال غير مستقر</span>
+          </sc-if>
+        </p>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;padding:7px 12px;border-radius:8px;border:1px solid #202C40;background:#0B121E;color:#33C7F4;">{{ clockLabel }}</div>
+
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:8px;border:1px solid #202C40;background:#0B121E;font-size:11px;">
+        <i data-lucide="link" style="width:14px;height:14px;color:#4F5E76;"></i>
+        <input type="password" value="{{ apiUrl }}" onChange="{{ onApiUrlChange }}" style="background:transparent;outline:none;border:none;width:200px;font-size:11px;color:#EAF0FB;" placeholder="رابط الـ API...">
+      </div>
+
+      <button onClick="{{ toggleMute }}" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid #202C40;background:#0B121E;color:#EAF0FB;font-size:11px;cursor:pointer;">
+        <i data-lucide="{{ muteIconName }}" style="width:15px;height:15px;color:{{ muteIconColor }};"></i>
+        <span>{{ muteLabel }}</span>
+      </button>
+
+      <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid #202C40;background:#0B121E;font-size:11px;cursor:pointer;">
+        <input type="checkbox" checked="{{ autoRefresh }}" onChange="{{ onToggleAutoRefresh }}" style="accent-color:#33C7F4;">
+        <span>تحديث كل:</span>
+        <select onChange="{{ onRefreshRateChange }}" style="background:transparent;border:none;font-weight:700;color:#EAF0FB;font-size:11px;cursor:pointer;">
+          <option value="3000">3 ثوانٍ</option>
+          <option value="10000">10 ثوانٍ</option>
+          <option value="15000" selected="selected">15 ثانية</option>
+          <option value="30000">30 ثانية</option>
+        </select>
+      </label>
+
+      <button onClick="{{ manualRefresh }}" style="padding:8px;border-radius:8px;border:1px solid #202C40;background:#0B121E;color:#8291A8;cursor:pointer;display:flex;">
+        <i data-lucide="rotate-cw" style="width:15px;height:15px;animation:{{ refreshSpin }};"></i>
+      </button>
+    </div>
+  </header>
+
+  <div style="display:flex;gap:10px;padding:10px 16px 0;">
+    <button onClick="{{ setViewMap }}" style="padding:9px 20px;border-radius:10px 10px 0 0;border:1px solid #202C40;border-bottom:none;font-size:13px;font-weight:700;cursor:pointer;background:{{ tabMapBg }};color:{{ tabMapFg }};display:flex;align-items:center;gap:6px;">
+      <i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية
+    </button>
+    <button onClick="{{ setViewAnalytics }}" style="padding:9px 20px;border-radius:10px 10px 0 0;border:1px solid #202C40;border-bottom:none;font-size:13px;font-weight:700;cursor:pointer;background:{{ tabAnalyticsBg }};color:{{ tabAnalyticsFg }};display:flex;align-items:center;gap:6px;">
+      <i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>التحليلات الذكية
+    </button>
+  </div>
+
+  <div style="flex:1;display:flex;overflow:hidden;padding:0 16px 16px;gap:12px;border-top:1px solid #202C40;background:#0A0F19;">
+
+    <aside style="width:340px;min-width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;padding-top:12px;">
+
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid #202C40;background:#101827;">
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">الكل</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#EAF0FB;">{{ statTotal }}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">طبيعي</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#22D488;">{{ statNormal }}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">تحذير</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#F5A623;">{{ statWarning }}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">SOS</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#FF3B4E;">{{ statSos }}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">خطر مرتفع</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#33C7F4;">{{ statRisk }}</span>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid #202C40;background:#101827;font-size:11.5px;line-height:1.6;">
+        <i data-lucide="{{ insightIcon }}" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;color:{{ insightColor }};"></i>
+        <span style="color:#8291A8;">{{ insightText }}</span>
+      </div>
+
+      <div style="position:relative;">
+        <i data-lucide="search" style="width:15px;height:15px;position:absolute;right:11px;top:10px;color:#4F5E76;"></i>
+        <input type="text" value="{{ searchQuery }}" onChange="{{ onSearchChange }}" placeholder="بحث بالاسم أو الرقم..." style="width:100%;border-radius:10px;padding:9px 36px 9px 12px;font-size:12px;outline:none;border:1px solid #202C40;background:#101827;color:#EAF0FB;">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px;overflow-x:auto;">
+        <sc-for list="{{ filterChips }}" as="chip" hint-placeholder-count="5">
+          <button onClick="{{ chip.onClick }}" style="font-size:11px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap;cursor:pointer;border:1px solid {{ chip.borderColor }};background:{{ chip.bg }};color:{{ chip.fg }};">{{ chip.label }}</button>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;gap:6px;">
+        <button onClick="{{ setSidebarList }}" style="flex:1;text-align:center;font-size:11px;font-weight:600;padding:8px 4px;border-radius:8px;cursor:pointer;border:1px solid {{ tabListBorder }};background:{{ tabListBg }};color:{{ tabListFg }};">
+          <i data-lucide="users" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-left:4px;"></i>الموظفون
+        </button>
+        <button onClick="{{ setSidebarLog }}" style="flex:1;text-align:center;font-size:11px;font-weight:600;padding:8px 4px;border-radius:8px;cursor:pointer;border:1px solid {{ tabLogBorder }};background:{{ tabLogBg }};color:{{ tabLogFg }};">
+          <i data-lucide="list-tree" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-left:4px;"></i>سجل الأحداث
+        </button>
+      </div>
+
+      <sc-if value="{{ sidebarListVisible }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
+        <sc-if value="{{ hasEmployees }}" hint-placeholder-val="{{ true }}">
+        <sc-for list="{{ employeeItems }}" as="item" hint-placeholder-count="6">
+          <div onClick="{{ item.onClick }}" tabindex="0" style="background:{{ item.cardBg }};border:1px solid {{ item.cardBorder }};border-inline-start:3px solid {{ item.accentColor }};border-radius:11px;padding:10px 12px;cursor:pointer;box-shadow:{{ item.cardShadow }};">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;">
+              <span style="font-weight:700;font-size:13px;color:#EAF0FB;">{{ item.name }}</span>
+              <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;font-family:'Cairo',sans-serif;background:{{ item.statusBg }};color:{{ item.statusFg }};">{{ item.statusLabel }}</span>
             </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#8291A8;">
+              <span style="font-family:'JetBrains Mono',monospace;">{{ item.heartRate }}</span>
+              <svg width="44" height="14" viewBox="0 0 44 14" style="overflow:visible;"><polyline points="{{ item.sparkPoints }}" fill="none" stroke="{{ item.sparkColor }}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+              <span style="font-family:'JetBrains Mono',monospace;color:{{ item.batteryColor }};">{{ item.battery }}</span>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+                <span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:#4F5E76;">#{{ item.id }}</span>
+                <span style="font-size:9px;font-weight:600;color:#4F5E76;">{{ item.relTime }}</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #202C40;">
+              <i data-lucide="brain-circuit" style="width:12px;height:12px;color:{{ item.riskColor }};"></i>
+              <span style="font-size:10px;color:{{ item.riskColor }};font-weight:600;">إرهاق تنبؤي: {{ item.fatigueScore }}% · {{ item.riskLabel }}</span>
+              <sc-if value="{{ item.geofenceOut }}">
+                <span style="margin-inline-start:auto;font-size:9px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(245,166,35,0.14);color:#F5A623;">خارج المنطقة</span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+        </sc-if>
+        <sc-if value="{{ noEmployees }}">
+          <div style="text-align:center;padding:40px 0;font-size:12px;color:#4F5E76;">لا يوجد نتائج تطابق البحث.</div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ sidebarLogVisible }}">
+      <div style="flex:1;overflow-y:auto;border-radius:12px;border:1px solid #202C40;background:#101827;padding:8px;">
+        <sc-if value="{{ hasLog }}">
+        <sc-for list="{{ logItems }}" as="entry" hint-placeholder-count="6">
+          <div style="display:flex;gap:8px;padding:8px 4px;border-bottom:1px solid #202C40;font-size:11.5px;">
+            <span style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:{{ entry.color }};"></span>
+            <div style="flex:1;">
+              <span style="color:#EAF0FB;">{{ entry.message }}</span>
+              <span style="display:block;font-size:10px;font-family:'JetBrains Mono',monospace;color:#4F5E76;">{{ entry.time }}</span>
+            </div>
+          </div>
+        </sc-for>
+        </sc-if>
+        <sc-if value="{{ noLog }}">
+          <div style="text-align:center;padding:40px 0;font-size:12px;color:#4F5E76;">لا توجد أحداث مسجلة بعد.</div>
+        </sc-if>
+      </div>
+      </sc-if>
+    </aside>
+
+    <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;padding-top:12px;overflow:hidden;">
+
+      <sc-if value="{{ isMapView }}" hint-placeholder-val="{{ true }}">
+      <div style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid #202C40;">
+        <div id="map"></div>
+
+        <div style="position:absolute;top:12px;left:12px;z-index:15;display:flex;flex-direction:column;gap:6px;">
+          <button onClick="{{ fitAll }}" style="background:#101827;border:1px solid #202C40;border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;color:#8291A8;display:flex;">
+            <i data-lucide="maximize" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleGeofence }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ geofenceBtnBorder }};background:{{ geofenceBtnBg }};color:{{ geofenceBtnFg }};display:flex;" title="طبقة المناطق الجغرافية">
+            <i data-lucide="shield" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleZonesPanel }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ zonesBtnBorder }};background:{{ zonesBtnBg }};color:{{ zonesBtnFg }};display:flex;" title="إدارة المناطق الأمنية">
+            <i data-lucide="map-pinned" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleWeather }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ weatherBtnBorder }};background:{{ weatherBtnBg }};color:{{ weatherBtnFg }};display:flex;" title="طبقة الطقس">
+            <i data-lucide="cloud-sun" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleHeat }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ heatBtnBorder }};background:{{ heatBtnBg }};color:{{ heatBtnFg }};display:flex;" title="طبقة كثافة الحوادث">
+            <i data-lucide="flame" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleTrails }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ trailBtnBorder }};background:{{ trailBtnBg }};color:{{ trailBtnFg }};display:flex;" title="مسار الموظف المحدد">
+            <i data-lucide="route" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleTraffic }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ trafficBtnBorder }};background:{{ trafficBtnBg }};color:{{ trafficBtnFg }};display:flex;" title="طبقة الازدحام المروري">
+            <i data-lucide="car-front" style="width:16px;height:16px;"></i>
+          </button>
+          <div style="height:1px;background:#202C40;margin:2px 0;"></div>
+          <button onClick="{{ toggleAllLayers }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ allLayersBtnBorder }};background:{{ allLayersBtnBg }};color:{{ allLayersBtnFg }};display:flex;" title="إظهار/إخفاء جميع طبقات الخريطة">
+            <i data-lucide="{{ allLayersIcon }}" style="width:16px;height:16px;"></i>
+          </button>
+        </div>
+
+        <sc-if value="{{ needsTrafficKey }}">
+        <div style="position:absolute;top:12px;left:60px;z-index:16;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(16,24,39,0.95);border:1px solid rgba(245,166,35,0.35);font-size:11px;">
+          <i data-lucide="key-round" style="width:14px;height:14px;color:#F5A623;flex-shrink:0;"></i>
+          <span style="color:#F5A623;">أدخل مفتاح TomTom Traffic API لعرض الازدحام:</span>
+          <input type="text" value="{{ trafficApiKey }}" onChange="{{ onTrafficKeyChange }}" placeholder="مفتاح API..." style="background:#0B121E;border:1px solid #202C40;border-radius:6px;color:#EAF0FB;font-size:11px;padding:4px 8px;width:160px;">
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showWeather }}">
+        <div style="position:absolute;top:12px;left:60px;z-index:15;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;background:rgba(16,24,39,0.92);border:1px solid #202C40;font-size:12px;">
+          <i data-lucide="{{ weatherIcon }}" style="width:16px;height:16px;color:#33C7F4;"></i>
+          <span style="font-family:'JetBrains Mono',monospace;color:#EAF0FB;font-weight:700;">{{ weatherTemp }}</span>
+          <span style="color:#8291A8;">{{ weatherLabel }}</span>
+          <span style="color:#4F5E76;">· رياح {{ weatherWind }}</span>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ zonesPanelVisible }}">
+        <div style="position:absolute;top:12px;right:12px;width:280px;max-height:calc(100% - 24px);overflow-y:auto;z-index:22;background:rgba(16,24,39,0.97);border:1px solid #202C40;border-radius:14px;padding:14px;box-shadow:0 16px 40px rgba(0,0,0,0.55);">
+          <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:8px;">إدارة المناطق الأمنية</span>
+          <button onClick="{{ startPickZone }}" style="width:100%;padding:8px;border-radius:9px;font-size:11px;font-weight:700;margin-bottom:10px;cursor:pointer;border:1px dashed #33C7F4;background:rgba(51,199,244,0.08);color:#33C7F4;">{{ pickZoneLabel }}</button>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+            <span style="font-size:10px;color:#8291A8;">نصف قطر المنطقة الجديدة (م):</span>
+            <input type="number" value="{{ newZoneRadius }}" onChange="{{ onNewZoneRadiusChange }}" style="width:70px;background:#0B121E;border:1px solid #202C40;border-radius:6px;color:#EAF0FB;font-size:11px;padding:3px 6px;">
+          </div>
+          <sc-if value="{{ hasZones }}">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ zoneItems }}" as="z" hint-placeholder-count="2">
+              <div style="padding:8px 9px;border-radius:9px;border:1px solid #202C40;background:#0B121E;">
+                <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                  <input type="text" value="{{ z.name }}" onChange="{{ z.onNameChange }}" style="flex:1;background:transparent;border:none;border-bottom:1px solid #202C40;color:#EAF0FB;font-size:11.5px;font-weight:700;padding:2px 0;outline:none;">
+                  <button onClick="{{ z.onDelete }}" style="border:none;background:transparent;color:#FF3B4E;cursor:pointer;display:flex;padding:2px;"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:10px;color:#4F5E76;">نصف القطر:</span>
+                  <input type="number" value="{{ z.radius }}" onChange="{{ z.onRadiusChange }}" style="width:70px;background:#101827;border:1px solid #202C40;border-radius:6px;color:#EAF0FB;font-size:11px;padding:3px 6px;">
+                  <span style="font-size:10px;color:#4F5E76;">م</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+          <sc-if value="{{ noZones }}"><span style="font-size:11px;color:#4F5E76;">لا توجد مناطق معرّفة بعد.</span></sc-if>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isRaining }}">
+        <div style="position:absolute;inset:0;z-index:10;pointer-events:none;background:linear-gradient(rgba(51,199,244,0.05),rgba(51,199,244,0.09));"></div>
+        </sc-if>
+
+        <sc-if value="{{ hasDetail }}">
+        <div style="position:absolute;bottom:16px;right:16px;width:380px;max-height:calc(100% - 32px);overflow-y:auto;backdrop-filter:blur(6px);border:1px solid #202C40;padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,0.97);box-shadow:0 16px 40px rgba(0,0,0,0.55);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:1px solid #202C40;padding-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:{{ detail.dotColor }};"></span>
+              <div>
+                <h3 style="margin:0;font-weight:700;font-size:15px;font-family:'Cairo',sans-serif;color:#EAF0FB;">{{ detail.name }}</h3>
+                <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#4F5E76;">#{{ detail.id }}</span>
+              </div>
+            </div>
+            <button onClick="{{ closeDetail }}" style="padding:4px;border-radius:8px;border:none;background:transparent;color:#4F5E76;cursor:pointer;display:flex;"><i data-lucide="x" style="width:15px;height:15px;"></i></button>
+          </div>
+
+          <sc-if value="{{ detail.isSos }}">
+          <div style="margin-bottom:12px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:10px;font-size:12px;background:rgba(255,59,78,0.16);border:1px solid rgba(255,59,78,0.4);color:#FF3B4E;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="position:relative;flex-shrink:0;"><i data-lucide="ambulance" style="width:20px;height:20px;"></i></span>
+              <div style="flex:1;">
+                <span style="display:block;font-size:10px;color:#FF9AA5;">أقرب مستجيب طوارئ (توصية ذكية بحسب المسافة):</span>
+                <strong style="display:block;margin-top:2px;font-size:13px;color:#EAF0FB;">{{ detail.responder }}</strong>
+                <span style="display:block;margin-top:2px;font-size:10.5px;color:#FF9AA5;">وقت وصول متوقع: {{ detail.responderEta }}</span>
+              </div>
+            </div>
+            <button onClick="{{ resolveEmergency }}" style="width:100%;font-weight:700;padding:9px 12px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;background:#22D488;color:#04241a;">
+              <i data-lucide="check-circle" style="width:15px;height:15px;"></i><span>إنهاء حالة الطوارئ</span>
+            </button>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ detail.isOffline }}">
+          <div style="margin-bottom:12px;padding:10px;border-radius:12px;font-size:11.5px;display:flex;align-items:center;gap:8px;background:rgba(100,116,139,0.14);color:#64748B;">
+            <i data-lucide="wifi-off" style="width:15px;height:15px;flex-shrink:0;"></i><span>لم يتم استلام تحديث منذ أكثر من دقيقة ونصف</span>
+          </div>
+          </sc-if>
+
+          <div style="margin-bottom:12px;padding:10px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;background:rgba(51,199,244,0.08);border:1px solid rgba(51,199,244,0.25);">
+            <i data-lucide="brain-circuit" style="width:18px;height:18px;flex-shrink:0;color:#33C7F4;"></i>
+            <div style="flex:1;">
+              <span style="display:block;font-size:10px;color:#4F5E76;">مؤشر الإرهاق التنبؤي بالذكاء التحليلي</span>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+                <div style="flex:1;height:6px;border-radius:999px;background:#0B121E;overflow:hidden;">
+                  <div style="height:100%;border-radius:999px;width:{{ detail.fatigueScore }}%;background:{{ detail.fatigueColor }};"></div>
+                </div>
+                <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;color:{{ detail.fatigueColor }};">{{ detail.fatigueScore }}%</span>
+              </div>
+              <span style="display:block;font-size:10.5px;margin-top:3px;color:{{ detail.fatigueColor }};">{{ detail.fatigueReason }}</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;">
+              <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;color:#4F5E76;">النبض</span><svg width="52" height="16" style="display:block;"><polyline points="{{ detail.sparkPoints }}" fill="none" stroke="#33C7F4" stroke-width="1.5"></polyline></svg></div>
+              <span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#22D488;">{{ detail.heartRate }}</span>
+            </div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">ضغط الدم</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#F5A623;">{{ detail.bp }}</span></div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">الأكسجين SpO2</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#33C7F4;">{{ detail.spo2 }}</span></div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">الحرارة</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#FF3B4E;">{{ detail.temp }}</span></div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">الخطوات</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#EAF0FB;">{{ detail.steps }}</span></div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">البطارية</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#EAF0FB;">{{ detail.battery }}</span></div>
+            <div style="grid-column:span 2;padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">آخر تحديث</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#EAF0FB;">{{ detail.relTime }}</span></div>
+          </div>
+
+          <sc-if value="{{ detail.geofenceOut }}">
+          <div style="margin-top:10px;padding:8px 10px;border-radius:10px;font-size:11px;display:flex;align-items:center;gap:8px;background:rgba(245,166,35,0.14);color:#F5A623;">
+            <i data-lucide="map-pin-off" style="width:14px;height:14px;flex-shrink:0;"></i><span>الموظف حالياً خارج نطاق المنطقة المخصصة له</span>
+          </div>
+          </sc-if>
+
+          <div style="margin-top:10px;padding:9px 10px;border-radius:10px;border:1px solid #202C40;background:#0B121E;">
+            <span style="display:block;font-size:10px;color:#4F5E76;margin-bottom:5px;">المنطقة الأمنية المخصصة لهذا الموظف</span>
+            <select value="{{ detail.assignedZoneId }}" onChange="{{ detail.onZoneAssign }}" style="width:100%;background:#101827;border:1px solid #202C40;border-radius:8px;color:#EAF0FB;font-size:11.5px;padding:6px 8px;">
+              <option value="">أي منطقة معرّفة (افتراضي)</option>
+              <sc-for list="{{ detail.zoneOptions }}" as="zo" hint-placeholder-count="2">
+                <option value="{{ zo.id }}">{{ zo.name }}</option>
+              </sc-for>
+            </select>
+          </div>
+
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid #202C40;">
+            <span style="display:block;font-size:10px;margin-bottom:6px;color:#4F5E76;">إرسال أمر لجهاز الموظف</span>
+            <sc-if value="{{ detail.noToken }}">
+            <div style="margin-bottom:8px;padding:8px;border-radius:9px;font-size:11px;display:flex;align-items:center;gap:6px;background:rgba(100,116,139,0.14);color:#64748B;">
+              <i data-lucide="link-2-off" style="width:13px;height:13px;flex-shrink:0;"></i><span>لا يوجد توكن جهاز مسجل لهذا الموظف</span>
+            </div>
+            </sc-if>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
+              <button onClick="{{ setCmdAlert }}" disabled="{{ detail.noToken }}" style="font-size:11px;font-weight:600;padding:7px 6px;border-radius:9px;cursor:pointer;border:1px solid {{ cmdAlertBorder }};background:{{ cmdAlertBg }};color:{{ cmdAlertFg }};">تنبيه</button>
+              <button onClick="{{ setCmdCheck }}" disabled="{{ detail.noToken }}" style="font-size:11px;font-weight:600;padding:7px 6px;border-radius:9px;cursor:pointer;border:1px solid {{ cmdCheckBorder }};background:{{ cmdCheckBg }};color:{{ cmdCheckFg }};">تحقق سلامة</button>
+              <button onClick="{{ setCmdRecall }}" disabled="{{ detail.noToken }}" style="font-size:11px;font-weight:600;padding:7px 6px;border-radius:9px;cursor:pointer;border:1px solid {{ cmdRecallBorder }};background:{{ cmdRecallBg }};color:{{ cmdRecallFg }};">استدعاء</button>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <input type="text" value="{{ messageText }}" onChange="{{ onMessageChange }}" disabled="{{ detail.noToken }}" placeholder="نص الرسالة (اختياري)..." style="flex:1;border-radius:8px;padding:7px 10px;font-size:11px;outline:none;border:1px solid #202C40;background:#0B121E;color:#EAF0FB;">
+              <button onClick="{{ sendMessage }}" disabled="{{ detail.noToken }}" style="padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:#33C7F4;color:#04222c;flex-shrink:0;">{{ sendBtnLabel }}</button>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isAnalyticsView }}">
+      <div style="flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:4px 2px 12px;">
+
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:stretch;">
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(51,199,244,0.25);background:linear-gradient(135deg, rgba(51,199,244,0.1), rgba(16,24,39,0.4));display:flex;gap:12px;align-items:flex-start;">
+            <i data-lucide="sparkles" style="width:20px;height:20px;flex-shrink:0;color:#33C7F4;margin-top:2px;"></i>
             <div>
-                <h1 class="font-display" style="margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
-                    <span id="headerPulse" class="live-pulse"></span>
-                    مركز القيادة والمراقبة الأمنية الذكي
-                </h1>
-                <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--text-secondary);">
-                    <span id="systemChip" class="badge normal">تشغيل طبيعي</span>
-                    تتبع حي بالذكاء التحليلي · آخر تحديث
-                    <span id="lastUpdateTime" class="font-mono" style="font-weight:700;color:var(--text-primary);">--:--:--</span>
-                    <span id="connectionErrorBadge" class="hidden" style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:var(--sos-soft);color:var(--sos);">اتصال غير مستقر</span>
-                </p>
+              <span style="display:block;font-size:11px;font-weight:700;color:#33C7F4;margin-bottom:4px;">الملخص الذكي لوضع الفريق الميداني</span>
+              <span style="font-size:13px;line-height:1.8;color:#EAF0FB;">{{ aiSummary }}</span>
             </div>
+          </div>
+          <div style="padding:12px 18px;border-radius:14px;border:1px solid #202C40;background:#101827;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;">
+            <span style="font-size:10px;color:#4F5E76;margin-bottom:4px;">مؤشر استقرار الفريق</span>
+            <span style="font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:{{ stabilityColor }};">{{ stability }}</span>
+            <span style="font-size:10px;font-weight:700;color:{{ stabilityColor }};">{{ stabilityLabel }}</span>
+          </div>
+          <div style="padding:12px 18px;border-radius:14px;border:1px solid #202C40;background:#101827;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;">
+            <span style="font-size:10px;color:#4F5E76;margin-bottom:4px;">تنبؤ النبض القادم</span>
+            <i data-lucide="{{ forecastArrow }}" style="width:20px;height:20px;color:{{ forecastColor }};"></i>
+            <span style="font-size:11px;font-weight:700;color:{{ forecastColor }};margin-top:2px;">{{ forecastDir }} {{ forecastPct }}%</span>
+          </div>
         </div>
 
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <div id="liveClock" class="font-mono" style="font-size:14px;font-weight:700;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--accent);">--:--:--</div>
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:12px;">
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">اتجاه متوسط النبض للفريق (آخر التحديثات)</span>
+            <svg width="100%" height="120" viewBox="0 0 480 120" preserveAspectRatio="none" style="display:block;">
+              <line x1="0" y1="30" x2="480" y2="30" stroke="#202C40" stroke-width="1"></line>
+              <line x1="0" y1="60" x2="480" y2="60" stroke="#202C40" stroke-width="1"></line>
+              <line x1="0" y1="90" x2="480" y2="90" stroke="#202C40" stroke-width="1"></line>
+              <path d="{{ trendAreaPath }}" fill="rgba(51,199,244,0.15)" stroke="none"></path>
+              <path d="{{ trendLinePath }}" fill="none" stroke="#33C7F4" stroke-width="2"></path>
+            </svg>
+          </div>
 
-            <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);font-size:11px;">
-                <i data-lucide="link" style="width:14px;height:14px;color:var(--text-muted);"></i>
-                <input type="password" id="apiUrlInput" style="background:transparent;outline:none;border:none;width:200px;font-size:11px;color:var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbyU6-3zlytVBxthPtVQU3qlMsZuksauuMqtPUF32pMvKM18fCqoxLg9q6hyH1qgSw/exec">
-                <button id="toggleUrlVisibilityBtn" type="button" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;display:flex;"><i data-lucide="eye" style="width:14px;height:14px;"></i></button>
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;display:flex;flex-direction:column;align-items:center;">
+            <span style="align-self:flex-start;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:6px;">توزيع الحالات الحالي</span>
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <sc-for list="{{ donutSegments }}" as="seg" hint-placeholder-count="4">
+                <circle cx="70" cy="70" r="54" fill="none" stroke="{{ seg.color }}" stroke-width="18" stroke-dasharray="{{ seg.dash }}" stroke-dashoffset="{{ seg.offset }}" transform="rotate(-90 70 70)"></circle>
+              </sc-for>
+              <text x="70" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="#EAF0FB" font-family="JetBrains Mono, monospace">{{ statTotal }}</text>
+              <text x="70" y="84" text-anchor="middle" font-size="10" fill="#8291A8" font-family="Cairo, sans-serif">إجمالي</text>
+            </svg>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;">
+              <sc-for list="{{ donutLegend }}" as="leg" hint-placeholder-count="4">
+                <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#8291A8;"><span style="width:8px;height:8px;border-radius:50%;background:{{ leg.color }};"></span>{{ leg.label }} ({{ leg.count }})</span>
+              </sc-for>
             </div>
-
-            <button id="muteAlarmBtn" type="button" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-primary);font-size:11px;cursor:pointer;">
-                <i id="muteIcon" data-lucide="volume-2" style="width:15px;height:15px;color:var(--normal);"></i>
-                <span id="muteText">التنبيه الصوتي نشط</span>
-            </button>
-
-            <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);font-size:11px;cursor:pointer;">
-                <input type="checkbox" id="autoRefreshToggle" checked style="accent-color:var(--accent);">
-                <span>تحديث كل:</span>
-                <select id="refreshRateSelect" style="background:transparent;border:none;font-weight:700;color:var(--text-primary);font-size:11px;cursor:pointer;">
-                    <option value="3000" style="color:#000;">3 ثوانٍ</option>
-                    <option value="10000" style="color:#000;">10 ثوانٍ</option>
-                    <option value="15000" style="color:#000;" selected>15 ثانية</option>
-                    <option value="30000" style="color:#000;">30 ثانية</option>
-                </select>
-            </label>
-
-            <button id="manualRefreshBtn" type="button" style="padding:8px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;display:flex;">
-                <i id="refreshIndicator" data-lucide="rotate-cw" style="width:15px;height:15px;"></i>
-            </button>
+          </div>
         </div>
-    </header>
 
-    <!-- View tabs -->
-    <div style="display:flex;gap:10px;padding:10px 16px 0;">
-        <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية</button>
-        <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>التحليلات الذكية</button>
-    </div>
-
-    <div style="flex:1;display:flex;overflow:hidden;padding:0 16px 16px;gap:12px;border-top:1px solid var(--border-soft);background:var(--bg-page);">
-
-        <!-- Sidebar -->
-        <aside style="width:340px;min-width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;padding-top:12px;">
-
-            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);">
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono" style="font-weight:800;font-size:14px;color:var(--text-primary);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">طبيعي</span><span id="statNormal" class="font-mono" style="font-weight:800;font-size:14px;color:var(--normal);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">تحذير</span><span id="statWarning" class="font-mono" style="font-weight:800;font-size:14px;color:var(--warning);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">SOS</span><span id="statSos" class="font-mono" style="font-weight:800;font-size:14px;color:var(--sos);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">خطر مرتفع</span><span id="statRisk" class="font-mono" style="font-weight:800;font-size:14px;color:var(--accent);">0</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">حوادث الاستغاثة خلال آخر 6 ساعات</span>
+            <div style="display:flex;align-items:flex-end;gap:10px;height:90px;">
+              <sc-for list="{{ hourBuckets }}" as="b" hint-placeholder-count="6">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:#8291A8;">{{ b.count }}</span>
+                  <div style="width:100%;border-radius:5px 5px 0 0;background:#FF3B4E;height:{{ b.heightPx }}px;min-height:2px;"></div>
+                  <span style="font-size:9px;color:#4F5E76;">{{ b.label }}</span>
+                </div>
+              </sc-for>
             </div>
+          </div>
 
-            <div id="insightBar" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);font-size:11.5px;line-height:1.6;">
-                <i id="insightIcon" data-lucide="activity" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;color:var(--normal);"></i>
-                <span id="insightText" style="color:var(--text-secondary);">جاري تحليل الوضع الميداني...</span>
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">لوحة صدارة الإرهاق التنبؤي</span>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <sc-if value="{{ hasFatigueBoard }}">
+              <sc-for list="{{ fatigueBoard }}" as="f" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
+                  <span style="width:90px;flex-shrink:0;color:#EAF0FB;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ f.name }}</span>
+                  <div style="flex:1;height:8px;border-radius:999px;background:#0B121E;overflow:hidden;"><div style="height:100%;width:{{ f.score }}%;background:{{ f.color }};border-radius:999px;"></div></div>
+                  <span style="width:34px;text-align:left;font-family:'JetBrains Mono',monospace;font-weight:700;color:{{ f.color }};">{{ f.score }}%</span>
+                </div>
+              </sc-for>
+              </sc-if>
+              <sc-if value="{{ noFatigueBoard }}"><span style="font-size:11px;color:#4F5E76;">لا توجد بيانات كافية بعد.</span></sc-if>
             </div>
+          </div>
+        </div>
 
-            <div style="position:relative;">
-                <i data-lucide="search" style="width:15px;height:15px;position:absolute;right:11px;top:10px;color:var(--text-muted);"></i>
-                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." style="width:100%;border-radius:10px;padding:9px 36px 9px 12px;font-size:12px;outline:none;border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-primary);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">كشف الانحرافات الحيوية الشاذة (تحليل z-score)</span>
+            <sc-if value="{{ hasAnomalies }}">
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <sc-for list="{{ anomalies }}" as="an" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;padding:7px 9px;border-radius:9px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);">
+                  <i data-lucide="waves" style="width:14px;height:14px;flex-shrink:0;color:#F5A623;"></i>
+                  <span style="color:#EAF0FB;font-weight:600;">{{ an.name }}</span><span style="color:#F5A623;">{{ an.text }}</span>
+                </div>
+              </sc-for>
             </div>
+            </sc-if>
+            <sc-if value="{{ noAnomalies }}"><span style="font-size:11px;color:#4F5E76;">لا توجد انحرافات غير معتادة حالياً في المؤشرات الحيوية.</span></sc-if>
+          </div>
 
-            <div id="filterChips" style="display:flex;align-items:center;gap:6px;overflow-x:auto;">
-                <button class="chip active" data-filter="ALL">الكل</button>
-                <button class="chip" data-filter="SOS">SOS</button>
-                <button class="chip" data-filter="WARNING">تحذير</button>
-                <button class="chip" data-filter="NORMAL">طبيعي</button>
-                <button class="chip" data-filter="OFFLINE">غير متصل</button>
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">توصيات إجراءات فورية</span>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <sc-for list="{{ recommendations }}" as="rec" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;padding:7px 9px;">
+                  <i data-lucide="{{ rec.icon }}" style="width:14px;height:14px;flex-shrink:0;color:{{ rec.color }};"></i>
+                  <span style="color:#EAF0FB;">{{ rec.text }}</span>
+                </div>
+              </sc-for>
             </div>
+          </div>
+        </div>
 
-            <div id="sidebarTabs" style="display:flex;gap:6px;">
-                <button class="stab active" data-tab="list"><i data-lucide="users" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-left:4px;"></i>الموظفون</button>
-                <button class="stab" data-tab="log"><i data-lucide="list-tree" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-left:4px;"></i>سجل الأحداث</button>
-            </div>
-
-            <div id="employeeList" style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
-                <div style="text-align:center;padding:40px 0;font-size:12px;color:var(--text-muted);">جاري جلب بيانات الموظفين...</div>
-            </div>
-            <div id="activityLogPanel" class="hidden" style="flex:1;overflow-y:auto;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);padding:8px;">
-                <div style="text-align:center;padding:40px 0;font-size:12px;color:var(--text-muted);">لا توجد أحداث مسجلة بعد.</div>
-            </div>
-        </aside>
-
-        <!-- Main -->
-        <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;padding-top:12px;overflow:hidden;">
-
-            <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft);">
-                <div id="map"></div>
-
-                <div style="position:absolute;top:12px;left:12px;z-index:15;display:flex;flex-direction:column;gap:6px;">
-                    <button id="fitAllBtn" class="map-tool-btn" type="button" title="تكبير لعرض جميع الموظفين"><i data-lucide="maximize" style="width:16px;height:16px;"></i></button>
-                    <button id="toggleGeofenceBtn" class="map-tool-btn on" type="button" title="طبقة المناطق الجغرافية"><i data-lucide="shield" style="width:16px;height:16px;"></i></button>
-                    <button id="toggleZonesBtn" class="map-tool-btn" type="button" title="إدارة المناطق الأمنية"><i data-lucide="map-pinned" style="width:16px;height:16px;"></i></button>
-                    <button id="toggleWeatherBtn" class="map-tool-btn on" type="button" title="طبقة الطقس"><i data-lucide="cloud-sun" style="width:16px;height:16px;"></i></button>
-                    <button id="toggleHeatBtn" class="map-tool-btn heat-on" type="button" title="طبقة كثافة الحوادث"><i data-lucide="flame" style="width:16px;height:16px;"></i></button>
-                    <button id="toggleTrailsBtn" class="map-tool-btn on" type="button" title="مسار الموظف المحدد"><i data-lucide="route" style="width:16px;height:16px;"></i></button>
-                    <button id="toggleTrafficBtn" class="map-tool-btn" type="button" title="طبقة الازدحام المروري"><i data-lucide="car-front" style="width:16px;height:16px;"></i></button>
-                    <div style="height:1px;background:var(--border-soft);margin:2px 0;"></div>
-                    <button id="toggleAllLayersBtn" class="map-tool-btn" type="button" title="إظهار/إخفاء جميع طبقات الخريطة"><i id="allLayersIcon" data-lucide="eye" style="width:16px;height:16px;"></i></button>
+        <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+          <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">توصيات الاستجابة الذكية للحالات عالية الخطورة</span>
+          <sc-if value="{{ hasRiskList }}">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ riskList }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;border:1px solid {{ r.borderColor }};background:{{ r.bg }};">
+                <i data-lucide="alert-octagon" style="width:16px;height:16px;flex-shrink:0;color:{{ r.color }};"></i>
+                <div style="flex:1;">
+                  <span style="font-size:12px;font-weight:700;color:#EAF0FB;">{{ r.name }}</span>
+                  <span style="display:block;font-size:11px;color:{{ r.color }};">{{ r.reason }}</span>
                 </div>
+                <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ r.badgeBg }};color:{{ r.color }};flex-shrink:0;">{{ r.level }}</span>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+          <sc-if value="{{ noRiskList }}"><span style="font-size:11px;color:#4F5E76;">لا توجد حالات مصنّفة كخطر مرتفع حالياً — الوضع مستقر.</span></sc-if>
+        </div>
 
-                <div id="trafficKeyPrompt" class="hidden" style="position:absolute;top:12px;left:60px;z-index:16;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(16,24,39,.95);border:1px solid rgba(245,166,35,.35);font-size:11px;">
-                    <i data-lucide="key-round" style="width:14px;height:14px;color:var(--warning);flex-shrink:0;"></i>
-                    <span style="color:var(--warning);">أدخل مفتاح TomTom Traffic API لعرض الازدحام:</span>
-                    <input type="text" id="trafficApiKeyInput" placeholder="مفتاح API..." style="background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:6px;color:var(--text-primary);font-size:11px;padding:4px 8px;width:160px;">
-                </div>
+      </div>
+      </sc-if>
+    </main>
+  </div>
+</div>
 
-                <div id="zonesPanel" class="hidden" style="position:absolute;top:12px;right:12px;width:280px;max-height:calc(100% - 24px);overflow-y:auto;z-index:22;background:rgba(16,24,39,.97);border:1px solid var(--border-soft);border-radius:14px;padding:14px;box-shadow:var(--shadow-md);">
-                    <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px;">إدارة المناطق الأمنية</span>
-                    <button id="startPickZoneBtn" type="button" style="width:100%;padding:8px;border-radius:9px;font-size:11px;font-weight:700;margin-bottom:10px;cursor:pointer;border:1px dashed var(--accent);background:var(--accent-soft);color:var(--accent);">+ إضافة منطقة جديدة (بالنقر على الخريطة)</button>
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-                        <span style="font-size:10px;color:var(--text-secondary);">نصف قطر المنطقة الجديدة (م):</span>
-                        <input type="number" id="newZoneRadiusInput" value="3000" style="width:70px;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:6px;color:var(--text-primary);font-size:11px;padding:3px 6px;">
-                    </div>
-                    <div id="zonesList" style="display:flex;flex-direction:column;gap:8px;"></div>
-                </div>
-
-
-                <div id="weatherWidget" class="hidden" style="position:absolute;top:12px;left:60px;z-index:15;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;background:rgba(16,24,39,.92);border:1px solid var(--border-soft);font-size:12px;">
-                    <i id="weatherIcon" data-lucide="cloud" style="width:16px;height:16px;color:var(--accent);"></i>
-                    <span id="weatherTemp" class="font-mono" style="color:var(--text-primary);font-weight:700;">--</span>
-                    <span id="weatherLabel" style="color:var(--text-secondary);">--</span>
-                    <span id="weatherWind" style="color:var(--text-muted);">--</span>
-                </div>
-                <div id="rainOverlay" class="hidden" style="position:absolute;inset:0;z-index:10;pointer-events:none;background:linear-gradient(rgba(51,199,244,0.05),rgba(51,199,244,0.09));"></div>
-
-                <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:380px;max-height:calc(100% - 32px);overflow-y:auto;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,.97);box-shadow:var(--shadow-md);">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:1px solid var(--border-soft);padding-bottom:8px;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span id="detailStatusDot" class="status-dot" style="background:var(--normal);"></span>
-                            <div><h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:15px;color:var(--text-primary);">—</h3><span id="detailId" class="font-mono" style="font-size:11px;color:var(--text-muted);">#—</span></div>
-                        </div>
-                        <button id="closeDetailBtn" type="button" style="padding:4px;border-radius:8px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;display:flex;"><i data-lucide="x" style="width:15px;height:15px;"></i></button>
-                    </div>
-
-                    <div id="responderBox" class="hidden" style="margin-bottom:12px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:10px;font-size:12px;background:var(--sos-soft);border:1px solid rgba(255,59,78,.4);color:var(--sos);">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <i data-lucide="ambulance" style="width:20px;height:20px;flex-shrink:0;"></i>
-                            <div style="flex:1;">
-                                <span style="display:block;font-size:10px;color:#FF9AA5;">أقرب مستجيب طوارئ (توصية ذكية بحسب المسافة):</span>
-                                <strong id="detailResponder" style="display:block;margin-top:2px;font-size:13px;color:var(--text-primary);">—</strong>
-                                <span id="detailResponderEta" style="display:block;margin-top:2px;font-size:10.5px;color:#FF9AA5;">—</span>
-                            </div>
-                        </div>
-                        <button id="resolveEmergencyBtn" type="button" style="width:100%;font-weight:700;padding:9px 12px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;background:var(--normal);color:#04241a;"><i data-lucide="check-circle" style="width:15px;height:15px;"></i><span>إنهاء حالة الطوارئ</span></button>
-                    </div>
-
-                    <div id="resolvingNotice" class="hidden" style="margin-bottom:12px;padding:10px;border-radius:12px;font-size:11.5px;display:flex;align-items:center;gap:8px;background:var(--accent-soft);color:var(--accent);">
-                        <i data-lucide="clock" style="width:15px;height:15px;flex-shrink:0;"></i><span>تم إنهاء الحالة، بانتظار تأكيد إيقاف الجهاز ميدانياً</span>
-                    </div>
-                    <div id="offlineNotice" class="hidden" style="margin-bottom:12px;padding:10px;border-radius:12px;font-size:11.5px;display:flex;align-items:center;gap:8px;background:var(--offline-soft);color:var(--offline);">
-                        <i data-lucide="wifi-off" style="width:15px;height:15px;flex-shrink:0;"></i><span>لم يتم استلام تحديث منذ أكثر من دقيقة ونصف</span>
-                    </div>
-
-                    <div style="margin-bottom:12px;padding:10px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;background:rgba(51,199,244,.08);border:1px solid rgba(51,199,244,.25);">
-                        <i data-lucide="brain-circuit" style="width:18px;height:18px;flex-shrink:0;color:var(--accent);"></i>
-                        <div style="flex:1;">
-                            <span style="display:block;font-size:10px;color:var(--text-muted);">مؤشر الإرهاق التنبؤي بالذكاء التحليلي</span>
-                            <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
-                                <div class="fatigue-bar-wrap"><div id="detailFatigueBar" class="fatigue-bar-fill" style="width:0%;background:var(--normal);"></div></div>
-                                <span id="detailFatiguePct" class="font-mono" style="font-weight:700;font-size:12px;color:var(--normal);">0%</span>
-                            </div>
-                            <span id="detailFatigueReason" style="display:block;font-size:10.5px;margin-top:3px;color:var(--normal);">—</span>
-                        </div>
-                    </div>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
-                            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;color:var(--text-muted);">النبض</span><svg id="heartSparkline" width="52" height="16" class="sparkline"></svg></div>
-                            <span id="detailHeartRate" class="font-mono" style="font-weight:700;color:var(--normal);">0 BPM</span>
-                        </div>
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">ضغط الدم</span><span id="detailBP" class="font-mono" style="font-weight:700;color:var(--warning);">120/80</span></div>
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">الأكسجين SpO2</span><span id="detailSpo2" class="font-mono" style="font-weight:700;color:var(--accent);">98%</span></div>
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">الحرارة</span><span id="detailTemp" class="font-mono" style="font-weight:700;color:var(--sos);">37.0°C</span></div>
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">الخطوات</span><span id="detailSteps" class="font-mono" style="font-weight:700;color:var(--text-primary);">0</span></div>
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">البطارية</span><span id="detailBattery" class="font-mono" style="font-weight:700;color:var(--text-primary);">100%</span></div>
-                        <div style="grid-column:span 2;padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">آخر تحديث</span><span id="detailTime" class="font-mono" style="font-weight:700;color:var(--text-primary);">--:--:--</span></div>
-                    </div>
-
-                    <div id="detailGeofenceNotice" class="hidden" style="margin-top:10px;padding:8px 10px;border-radius:10px;font-size:11px;display:flex;align-items:center;gap:8px;background:var(--warning-soft);color:var(--warning);">
-                        <i data-lucide="map-pin-off" style="width:14px;height:14px;flex-shrink:0;"></i><span>الموظف حالياً خارج نطاق المناطق التشغيلية المصرح بها</span>
-                    </div>
-
-                    <div style="margin-top:10px;padding:9px 10px;border-radius:10px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
-                        <span style="display:block;font-size:10px;color:var(--text-muted);margin-bottom:5px;">المنطقة الأمنية المخصصة لهذا الموظف</span>
-                        <select id="detailZoneSelect" style="width:100%;background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:8px;color:var(--text-primary);font-size:11.5px;padding:6px 8px;">
-                            <option value="">أي منطقة معرّفة (افتراضي)</option>
-                        </select>
-                    </div>
-
-                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-soft);">
-                        <span style="display:block;font-size:10px;margin-bottom:6px;color:var(--text-muted);">إرسال رسالة/أمر لجهاز الموظف</span>
-                        <div id="noTokenNotice" class="hidden" style="margin-bottom:8px;padding:8px;border-radius:9px;font-size:11px;display:flex;align-items:center;gap:6px;background:var(--offline-soft);color:var(--offline);">
-                            <i data-lucide="link-2-off" style="width:13px;height:13px;flex-shrink:0;"></i><span>لا يوجد توكن جهاز مسجل بعد لهذا الموظف</span>
-                        </div>
-                        <div id="quickCommandChips" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
-                            <button class="chip quick-cmd" data-command="ALERT" data-default-msg="تنبيه إداري من غرفة العمليات">تنبيه</button>
-                            <button class="chip quick-cmd" data-command="CHECK_IN" data-default-msg="يرجى تأكيد سلامتك الآن">تحقق سلامة</button>
-                            <button class="chip quick-cmd" data-command="RECALL" data-default-msg="يرجى العودة فوراً لأقرب نقطة تجمع">استدعاء</button>
-                        </div>
-                        <div style="display:flex;gap:6px;">
-                            <input type="text" id="messageTextInput" placeholder="نص الرسالة (اختياري)..." style="flex:1;border-radius:8px;padding:7px 10px;font-size:11px;outline:none;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-primary);">
-                            <button id="sendMessageBtn" type="button" style="padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:var(--accent);color:#04222c;flex-shrink:0;">إرسال</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="analyticsView" class="hidden" style="flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:4px 2px 12px;">
-
-                <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:stretch;">
-                    <div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(51,199,244,.25);background:linear-gradient(135deg, rgba(51,199,244,0.1), rgba(16,24,39,0.4));display:flex;gap:12px;align-items:flex-start;">
-                        <i data-lucide="sparkles" style="width:20px;height:20px;flex-shrink:0;color:var(--accent);margin-top:2px;"></i>
-                        <div><span style="display:block;font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">الملخص الذكي لوضع الفريق الميداني</span><span id="aiSummary" style="font-size:13px;line-height:1.8;color:var(--text-primary);">—</span></div>
-                    </div>
-                    <div class="an-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;">
-                        <span style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">مؤشر استقرار الفريق</span>
-                        <span id="stabilityValue" class="font-mono" style="font-size:26px;font-weight:800;color:var(--normal);">100</span>
-                        <span id="stabilityLabel" style="font-size:10px;font-weight:700;color:var(--normal);">مستقر</span>
-                    </div>
-                    <div class="an-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;">
-                        <span style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">تنبؤ النبض القادم</span>
-                        <i id="forecastArrow" data-lucide="minus" style="width:20px;height:20px;color:var(--text-secondary);"></i>
-                        <span id="forecastLabel" style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-top:2px;">مستقر 0%</span>
-                    </div>
-                </div>
-
-                <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:12px;">
-                    <div class="an-card">
-                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">اتجاه متوسط النبض للفريق (آخر التحديثات)</span>
-                        <svg width="100%" height="120" viewBox="0 0 480 120" preserveAspectRatio="none" style="display:block;">
-                            <line x1="0" y1="30" x2="480" y2="30" stroke="var(--border-soft)" stroke-width="1"></line>
-                            <line x1="0" y1="60" x2="480" y2="60" stroke="var(--border-soft)" stroke-width="1"></line>
-                            <line x1="0" y1="90" x2="480" y2="90" stroke="var(--border-soft)" stroke-width="1"></line>
-                            <path id="trendAreaPath" d="" fill="rgba(51,199,244,0.15)" stroke="none"></path>
-                            <path id="trendLinePath" d="" fill="none" stroke="var(--accent)" stroke-width="2"></path>
-                        </svg>
-                    </div>
-                    <div class="an-card" style="display:flex;flex-direction:column;align-items:center;">
-                        <span style="align-self:flex-start;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">توزيع الحالات الحالي</span>
-                        <svg width="140" height="140" viewBox="0 0 140 140">
-                            <g id="donutSegments"></g>
-                            <text x="70" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="#EAF0FB" font-family="JetBrains Mono, monospace" id="donutTotal">0</text>
-                            <text x="70" y="84" text-anchor="middle" font-size="10" fill="#8291A8" font-family="Cairo, sans-serif">إجمالي</text>
-                        </svg>
-                        <div id="donutLegend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;"></div>
-                    </div>
-                </div>
-
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div class="an-card">
-                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">حوادث الاستغاثة خلال آخر 6 ساعات</span>
-                        <div id="hourBuckets" style="display:flex;align-items:flex-end;gap:10px;height:90px;"></div>
-                    </div>
-                    <div class="an-card">
-                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">لوحة صدارة الإرهاق التنبؤي</span>
-                        <div id="fatigueBoard" style="display:flex;flex-direction:column;gap:8px;"></div>
-                    </div>
-                </div>
-
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div class="an-card">
-                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">كشف الانحرافات الحيوية الشاذة (تحليل z-score)</span>
-                        <div id="anomaliesList" style="display:flex;flex-direction:column;gap:7px;"></div>
-                    </div>
-                    <div class="an-card">
-                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">توصيات إجراءات فورية</span>
-                        <div id="recommendationsList" style="display:flex;flex-direction:column;gap:7px;"></div>
-                    </div>
-                </div>
-
-                <div class="an-card">
-                    <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">توصيات الاستجابة الذكية للحالات عالية الخطورة</span>
-                    <div id="riskList" style="display:flex;flex-direction:column;gap:8px;"></div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-<script>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:900},&quot;apiUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://script.google.com/macros/s/AKfycbxQO7RjW_Wxqviuizlk2bOJyqNxvbIuiTPFJhiAHgiIFgQikS7mOHfFQJW0lZhqsuGjwg/exec&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;enableGeofenceLayer&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;enableWeatherLayer&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
 const OFFLINE_THRESHOLD_MS = 90000;
 const HEART_HISTORY_LIMIT = 20;
 const ACTIVITY_LOG_LIMIT = 60;
 const SOS_RESOLVE_GRACE_MS = 120000;
 const SNAPSHOT_LIMIT = 24;
-const SEARCH_DEBOUNCE_MS = 250;
-
 const DEFAULT_ZONES = [
   { id: 'z1', name: 'المنطقة التشغيلية الرئيسية', lat: 24.7136, lng: 46.6753, radius: 9000 },
   { id: 'z2', name: 'نقطة الدعم الشمالية', lat: 24.79, lng: 46.70, radius: 4500 }
 ];
 function loadZones() { try { const s = localStorage.getItem('opsroom_zones'); return s ? JSON.parse(s) : DEFAULT_ZONES.slice(); } catch (e) { return DEFAULT_ZONES.slice(); } }
-function saveZones(zones) { localStorage.setItem('opsroom_zones', JSON.stringify(zones)); }
 function loadZoneAssignments() { try { const s = localStorage.getItem('opsroom_zone_assignments'); return s ? JSON.parse(s) : {}; } catch (e) { return {}; } }
-function saveZoneAssignments(assignments) { localStorage.setItem('opsroom_zone_assignments', JSON.stringify(assignments)); }
 const STATUS_COLORS = {
   NORMAL: { label: 'طبيعي', dot: '#22D488', bg: 'rgba(34,212,136,0.12)', fg: '#22D488' },
   WARNING: { label: 'تحذير', dot: '#F5A623', bg: 'rgba(245,166,35,0.14)', fg: '#F5A623' },
@@ -435,919 +566,654 @@ function haversine(lat1, lon1, lat2, lon2) {
 }
 function escapeHTML(s) {
   if (!s) return '';
-  return s.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
-function getRelativeTimeString(iso) {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (isNaN(s) || s < 5) return 'الآن';
-  if (s < 60) return `منذ ${s} ثانية`;
-  const m = Math.floor(s / 60);
-  if (m === 1) return 'منذ دقيقة';
-  if (m === 2) return 'منذ دقيقتين';
-  if (m <= 10) return `منذ ${m} دقائق`;
-  if (m < 60) return `منذ ${m} دقيقة`;
-  const h = Math.floor(m / 60);
-  if (h === 1) return 'منذ ساعة';
-  if (h === 2) return 'منذ ساعتين';
-  return `منذ ${h} ساعات`;
-}
-function buildSparklineSVG(history, w, h) {
-  w = w || 44; h = h || 14;
-  if (!history || history.length < 2) return '';
-  const min = Math.min(...history), max = Math.max(...history), range = (max - min) || 1;
-  const stepX = w / (history.length - 1);
-  return history.map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * (h - 3) - 1.5).toFixed(1)}`).join(' ');
+  return s.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-let state = {
-  employees: [], filteredEmployees: [], selectedEmployeeId: null,
-  searchQuery: '', statusFilter: 'ALL', sidebarTab: 'list', activeView: 'map',
-  isMuted: false, autoRefresh: true, apiUrl: document.getElementById('apiUrlInput').value,
-  refreshRate: 15000, heartHistory: {}, prevStatuses: {}, prevSteps: {},
-  activityLog: [], incidentsToday: 0, resolvedSuppression: {}, snapshots: [],
-  weather: null, showGeofence: true, showWeather: true, showHeat: true, showTrails: true,
-  trails: {}, incidentPoints: [], connectionError: false, lastUpdate: null,
-  selectedCommand: 'ALERT', audioContext: null, sirenIntervalId: null, fetchController: null, searchDebounceId: null,
-  zones: loadZones(), zoneAssignments: loadZoneAssignments(), showZonesPanel: false, zonePickMode: false, newZoneRadius: 3000,
-  showTraffic: false, trafficApiKey: localStorage.getItem('opsroom_traffic_key') || ''
-};
+class Component extends DCLogic {
+  state = {
+    employees: [], filteredEmployees: [], selectedEmployeeId: null,
+    searchQuery: '', statusFilter: 'ALL', sidebarTab: 'list', activeView: 'map',
+    isMuted: false, autoRefresh: true, apiUrl: this.props.apiUrl || 'https://script.google.com/macros/s/AKfycbxQO7RjW_Wxqviuizlk2bOJyqNxvbIuiTPFJhiAHgiIFgQikS7mOHfFQJW0lZhqsuGjwg/exec',
+    refreshRate: 15000, heartHistory: {}, prevStatuses: {}, prevSteps: {},
+    activityLog: [], incidentsToday: 0, resolvedSuppression: {}, snapshots: [],
+    weather: null, showGeofence: this.props.enableGeofenceLayer !== false, showWeather: this.props.enableWeatherLayer !== false,
+    connectionError: false, lastUpdate: null, selectedCommand: 'ALERT', messageText: '', clockTick: 0, refreshing: false,
+    showHeat: true, incidentPoints: [], showTrails: true, trails: {},
+    zones: loadZones(), zoneAssignments: loadZoneAssignments(), showZonesPanel: false, zonePickMode: false, newZoneRadius: 3000,
+    showTraffic: false, trafficApiKey: localStorage.getItem('opsroom_traffic_key') || ''
+  };
 
-let map = null, clusterGroup = null, sosLayerGroup = null, geofenceLayer = null, routeLayer = null, heatLayer = null, trailLayer = null, trafficLayer = null;
-const markers = {};
-let refreshTimeoutId = null;
+  componentDidMount() {
+    this.initMap();
+    this.fetchTelemetryData();
+    this.refreshTimer = null;
+    this.scheduleRefresh();
+    this.clockInterval = setInterval(() => this.setState({ clockTick: this.state.clockTick + 1 }), 1000);
+    this.fetchWeather();
+    this.weatherInterval = setInterval(() => this.fetchWeather(), 600000);
+    this.applyIcons();
+    const root = this.el || document.body;
+    this.iconObserver = new MutationObserver(() => this.applyIcons());
+    this.iconObserver.observe(root, { childList: true, subtree: true });
+  }
+  componentDidUpdate() {
+    if (this.state.activeView === 'map') this.updateMapMarkers();
+    this.applyIcons();
+  }
+  applyIcons() {
+    if (window.lucide) window.lucide.createIcons();
+  }
+  componentWillUnmount() {
+    clearTimeout(this.refreshTimer);
+    clearInterval(this.clockInterval);
+    clearInterval(this.weatherInterval);
+    if (this.iconObserver) this.iconObserver.disconnect();
+    if (this.controller) this.controller.abort();
+  }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initMap();
-  initEventListeners();
-  lucide.createIcons();
-  toggleAutoRefresh(true);
-  startRelativeTimeUpdater();
-  startLiveClock();
-  fetchWeather();
-  setInterval(fetchWeather, 600000);
-});
-
-function startLiveClock() {
-  const el = document.getElementById('liveClock');
-  const tick = () => { el.innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false }); };
-  tick(); setInterval(tick, 1000);
-}
-function startRelativeTimeUpdater() {
-  setInterval(() => {
-    document.querySelectorAll('.relative-time-update').forEach(el => {
-      const ts = el.getAttribute('data-timestamp');
-      if (ts) el.innerText = getRelativeTimeString(ts);
+  initMap() {
+    const el = this.el || document.getElementById('map');
+    if (!el) return;
+    this.map = L.map(el, { zoomControl: false, attributionControl: false }).setView([24.7136, 46.6753], 12);
+    L.control.zoom({ position: 'topleft' }).addTo(this.map);
+    const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(this.map);
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    L.control.layers({ 'خريطة ليلية': dark, 'قمر صناعي': sat }, null, { position: 'topleft' }).addTo(this.map);
+    this.clusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      iconCreateFunction: c => L.divIcon({ html: `<div style="width:38px;height:38px;border-radius:50%;background:rgba(16,24,39,0.92);border:2px solid #33C7F4;box-shadow:0 0 12px rgba(51,199,244,0.35);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;font-family:'JetBrains Mono',monospace;color:#33C7F4;">${c.getChildCount()}</div>`, className: '', iconSize: [38, 38] })
+    }).addTo(this.map);
+    this.sosLayerGroup = L.layerGroup().addTo(this.map);
+    this.geofenceLayer = L.layerGroup().addTo(this.map);
+    this.routeLayer = L.layerGroup().addTo(this.map);
+    this.heatLayer = L.heatLayer([], { radius: 32, blur: 24, maxZoom: 17, gradient: { 0.2: '#33C7F4', 0.5: '#F5A623', 0.8: '#FF3B4E' } }).addTo(this.map);
+    this.trailLayer = L.layerGroup().addTo(this.map);
+    this.trafficLayer = null;
+    this.updateTrafficLayer();
+    this.markers = {};
+    this.drawZones();
+    this.map.on('click', e => {
+      if (this.state.zonePickMode) {
+        this.addZoneAt(e.latlng.lat, e.latlng.lng);
+      }
     });
-    const dt = document.getElementById('detailTime');
-    if (dt && dt.getAttribute('data-timestamp')) dt.innerText = getRelativeTimeString(dt.getAttribute('data-timestamp'));
-  }, 5000);
-}
-
-function initMap() {
-  map = L.map('map', { zoomControl: false, attributionControl: false }).setView([24.7136, 46.6753], 12);
-  L.control.zoom({ position: 'topleft' }).addTo(map);
-  const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
-  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-  L.control.layers({ 'خريطة ليلية': dark, 'قمر صناعي': sat }, null, { position: 'topleft' }).addTo(map);
-
-  clusterGroup = L.markerClusterGroup({
-    maxClusterRadius: 50,
-    iconCreateFunction: c => L.divIcon({ html: `<div class="marker-cluster-custom">${c.getChildCount()}</div>`, className: '', iconSize: [38, 38] })
-  }).addTo(map);
-  sosLayerGroup = L.layerGroup().addTo(map);
-  geofenceLayer = L.layerGroup().addTo(map);
-  routeLayer = L.layerGroup().addTo(map);
-  trailLayer = L.layerGroup().addTo(map);
-  heatLayer = L.heatLayer([], { radius: 32, blur: 24, maxZoom: 17, gradient: { 0.2: '#33C7F4', 0.5: '#F5A623', 0.8: '#FF3B4E' } }).addTo(map);
-
-  drawZones();
-  updateTrafficLayer();
-  renderZonesPanel();
-
-  map.on('click', e => {
-    if (state.zonePickMode) addZoneAt(e.latlng.lat, e.latlng.lng);
-  });
-}
-
-function drawZones() {
-  geofenceLayer.clearLayers();
-  state.zones.forEach(z => {
-    L.circle([z.lat, z.lng], { radius: z.radius, color: '#33C7F4', weight: 1.5, dashArray: '6,6', fillOpacity: 0.04, interactive: false })
-      .bindTooltip(z.name, { permanent: false }).addTo(geofenceLayer);
-  });
-}
-function addZoneAt(lat, lng) {
-  const id = 'z' + Date.now();
-  state.zones.push({ id, name: `منطقة جديدة ${state.zones.length + 1}`, lat, lng, radius: state.newZoneRadius });
-  saveZones(state.zones);
-  drawZones();
-  renderZonesPanel();
-  state.zonePickMode = false;
-  document.getElementById('startPickZoneBtn').innerText = '+ إضافة منطقة جديدة (بالنقر على الخريطة)';
-}
-function deleteZone(id) {
-  state.zones = state.zones.filter(z => z.id !== id);
-  Object.keys(state.zoneAssignments).forEach(k => { if (state.zoneAssignments[k] === id) delete state.zoneAssignments[k]; });
-  saveZones(state.zones); saveZoneAssignments(state.zoneAssignments);
-  drawZones(); renderZonesPanel(); filterEmployees();
-  if (state.selectedEmployeeId) { const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId); if (emp) showEmployeeDetails(emp); }
-}
-function renameZone(id, name) {
-  const z = state.zones.find(z => z.id === id);
-  if (z) { z.name = name; saveZones(state.zones); drawZones(); }
-}
-function resizeZone(id, radius) {
-  const z = state.zones.find(z => z.id === id);
-  if (z) { z.radius = Math.max(200, radius); saveZones(state.zones); drawZones(); filterEmployees(); }
-}
-function assignZone(empId, zoneId) {
-  if (zoneId) state.zoneAssignments[empId] = zoneId; else delete state.zoneAssignments[empId];
-  saveZoneAssignments(state.zoneAssignments);
-  filterEmployees();
-}
-function updateTrafficLayer() {
-  if (!map) return;
-  const want = state.showTraffic && state.trafficApiKey;
-  if (want && !trafficLayer) {
-    trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${state.trafficApiKey}`, { maxZoom: 20, opacity: 0.8 });
-    trafficLayer.addTo(map);
-  } else if (want && trafficLayer) {
-    if (!map.hasLayer(trafficLayer)) trafficLayer.addTo(map);
-  } else if (!want && trafficLayer && map.hasLayer(trafficLayer)) {
-    map.removeLayer(trafficLayer);
   }
-  document.getElementById('trafficKeyPrompt').classList.toggle('hidden', !(state.showTraffic && !state.trafficApiKey));
-}
-function setTrafficKey(key) {
-  state.trafficApiKey = key;
-  localStorage.setItem('opsroom_traffic_key', key);
-  if (trafficLayer) { map.removeLayer(trafficLayer); trafficLayer = null; }
-  updateTrafficLayer();
-}
-function allLayersVisible() {
-  return state.showGeofence && state.showWeather && state.showHeat && state.showTrails && (state.showTraffic || !state.trafficApiKey);
-}
-function toggleAllLayers() {
-  const show = !allLayersVisible();
-  state.showGeofence = show; state.showWeather = show; state.showHeat = show; state.showTrails = show;
-  state.showTraffic = show && !!state.trafficApiKey;
-  document.getElementById('toggleGeofenceBtn').classList.toggle('on', state.showGeofence);
-  document.getElementById('toggleWeatherBtn').classList.toggle('on', state.showWeather);
-  document.getElementById('toggleHeatBtn').classList.toggle('heat-on', state.showHeat);
-  document.getElementById('toggleTrailsBtn').classList.toggle('on', state.showTrails);
-  document.getElementById('toggleTrafficBtn').classList.toggle('on', state.showTraffic);
-  if (state.showGeofence) geofenceLayer.addTo(map); else map.removeLayer(geofenceLayer);
-  if (state.showHeat) heatLayer.addTo(map); else map.removeLayer(heatLayer);
-  updateTrafficLayer();
-  renderWeatherWidget();
-  updateRouteAndTrail();
-  document.getElementById('allLayersIcon').setAttribute('data-lucide', allLayersVisible() ? 'eye' : 'eye-off');
-  lucide.createIcons();
-}
-function insideAnyGeofence(emp) {
-  const assignedId = state.zoneAssignments[emp.emp_id];
-  if (assignedId) {
-    const z = state.zones.find(zz => zz.id === assignedId);
-    if (z) return haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius;
+
+  drawZones() {
+    this.geofenceLayer.clearLayers();
+    this.state.zones.forEach(z => {
+      L.circle([z.lat, z.lng], { radius: z.radius, color: '#33C7F4', weight: 1.5, dashArray: '6,6', fillOpacity: 0.04, interactive: false }).bindTooltip(z.name, { permanent: false }).addTo(this.geofenceLayer);
+    });
   }
-  return state.zones.some(z => haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius);
-}
-function assignedZoneName(emp) {
-  const assignedId = state.zoneAssignments[emp.emp_id];
-  const z = assignedId ? state.zones.find(zz => zz.id === assignedId) : null;
-  return z ? z.name : 'أي منطقة معرّفة';
-}
-function renderZonesPanel() {
-  const list = document.getElementById('zonesList');
-  if (state.zones.length === 0) { list.innerHTML = `<span style="font-size:11px;color:var(--text-muted);">لا توجد مناطق معرّفة بعد.</span>`; return; }
-  list.innerHTML = state.zones.map(z => `
-    <div class="zone-item" data-id="${z.id}" style="padding:8px 9px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-        <input type="text" class="zone-name-input" value="${escapeHTML(z.name)}" style="flex:1;background:transparent;border:none;border-bottom:1px solid var(--border-soft);color:var(--text-primary);font-size:11.5px;font-weight:700;padding:2px 0;outline:none;">
-        <button class="zone-delete-btn" type="button" style="border:none;background:transparent;color:var(--sos);cursor:pointer;display:flex;padding:2px;"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:10px;color:var(--text-muted);">نصف القطر:</span>
-        <input type="number" class="zone-radius-input" value="${z.radius}" style="width:70px;background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:6px;color:var(--text-primary);font-size:11px;padding:3px 6px;">
-        <span style="font-size:10px;color:var(--text-muted);">م</span>
-      </div>
-    </div>`).join('');
-  list.querySelectorAll('.zone-item').forEach(item => {
-    const id = item.getAttribute('data-id');
-    item.querySelector('.zone-name-input').addEventListener('change', e => renameZone(id, e.target.value));
-    item.querySelector('.zone-radius-input').addEventListener('change', e => resizeZone(id, parseInt(e.target.value) || 200));
-    item.querySelector('.zone-delete-btn').addEventListener('click', () => deleteZone(id));
-  });
-  lucide.createIcons();
-}
-
-
-function initEventListeners() {
-  document.getElementById('searchInput').addEventListener('input', e => {
-    clearTimeout(state.searchDebounceId);
-    const val = e.target.value;
-    state.searchDebounceId = setTimeout(() => { state.searchQuery = val.trim().toLowerCase(); filterEmployees(); }, SEARCH_DEBOUNCE_MS);
-  });
-  document.getElementById('autoRefreshToggle').addEventListener('change', e => toggleAutoRefresh(e.target.checked));
-  document.getElementById('refreshRateSelect').addEventListener('change', e => {
-    state.refreshRate = parseInt(e.target.value);
-    if (state.autoRefresh) { toggleAutoRefresh(false); toggleAutoRefresh(true); }
-  });
-  document.getElementById('manualRefreshBtn').addEventListener('click', fetchTelemetryData);
-  document.getElementById('muteAlarmBtn').addEventListener('click', toggleMute);
-  document.getElementById('closeDetailBtn').addEventListener('click', deselectEmployee);
-  document.getElementById('apiUrlInput').addEventListener('change', e => {
-    const v = e.target.value.trim();
-    if (v) { state.apiUrl = v; fetchTelemetryData(); }
-  });
-  document.getElementById('toggleUrlVisibilityBtn').addEventListener('click', e => {
-    const input = document.getElementById('apiUrlInput');
-    const showing = input.type === 'text';
-    input.type = showing ? 'password' : 'text';
-    e.currentTarget.innerHTML = showing ? '<i data-lucide="eye" style="width:14px;height:14px;"></i>' : '<i data-lucide="eye-off" style="width:14px;height:14px;"></i>';
-    lucide.createIcons();
-  });
-
-  document.getElementById('filterChips').addEventListener('click', e => {
-    const btn = e.target.closest('.chip'); if (!btn) return;
-    document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    state.statusFilter = btn.getAttribute('data-filter');
-    filterEmployees();
-  });
-  document.getElementById('sidebarTabs').addEventListener('click', e => {
-    const btn = e.target.closest('.stab'); if (!btn) return;
-    state.sidebarTab = btn.getAttribute('data-tab');
-    document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('employeeList').classList.toggle('hidden', state.sidebarTab !== 'list');
-    document.getElementById('activityLogPanel').classList.toggle('hidden', state.sidebarTab !== 'log');
-    if (state.sidebarTab === 'log') renderActivityLog();
-  });
-
-  document.getElementById('tabMapBtn').addEventListener('click', () => switchView('map'));
-  document.getElementById('tabAnalyticsBtn').addEventListener('click', () => switchView('analytics'));
-
-  document.getElementById('fitAllBtn').addEventListener('click', () => {
-    const pts = state.filteredEmployees.map(e => [e.lat, e.lng]);
-    if (pts.length === 0) return;
-    map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
-  });
-  document.getElementById('toggleGeofenceBtn').addEventListener('click', () => {
-    state.showGeofence = !state.showGeofence;
-    document.getElementById('toggleGeofenceBtn').classList.toggle('on', state.showGeofence);
-    if (state.showGeofence) geofenceLayer.addTo(map); else map.removeLayer(geofenceLayer);
-  });
-  document.getElementById('toggleWeatherBtn').addEventListener('click', () => {
-    state.showWeather = !state.showWeather;
-    document.getElementById('toggleWeatherBtn').classList.toggle('on', state.showWeather);
-    renderWeatherWidget();
-  });
-  document.getElementById('toggleHeatBtn').addEventListener('click', () => {
-    state.showHeat = !state.showHeat;
-    document.getElementById('toggleHeatBtn').classList.toggle('heat-on', state.showHeat);
-    if (state.showHeat) heatLayer.addTo(map); else map.removeLayer(heatLayer);
-  });
-  document.getElementById('toggleTrailsBtn').addEventListener('click', () => {
-    state.showTrails = !state.showTrails;
-    document.getElementById('toggleTrailsBtn').classList.toggle('on', state.showTrails);
-    updateRouteAndTrail();
-  });
-  document.getElementById('toggleZonesBtn').addEventListener('click', () => {
-    state.showZonesPanel = !state.showZonesPanel;
-    state.zonePickMode = false;
-    document.getElementById('toggleZonesBtn').classList.toggle('on', state.showZonesPanel);
-    document.getElementById('zonesPanel').classList.toggle('hidden', !state.showZonesPanel);
-    if (state.showZonesPanel) renderZonesPanel();
-  });
-  document.getElementById('startPickZoneBtn').addEventListener('click', e => {
-    state.zonePickMode = !state.zonePickMode;
-    e.currentTarget.innerText = state.zonePickMode ? 'انقر على الخريطة لتحديد مركز المنطقة الجديدة...' : '+ إضافة منطقة جديدة (بالنقر على الخريطة)';
-  });
-  document.getElementById('newZoneRadiusInput').addEventListener('change', e => {
-    state.newZoneRadius = parseInt(e.target.value) || 3000;
-  });
-  document.getElementById('toggleTrafficBtn').addEventListener('click', () => {
-    state.showTraffic = !state.showTraffic;
-    document.getElementById('toggleTrafficBtn').classList.toggle('on', state.showTraffic);
-    updateTrafficLayer();
-  });
-  document.getElementById('trafficApiKeyInput').addEventListener('change', e => setTrafficKey(e.target.value.trim()));
-  document.getElementById('toggleAllLayersBtn').addEventListener('click', toggleAllLayers);
-  document.getElementById('detailZoneSelect').addEventListener('change', e => {
-    if (state.selectedEmployeeId) assignZone(state.selectedEmployeeId, e.target.value);
-  });
-
-  document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
-    const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
-    if (emp && confirm(`هل تم التعامل مع حالة الموظف ${emp.emp_name} وترغب بإغلاق حالة الطوارئ؟`)) resolveEmergencyRemote(emp.emp_id);
-  });
-
-  document.getElementById('quickCommandChips').addEventListener('click', e => {
-    const btn = e.target.closest('.quick-cmd'); if (!btn) return;
-    document.querySelectorAll('.quick-cmd').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    state.selectedCommand = btn.getAttribute('data-command');
-    document.getElementById('messageTextInput').value = btn.getAttribute('data-default-msg') || '';
-  });
-  document.getElementById('sendMessageBtn').addEventListener('click', sendMessageToSelectedEmployee);
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') deselectEmployee();
-    if (e.key === '/' && document.activeElement.id !== 'searchInput') { e.preventDefault(); document.getElementById('searchInput').focus(); }
-  });
-}
-
-function switchView(view) {
-  state.activeView = view;
-  document.getElementById('tabMapBtn').classList.toggle('active', view === 'map');
-  document.getElementById('tabAnalyticsBtn').classList.toggle('active', view === 'analytics');
-  document.getElementById('mapView').classList.toggle('hidden', view !== 'map');
-  document.getElementById('analyticsView').classList.toggle('hidden', view !== 'analytics');
-  if (view === 'map') { setTimeout(() => map.invalidateSize(), 50); }
-  else { renderAnalyticsView(); }
-}
-
-/* ---------- intelligence engine ---------- */
-function effectiveStatus(emp) {
-  if (emp.status === 'SOS') {
-    const r = state.resolvedSuppression[emp.emp_id];
-    if (r && (Date.now() - r) < SOS_RESOLVE_GRACE_MS) return 'RESOLVING';
-    return 'SOS';
+  saveZones() { localStorage.setItem('opsroom_zones', JSON.stringify(this.state.zones)); }
+  saveZoneAssignments() { localStorage.setItem('opsroom_zone_assignments', JSON.stringify(this.state.zoneAssignments)); }
+  addZoneAt(lat, lng) {
+    const id = 'z' + Date.now();
+    this.state.zones.push({ id, name: `منطقة جديدة ${this.state.zones.length + 1}`, lat, lng, radius: this.state.newZoneRadius });
+    this.saveZones();
+    this.drawZones();
+    this.setState({ zonePickMode: false });
   }
-  const ts = new Date(emp.timestamp).getTime();
-  if (!isNaN(ts) && (Date.now() - ts) > OFFLINE_THRESHOLD_MS) return 'OFFLINE';
-  return emp.status;
-}
-function matchesStatusFilter(emp, filter) {
-  if (filter === 'ALL') return true;
-  const st = effectiveStatus(emp);
-  if (filter === 'SOS') return st === 'SOS' || st === 'RESOLVING';
-  return st === filter;
-}
-function computeFatigue(emp) {
-  const hr = emp.heart_rate || 0;
-  const hrPenalty = Math.min(45, Math.abs(hr - 82) / 60 * 45);
-  const prevSteps = state.prevSteps[emp.emp_id];
-  const stagnant = prevSteps !== undefined && Math.abs((emp.steps || 0) - prevSteps) < 5;
-  const inactivityPenalty = stagnant ? 28 : 0;
-  const battPenalty = parseInt(emp.battery) < 15 ? 8 : 0;
-  const gpsPenalty = (emp.gps_accuracy && emp.gps_accuracy > 75) ? 6 : 0;
-  const score = Math.round(Math.max(0, Math.min(100, hrPenalty + inactivityPenalty + battPenalty + gpsPenalty)));
-  let level = 'منخفض', reason = 'المؤشرات الحيوية ضمن النطاق الطبيعي ولا توجد علامات إرهاق.';
-  if (score >= 75) { level = 'حرج'; reason = 'نبض غير مستقر مع خمول حركي — يوصى بفحص فوري.'; }
-  else if (score >= 50) { level = 'مرتفع'; reason = 'انحراف واضح في النبض أو خمول حركي متكرر.'; }
-  else if (score >= 25) { level = 'متوسط'; reason = 'بعض مؤشرات الإجهاد بدأت بالظهور — تابع الحالة.'; }
-  return { score, level, reason };
-}
-function fatigueColor(score) { return score >= 75 ? 'var(--sos)' : score >= 50 ? 'var(--warning)' : score >= 25 ? 'var(--accent)' : 'var(--normal)'; }
-function detectAnomaly(emp) {
-  const hist = state.heartHistory[emp.emp_id] || [];
-  if (hist.length < 5) return null;
-  const mean = hist.reduce((a, b) => a + b, 0) / hist.length;
-  const variance = hist.reduce((a, b) => a + (b - mean) ** 2, 0) / hist.length;
-  const sd = Math.sqrt(variance) || 1;
-  const z = (emp.heart_rate - mean) / sd;
-  if (Math.abs(z) >= 2 && Math.abs(emp.heart_rate - mean) >= 12) return { z: z.toFixed(1), dir: z > 0 ? 'ارتفاع' : 'انخفاض', mean: Math.round(mean) };
-  return null;
-}
-function findNearestResponder(sosEmp, all) {
-  let nearest = null, min = Infinity;
-  all.forEach(o => { if (o.emp_id === sosEmp.emp_id || o.status === 'SOS') return; const d = haversine(sosEmp.lat, sosEmp.lng, o.lat, o.lng); if (d < min) { min = d; nearest = o; } });
-  if (!nearest) return { text: 'لا يوجد مستجيب قريب متاح حالياً', eta: '—', target: null };
-  const distStr = min < 1000 ? `${Math.round(min)} متر` : `${(min / 1000).toFixed(1)} كم`;
-  const etaMin = Math.max(1, Math.round(min / 80));
-  return { text: `${nearest.emp_name} (#${nearest.emp_id}) · على بعد ${distStr}`, eta: `${etaMin} دقيقة تقريباً`, target: nearest };
-}
 
-async function fetchWeather() {
-  try {
-    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=24.7136&longitude=46.6753&current=temperature_2m,weather_code,wind_speed_10m');
-    const d = await r.json();
-    state.weather = d.current;
-    renderWeatherWidget();
-  } catch (e) { /* silent */ }
-}
-function weatherMeta(code) {
-  if (code === undefined || code === null) return { icon: 'cloud', label: 'غير متاح' };
-  if (code === 0) return { icon: 'sun', label: 'صافٍ' };
-  if (code <= 3) return { icon: 'cloud-sun', label: 'غائم جزئياً' };
-  if (code <= 48) return { icon: 'cloud-fog', label: 'ضباب' };
-  if (code <= 67) return { icon: 'cloud-rain', label: 'أمطار' };
-  if (code <= 77) return { icon: 'cloud-snow', label: 'ثلوج' };
-  if (code <= 82) return { icon: 'cloud-rain-wind', label: 'زخات مطر' };
-  return { icon: 'cloud-lightning', label: 'عاصفة رعدية' };
-}
-function renderWeatherWidget() {
-  const w = state.weather;
-  const visible = state.showWeather && !!w;
-  document.getElementById('weatherWidget').classList.toggle('hidden', !visible);
-  if (!visible) { document.getElementById('rainOverlay').classList.add('hidden'); return; }
-  const meta = weatherMeta(w.weather_code);
-  document.getElementById('weatherIcon').setAttribute('data-lucide', meta.icon);
-  document.getElementById('weatherTemp').innerText = `${Math.round(w.temperature_2m)}°`;
-  document.getElementById('weatherLabel').innerText = meta.label;
-  document.getElementById('weatherWind').innerText = `رياح ${Math.round(w.wind_speed_10m)} كم/س`;
-  document.getElementById('rainOverlay').classList.toggle('hidden', !(w.weather_code >= 51 && w.weather_code <= 82));
-  lucide.createIcons();
-}
+  effectiveStatus(emp) {
+    if (emp.status === 'SOS') {
+      const r = this.state.resolvedSuppression[emp.emp_id];
+      if (r && (Date.now() - r) < SOS_RESOLVE_GRACE_MS) return 'RESOLVING';
+      return 'SOS';
+    }
+    const ts = new Date(emp.timestamp).getTime();
+    if (!isNaN(ts) && (Date.now() - ts) > OFFLINE_THRESHOLD_MS) return 'OFFLINE';
+    return emp.status;
+  }
 
-/* ---------- data fetch ---------- */
-async function fetchTelemetryData() {
-  const indicator = document.getElementById('refreshIndicator');
-  if (indicator) indicator.style.animation = 'spinCw 1s linear infinite';
-  if (state.fetchController) state.fetchController.abort();
-  state.fetchController = new AbortController();
-  try {
-    const res = await fetch(state.apiUrl, { signal: state.fetchController.signal });
-    if (!res.ok) throw new Error('bad status');
-    const raw = await res.json();
-    const cleaned = raw.filter(e => (e.emp_id || '').toString().trim() || (e.emp_name || '').toString().trim()).map(e => ({
-      timestamp: e.timestamp || new Date().toISOString(),
-      emp_id: (e.emp_id || 'N/A').toString(), emp_name: e.emp_name || 'موظف غير معروف',
-      lat: safeParseFloat(e.lat, 24.7136), lng: safeParseFloat(e.lng, 46.6753),
-      heart_rate: (() => { const n = parseInt(e.heart_rate); return Number.isFinite(n) ? n : 0; })(),
-      blood_pressure: e.blood_pressure || '120/80', spo2: e.spo2 || '98%', temperature: e.temperature || '37.0°C',
-      steps: (() => { const n = parseInt(e.steps); return Number.isFinite(n) ? n : 0; })(),
-      battery: e.battery ? e.battery.toString().replace('%', '') + '%' : '100%',
-      status: (e.status || 'NORMAL').toUpperCase(),
-      gps_accuracy: (e.gps_accuracy !== undefined && e.gps_accuracy !== '') ? safeParseFloat(e.gps_accuracy, null) : null,
-      gps_status: e.gps_status || 'مباشر', fcm_token: e.fcm_token || ''
+  computeFatigue(emp) {
+    const hr = emp.heart_rate || 0;
+    const hrPenalty = Math.min(45, Math.abs(hr - 82) / 60 * 45);
+    const prevSteps = this.state.prevSteps[emp.emp_id];
+    const stagnant = prevSteps !== undefined && Math.abs((emp.steps || 0) - prevSteps) < 5;
+    const inactivityPenalty = stagnant ? 28 : 0;
+    const battPenalty = parseInt(emp.battery) < 15 ? 8 : 0;
+    const gpsPenalty = (emp.gps_accuracy && emp.gps_accuracy > 75) ? 6 : 0;
+    const score = Math.round(Math.max(0, Math.min(100, hrPenalty + inactivityPenalty + battPenalty + gpsPenalty)));
+    let level = 'منخفض', reason = 'المؤشرات الحيوية ضمن النطاق الطبيعي ولا توجد علامات إرهاق.';
+    if (score >= 75) { level = 'حرج'; reason = 'نبض غير مستقر مع خمول حركي — يوصى بفحص فوري.'; }
+    else if (score >= 50) { level = 'مرتفع'; reason = 'انحراف واضح في النبض أو خمول حركي متكرر.'; }
+    else if (score >= 25) { level = 'متوسط'; reason = 'بعض مؤشرات الإجهاد بدأت بالظهور — تابع الحالة.'; }
+    return { score, level, reason };
+  }
+
+  detectAnomaly(emp) {
+    const hist = this.state.heartHistory[emp.emp_id] || [];
+    if (hist.length < 5) return null;
+    const mean = hist.reduce((a, b) => a + b, 0) / hist.length;
+    const variance = hist.reduce((a, b) => a + (b - mean) ** 2, 0) / hist.length;
+    const sd = Math.sqrt(variance) || 1;
+    const z = (emp.heart_rate - mean) / sd;
+    if (Math.abs(z) >= 2 && Math.abs(emp.heart_rate - mean) >= 12) {
+      return { z: z.toFixed(1), dir: z > 0 ? 'ارتفاع' : 'انخفاض', mean: Math.round(mean) };
+    }
+    return null;
+  }
+
+  deleteZone(id) {
+    this.state.zones = this.state.zones.filter(z => z.id !== id);
+    Object.keys(this.state.zoneAssignments).forEach(k => { if (this.state.zoneAssignments[k] === id) delete this.state.zoneAssignments[k]; });
+    this.saveZones(); this.saveZoneAssignments(); this.drawZones();
+    this.setState({});
+  }
+  renameZone(id, name) {
+    const z = this.state.zones.find(z => z.id === id); if (z) { z.name = name; this.saveZones(); this.drawZones(); }
+  }
+  resizeZone(id, radius) {
+    const z = this.state.zones.find(z => z.id === id); if (z) { z.radius = Math.max(200, radius); this.saveZones(); this.drawZones(); }
+  }
+  updateTrafficLayer() {
+    if (!this.map) return;
+    const want = this.state.showTraffic && this.state.trafficApiKey;
+    if (want && !this.trafficLayer) {
+      this.trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${this.state.trafficApiKey}&thickness=8`, { maxZoom: 20, minZoom: 13, opacity: 0.95, zIndex: 5 });
+      this.trafficLayer.addTo(this.map);
+    } else if (want && this.trafficLayer) {
+      if (!this.map.hasLayer(this.trafficLayer)) this.trafficLayer.addTo(this.map);
+    } else if (!want && this.trafficLayer && this.map.hasLayer(this.trafficLayer)) {
+      this.map.removeLayer(this.trafficLayer);
+    }
+  }
+  setTrafficKey(key) {
+    this.state.trafficApiKey = key;
+    localStorage.setItem('opsroom_traffic_key', key);
+    if (this.trafficLayer) { this.map.removeLayer(this.trafficLayer); this.trafficLayer = null; }
+    this.updateTrafficLayer();
+    this.setState({});
+  }
+  allLayersVisible() {
+    const s = this.state;
+    return s.showGeofence && s.showWeather && s.showHeat && s.showTrails && (s.showTraffic || !s.trafficApiKey);
+  }
+  toggleAllLayers() {
+    const show = !this.allLayersVisible();
+    this.setState({ showGeofence: show, showWeather: show, showHeat: show, showTrails: show, showTraffic: show && !!this.state.trafficApiKey });
+  }
+  assignZone(empId, zoneId) {
+    if (zoneId) this.state.zoneAssignments[empId] = zoneId; else delete this.state.zoneAssignments[empId];
+    this.saveZoneAssignments();
+    this.setState({});
+    this.filterEmployees();
+  }
+
+  insideAnyGeofence(emp) {
+    const assignedId = this.state.zoneAssignments[emp.emp_id];
+    if (assignedId) {
+      const z = this.state.zones.find(zz => zz.id === assignedId);
+      if (z) return haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius;
+    }
+    return this.state.zones.some(z => haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius);
+  }
+  assignedZoneName(emp) {
+    const assignedId = this.state.zoneAssignments[emp.emp_id];
+    const z = assignedId ? this.state.zones.find(zz => zz.id === assignedId) : null;
+    return z ? z.name : 'أي منطقة معرّفة';
+  }
+
+  findNearestResponder(sosEmp, all) {
+    let nearest = null, min = Infinity;
+    all.forEach(o => {
+      if (o.emp_id === sosEmp.emp_id || o.status === 'SOS') return;
+      const d = haversine(sosEmp.lat, sosEmp.lng, o.lat, o.lng);
+      if (d < min) { min = d; nearest = o; }
+    });
+    if (!nearest) return { text: 'لا يوجد مستجيب قريب متاح حالياً', eta: '—', target: null };
+    const distStr = min < 1000 ? `${Math.round(min)} متر` : `${(min / 1000).toFixed(1)} كم`;
+    const etaMin = Math.max(1, Math.round(min / 80));
+    return { text: `${nearest.emp_name} (#${nearest.emp_id}) · على بعد ${distStr}`, eta: `${etaMin} دقيقة تقريباً`, target: nearest };
+  }
+
+  relTime(iso) {
+    const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (isNaN(s) || s < 5) return 'الآن';
+    if (s < 60) return `منذ ${s} ثانية`;
+    const m = Math.floor(s / 60);
+    if (m === 1) return 'منذ دقيقة';
+    if (m === 2) return 'منذ دقيقتين';
+    if (m <= 10) return `منذ ${m} دقائق`;
+    if (m < 60) return `منذ ${m} دقيقة`;
+    const h = Math.floor(m / 60);
+    if (h === 1) return 'منذ ساعة';
+    return `منذ ${h} ساعات`;
+  }
+
+  sparkPath(history, w, h) {
+    w = w || 44; h = h || 14;
+    if (!history || history.length < 2) return '';
+    const min = Math.min(...history), max = Math.max(...history), range = (max - min) || 1;
+    const stepX = w / (history.length - 1);
+    return history.map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * (h - 3) - 1.5).toFixed(1)}`).join(' ');
+  }
+
+  logEvent(type, message) {
+    this.state.activityLog.unshift({ time: new Date().toISOString(), type, message });
+    if (this.state.activityLog.length > ACTIVITY_LOG_LIMIT) this.state.activityLog.pop();
+  }
+
+  async fetchWeather() {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=24.7136&longitude=46.6753&current=temperature_2m,weather_code,wind_speed_10m');
+      const d = await r.json();
+      this.setState({ weather: d.current });
+    } catch (e) { /* silent */ }
+  }
+
+  async fetchTelemetryData() {
+    this.setState({ refreshing: true });
+    if (this.controller) this.controller.abort();
+    this.controller = new AbortController();
+    try {
+      const res = await fetch(this.state.apiUrl, { signal: this.controller.signal });
+      if (!res.ok) throw new Error('bad status');
+      const raw = await res.json();
+      const cleaned = raw.filter(e => (e.emp_id || '').toString().trim() || (e.emp_name || '').toString().trim()).map(e => ({
+        timestamp: e.timestamp || new Date().toISOString(),
+        emp_id: (e.emp_id || 'N/A').toString(), emp_name: e.emp_name || 'موظف غير معروف',
+        lat: safeParseFloat(e.lat, 24.7136), lng: safeParseFloat(e.lng, 46.6753),
+        heart_rate: (function () { const n = parseInt(e.heart_rate); return Number.isFinite(n) ? n : 0; })(),
+        blood_pressure: e.blood_pressure || '120/80', spo2: e.spo2 || '98%', temperature: e.temperature || '37.0°C',
+        steps: (function () { const n = parseInt(e.steps); return Number.isFinite(n) ? n : 0; })(), battery: e.battery ? e.battery.toString().replace('%', '') + '%' : '100%',
+        status: (e.status || 'NORMAL').toUpperCase(),
+        gps_accuracy: (e.gps_accuracy !== undefined && e.gps_accuracy !== '') ? safeParseFloat(e.gps_accuracy, null) : null,
+        gps_status: e.gps_status || 'مباشر', fcm_token: e.fcm_token || ''
+      }));
+
+      cleaned.forEach(e => {
+        e.fatigue = this.computeFatigue(e);
+        e.insideGeofence = this.insideAnyGeofence(e);
+        if (e.status === 'SOS') e.responder = this.findNearestResponder(e, cleaned);
+        if (!this.state.trails[e.emp_id]) this.state.trails[e.emp_id] = [];
+        const trail = this.state.trails[e.emp_id];
+        const lastPt = trail[trail.length - 1];
+        if (!lastPt || haversine(lastPt[0], lastPt[1], e.lat, e.lng) > 5) {
+          trail.push([e.lat, e.lng]);
+          if (trail.length > 40) trail.shift();
+        }
+        if (!this.state.heartHistory[e.emp_id]) this.state.heartHistory[e.emp_id] = [];
+        this.state.heartHistory[e.emp_id].push(e.heart_rate);
+        if (this.state.heartHistory[e.emp_id].length > HEART_HISTORY_LIMIT) this.state.heartHistory[e.emp_id].shift();
+      });
+
+      cleaned.forEach(e => {
+        const st = this.effectiveStatus(e);
+        const prev = this.state.prevStatuses[e.emp_id];
+        if (prev !== undefined && prev !== st) {
+          if (st === 'SOS') { this.state.incidentsToday += 1; this.logEvent('sos', `استغاثة SOS: ${e.emp_name} (#${e.emp_id})`); this.state.incidentPoints.push({ lat: e.lat, lng: e.lng, w: 1 }); }
+          else if (prev === 'SOS' || prev === 'RESOLVING') this.logEvent('resolved', `تم إنهاء حالة الطوارئ: ${e.emp_name} (#${e.emp_id})`);
+          else if (st === 'OFFLINE') this.logEvent('offline', `انقطع الاتصال: ${e.emp_name} (#${e.emp_id})`);
+          else if (prev === 'OFFLINE') this.logEvent('online', `عاد الاتصال: ${e.emp_name} (#${e.emp_id})`);
+          else if (st === 'WARNING') { this.logEvent('warning', `دخل حالة تحذير: ${e.emp_name} (#${e.emp_id})`); this.state.incidentPoints.push({ lat: e.lat, lng: e.lng, w: 0.5 }); }
+          if (this.state.incidentPoints.length > 300) this.state.incidentPoints.shift();
+        }
+        this.state.prevStatuses[e.emp_id] = st;
+        this.state.prevSteps[e.emp_id] = e.steps;
+      });
+
+      const avgHr = cleaned.length ? Math.round(cleaned.reduce((s, e) => s + e.heart_rate, 0) / cleaned.length) : 0;
+      this.state.snapshots.push({ t: Date.now(), avgHr });
+      if (this.state.snapshots.length > SNAPSHOT_LIMIT) this.state.snapshots.shift();
+
+      this.setState({ employees: cleaned, connectionError: false, lastUpdate: Date.now() });
+      this.filterEmployees();
+    } catch (err) {
+      if (err.name !== 'AbortError') this.setState({ connectionError: true });
+    } finally {
+      this.setState({ refreshing: false });
+    }
+  }
+
+  scheduleRefresh() {
+    clearTimeout(this.refreshTimer);
+    if (!this.state.autoRefresh) return;
+    this.refreshTimer = setTimeout(async () => { await this.fetchTelemetryData(); this.scheduleRefresh(); }, this.state.refreshRate);
+  }
+
+  filterEmployees() {
+    const q = this.state.searchQuery;
+    let list = this.state.employees.filter(e => {
+      const matchQ = !q || e.emp_name.toLowerCase().includes(q) || e.emp_id.toLowerCase().includes(q);
+      if (!matchQ) return false;
+      if (this.state.statusFilter === 'ALL') return true;
+      const st = this.effectiveStatus(e);
+      if (this.state.statusFilter === 'SOS') return st === 'SOS' || st === 'RESOLVING';
+      return st === this.state.statusFilter;
+    });
+    const prio = { SOS: 5, RESOLVING: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
+    list.sort((a, b) => (prio[this.effectiveStatus(b)] || 0) - (prio[this.effectiveStatus(a)] || 0));
+    this.setState({ filteredEmployees: list });
+  }
+
+  updateMapMarkers() {
+    if (!this.map) return;
+    this.geofenceLayer[this.state.showGeofence ? 'addTo' : 'remove'](this.map);
+    if (this.state.showHeat) {
+      this.heatLayer.addTo(this.map);
+      this.heatLayer.setLatLngs(this.state.incidentPoints.map(p => [p.lat, p.lng, p.w]));
+    } else {
+      this.map.removeLayer(this.heatLayer);
+    }
+    this.updateTrafficLayer();
+    const activeIds = new Set(this.state.filteredEmployees.map(e => e.emp_id));
+    Object.keys(this.markers).forEach(id => {
+      if (!activeIds.has(id)) {
+        const m = this.markers[id];
+        (m.status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).removeLayer(m.marker);
+        if (m.circle) (m.status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).removeLayer(m.circle);
+        delete this.markers[id];
+      }
+    });
+    this.state.filteredEmployees.forEach(emp => {
+      const status = this.effectiveStatus(emp);
+      const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+      const latLng = [emp.lat, emp.lng];
+      const anim = status === 'SOS' ? 'animation:pulseMarker 1s infinite;' : '';
+      const icon = L.divIcon({
+        className: '', iconSize: [26, 26], iconAnchor: [13, 24],
+        html: `<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #060911;background:${colors.dot};${anim}"></div>`
+      });
+      const popup = `<div dir="rtl" style="font-size:12px;">
+        <b style="display:block;font-size:13px;margin-bottom:4px;color:#EAF0FB;">${escapeHTML(emp.emp_name)}</b>
+        <span style="display:block;font-family:'JetBrains Mono',monospace;color:#4F5E76;">#${escapeHTML(emp.emp_id)}</span>
+        <span style="display:block;margin-top:3px;">الحالة: <b style="color:${colors.dot};">${colors.label}</b></span>
+        <span style="display:block;font-family:'JetBrains Mono',monospace;">${emp.heart_rate} BPM</span>
+      </div>`;
+      let entry = this.markers[emp.emp_id];
+      if (entry) {
+        entry.marker.setLatLng(latLng); entry.marker.setIcon(icon); entry.marker.setPopupContent(popup);
+        if (entry.status !== status) {
+          (entry.status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).removeLayer(entry.marker);
+          (status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).addLayer(entry.marker);
+        }
+        entry.status = status;
+      } else {
+        const marker = L.marker(latLng, { icon }).bindPopup(popup);
+        marker.on('click', () => this.setState({ selectedEmployeeId: emp.emp_id }));
+        entry = { marker, circle: null, status };
+        this.markers[emp.emp_id] = entry;
+        (status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).addLayer(marker);
+      }
+    });
+
+    this.routeLayer.clearLayers();
+    const sel = this.state.employees.find(e => e.emp_id === this.state.selectedEmployeeId);
+    if (sel && sel.status === 'SOS' && sel.responder && sel.responder.target) {
+      L.polyline([[sel.lat, sel.lng], [sel.responder.target.lat, sel.responder.target.lng]], { color: '#22D488', weight: 2, dashArray: '4,8' }).addTo(this.routeLayer);
+    }
+
+    this.trailLayer.clearLayers();
+    if (this.state.showTrails && sel) {
+      const pts = this.state.trails[sel.emp_id] || [];
+      if (pts.length > 1) {
+        L.polyline(pts, { color: '#33C7F4', weight: 2.5, opacity: 0.7, dashArray: '1,7', lineCap: 'round' }).addTo(this.trailLayer);
+        pts.forEach((p, i) => { if (i < pts.length - 1) L.circleMarker(p, { radius: 2.5, color: '#33C7F4', weight: 0, fillOpacity: 0.5 }).addTo(this.trailLayer); });
+      }
+    }
+  }
+
+  weatherMeta(code) {
+    if (code === undefined || code === null) return { icon: 'cloud', label: 'غير متاح' };
+    if (code === 0) return { icon: 'sun', label: 'صافٍ' };
+    if (code <= 3) return { icon: 'cloud-sun', label: 'غائم جزئياً' };
+    if (code <= 48) return { icon: 'cloud-fog', label: 'ضباب' };
+    if (code <= 67) return { icon: 'cloud-rain', label: 'أمطار' };
+    if (code <= 77) return { icon: 'cloud-snow', label: 'ثلوج' };
+    if (code <= 82) return { icon: 'cloud-rain-wind', label: 'زخات مطر' };
+    return { icon: 'cloud-lightning', label: 'عاصفة رعدية' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const employees = s.employees;
+    const hasSos = employees.some(e => e.status === 'SOS' && this.effectiveStatus(e) === 'SOS');
+    const donutCounts = { NORMAL: 0, WARNING: 0, SOS: 0, OFFLINE: 0 };
+    employees.forEach(e => { const st = this.effectiveStatus(e); donutCounts[st === 'RESOLVING' ? 'SOS' : st] = (donutCounts[st === 'RESOLVING' ? 'SOS' : st] || 0) + 1; });
+    const total = employees.length || 1;
+    const circumference = 2 * Math.PI * 54;
+    let acc = 0;
+    const donutOrder = ['NORMAL', 'WARNING', 'SOS', 'OFFLINE'];
+    const donutSegments = donutOrder.filter(k => donutCounts[k] > 0).map(k => {
+      const frac = donutCounts[k] / total;
+      const dash = frac * circumference;
+      const seg = { color: STATUS_COLORS[k].dot, dash: `${dash} ${circumference - dash}`, offset: -acc };
+      acc += dash;
+      return seg;
+    });
+    const donutLegend = donutOrder.map(k => ({ color: STATUS_COLORS[k].dot, label: STATUS_COLORS[k].label, count: donutCounts[k] }));
+
+    const employeeItems = s.filteredEmployees.map(emp => {
+      const status = this.effectiveStatus(emp);
+      const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+      const active = s.selectedEmployeeId === emp.emp_id;
+      const fatigue = emp.fatigue || { score: 0, level: 'منخفض', reason: '' };
+      const fColor = fatigue.score >= 75 ? '#FF3B4E' : fatigue.score >= 50 ? '#F5A623' : fatigue.score >= 25 ? '#33C7F4' : '#22D488';
+      const hist = s.heartHistory[emp.emp_id] || [];
+      const rising = hist.length > 1 && hist[hist.length - 1] >= hist[0];
+      return {
+        id: emp.emp_id, name: emp.emp_name, statusLabel: colors.label, statusBg: colors.bg, statusFg: colors.fg,
+        accentColor: colors.dot, cardBg: active ? 'rgba(51,199,244,0.12)' : '#101827', cardBorder: active ? '#33C7F4' : '#202C40',
+        cardShadow: active ? '0 0 0 1px rgba(51,199,244,0.25)' : 'none',
+        heartRate: `${emp.heart_rate} BPM`, sparkPoints: this.sparkPath(hist), sparkColor: rising ? '#F5A623' : '#33C7F4',
+        battery: emp.battery, batteryColor: parseInt(emp.battery) < 15 ? '#F5A623' : '#8291A8',
+        relTime: this.relTime(emp.timestamp), fatigueScore: fatigue.score, riskLabel: fatigue.level, riskColor: fColor,
+        geofenceOut: !emp.insideGeofence, onClick: () => this.setState({ selectedEmployeeId: emp.emp_id })
+      };
+    });
+
+    const logItems = s.activityLog.slice(0, 30).map(en => ({
+      message: en.message, time: new Date(en.time).toLocaleTimeString('ar-SA', { hour12: false }),
+      color: { sos: '#FF3B4E', resolved: '#22D488', offline: '#64748B', online: '#33C7F4', warning: '#F5A623' }[en.type] || '#4F5E76'
     }));
 
-    cleaned.forEach(e => {
-      e.fatigue = computeFatigue(e);
-      e.insideGeofence = insideAnyGeofence(e);
-      if (e.status === 'SOS') e.responder = findNearestResponder(e, cleaned);
-      if (!state.trails[e.emp_id]) state.trails[e.emp_id] = [];
-      const trail = state.trails[e.emp_id];
-      const lastPt = trail[trail.length - 1];
-      if (!lastPt || haversine(lastPt[0], lastPt[1], e.lat, e.lng) > 5) { trail.push([e.lat, e.lng]); if (trail.length > 40) trail.shift(); }
-      if (!state.heartHistory[e.emp_id]) state.heartHistory[e.emp_id] = [];
-      state.heartHistory[e.emp_id].push(e.heart_rate);
-      if (state.heartHistory[e.emp_id].length > HEART_HISTORY_LIMIT) state.heartHistory[e.emp_id].shift();
+    const statTotal = employees.length;
+    const statNormal = employees.filter(e => this.effectiveStatus(e) === 'NORMAL').length;
+    const statWarning = employees.filter(e => this.effectiveStatus(e) === 'WARNING').length;
+    const statSos = employees.filter(e => e.status === 'SOS' && this.effectiveStatus(e) === 'SOS').length;
+    const statRisk = employees.filter(e => e.fatigue && e.fatigue.score >= 50).length;
+
+    let insightText = 'جميع الموظفين ضمن الحالة الطبيعية، ولا توجد حوادث نشطة حالياً.', insightIcon = 'activity', insightColor = '#22D488';
+    let systemChip = { label: 'تشغيل طبيعي', bg: STATUS_COLORS.NORMAL.bg, fg: STATUS_COLORS.NORMAL.fg };
+    const resolvingCount = employees.filter(e => this.effectiveStatus(e) === 'RESOLVING').length;
+    const offlineCount = employees.filter(e => this.effectiveStatus(e) === 'OFFLINE').length;
+    if (statSos > 0) { insightText = `تنبيه حرج: ${statSos} حالة استغاثة نشطة تتطلب استجابة فورية.`; insightIcon = 'siren'; insightColor = '#FF3B4E'; systemChip = { label: 'حالة طوارئ', bg: STATUS_COLORS.SOS.bg, fg: '#fff' }; }
+    else if (resolvingCount > 0) { insightText = `تم إنهاء ${resolvingCount} حالة استغاثة، بانتظار تأكيد إيقاف الجهاز ميدانياً.`; insightIcon = 'clock'; insightColor = '#33C7F4'; systemChip = { label: 'قيد التأكيد', bg: STATUS_COLORS.RESOLVING.bg, fg: STATUS_COLORS.RESOLVING.fg }; }
+    else if (statRisk > 0) { insightText = `الذكاء التحليلي رصد ${statRisk} حالة إرهاق مرتفع الخطورة — يوصى بالمتابعة الاستباقية.`; insightIcon = 'brain-circuit'; insightColor = '#33C7F4'; systemChip = { label: 'مراقبة استباقية', bg: 'rgba(51,199,244,0.12)', fg: '#33C7F4' }; }
+    else if (statWarning > 0) { insightText = `${statWarning} موظف في حالة تحذير حركة — يُنصح بالتحقق من حالتهم.`; insightIcon = 'alert-triangle'; insightColor = '#F5A623'; systemChip = { label: 'يتطلب متابعة', bg: STATUS_COLORS.WARNING.bg, fg: STATUS_COLORS.WARNING.fg }; }
+    else if (offlineCount > 0) { insightText = `${offlineCount} جهاز غير متصل حالياً — تحقق من تغطية الشبكة أو البطارية.`; insightIcon = 'wifi-off'; insightColor = '#64748B'; systemChip = { label: 'تغطية جزئية', bg: STATUS_COLORS.OFFLINE.bg, fg: STATUS_COLORS.OFFLINE.fg }; }
+
+    const outCount = employees.filter(e => !e.insideGeofence).length;
+    const aiSummary = `${insightText} ${outCount > 0 ? `كما رُصد ${outCount} موظف خارج نطاق المناطق التشغيلية المصرح بها. ` : ''}متوسط النبض العام للفريق ${statTotal ? Math.round(employees.reduce((a, e) => a + e.heart_rate, 0) / statTotal) : 0} نبضة/دقيقة، و${statRisk} حالة مصنّفة ضمن الإرهاق المرتفع بحسب النموذج التنبؤي.`;
+
+    const snaps = s.snapshots;
+    let trendLinePath = '', trendAreaPath = '';
+    if (snaps.length > 1) {
+      const vals = snaps.map(x => x.avgHr);
+      const min = Math.min(...vals), max = Math.max(...vals), range = (max - min) || 1;
+      const w = 480, h = 100, top = 10;
+      const pts = snaps.map((v, i) => [i * (w / (snaps.length - 1)), top + h - ((v.avgHr - min) / range) * h]);
+      trendLinePath = 'M' + pts.map(p => p.join(',')).join(' L');
+      trendAreaPath = trendLinePath + ` L${pts[pts.length - 1][0]},120 L0,120 Z`;
+    }
+
+    const now = new Date();
+    const hourBuckets = [];
+    for (let i = 5; i >= 0; i--) {
+      const hourStart = new Date(now.getTime() - i * 3600000);
+      const count = s.activityLog.filter(en => en.type === 'sos' && Math.floor((now - new Date(en.time)) / 3600000) === i).length;
+      hourBuckets.push({ label: `${hourStart.getHours()}:00`, count, heightPx: Math.max(4, count * 22) });
+    }
+
+    const fatigueBoard = employees.filter(e => e.fatigue).slice().sort((a, b) => b.fatigue.score - a.fatigue.score).slice(0, 5).map(e => ({
+      name: e.emp_name, score: e.fatigue.score,
+      color: e.fatigue.score >= 75 ? '#FF3B4E' : e.fatigue.score >= 50 ? '#F5A623' : e.fatigue.score >= 25 ? '#33C7F4' : '#22D488'
+    }));
+
+    const riskList = employees.filter(e => e.fatigue && e.fatigue.score >= 50).sort((a, b) => b.fatigue.score - a.fatigue.score).map(e => ({
+      name: e.emp_name, reason: e.fatigue.reason, level: e.fatigue.level,
+      color: e.fatigue.score >= 75 ? '#FF3B4E' : '#F5A623',
+      borderColor: e.fatigue.score >= 75 ? 'rgba(255,59,78,0.35)' : 'rgba(245,166,35,0.35)',
+      bg: e.fatigue.score >= 75 ? 'rgba(255,59,78,0.08)' : 'rgba(245,166,35,0.08)',
+      badgeBg: e.fatigue.score >= 75 ? 'rgba(255,59,78,0.16)' : 'rgba(245,166,35,0.16)'
+    }));
+
+    const stability = Math.round(Math.max(0, 100 - (statSos * 35 + resolvingCount * 15 + statWarning * 8 + offlineCount * 6 + statRisk * 5)));
+    const stabilityColor = stability >= 80 ? '#22D488' : stability >= 55 ? '#F5A623' : '#FF3B4E';
+    const stabilityLabel = stability >= 80 ? 'مستقر' : stability >= 55 ? 'يتطلب انتباه' : 'حرج';
+
+    let forecastDir = 'مستقر', forecastArrow = 'minus', forecastColor = '#8291A8', forecastPct = '0';
+    if (snaps.length >= 4) {
+      const recent = snaps.slice(-4).map(x => x.avgHr);
+      const delta = recent[recent.length - 1] - recent[0];
+      const pct = recent[0] ? (delta / recent[0] * 100) : 0;
+      forecastPct = Math.abs(pct).toFixed(1);
+      if (pct > 3) { forecastDir = 'تصاعدي'; forecastArrow = 'trending-up'; forecastColor = '#F5A623'; }
+      else if (pct < -3) { forecastDir = 'تنازلي'; forecastArrow = 'trending-down'; forecastColor = '#33C7F4'; }
+      else { forecastArrow = 'minus'; }
+    }
+
+    const anomalies = employees.map(e => ({ e, a: this.detectAnomaly(e) })).filter(x => x.a).map(x => ({
+      name: x.e.emp_name, text: `${x.a.dir} غير معتاد بالنبض (${x.e.heart_rate} مقابل متوسطه ${x.a.mean} BPM، z=${x.a.z})`
+    }));
+
+    const recommendations = [];
+    if (statSos > 0) recommendations.push({ icon: 'siren', text: `استدعِ فرق الدعم الميداني فوراً لـ ${statSos} حالة استغاثة نشطة.`, color: '#FF3B4E' });
+    if (outCount > 0) recommendations.push({ icon: 'map-pin-off', text: `تحقق من سبب خروج ${outCount} موظف عن المناطق التشغيلية المصرح بها.`, color: '#F5A623' });
+    if (statRisk > 0) recommendations.push({ icon: 'brain-circuit', text: `راجع الحالة الصحية لأصحاب الإرهاق المرتفع (${statRisk}) قبل تفاقم الحالة.`, color: '#33C7F4' });
+    if (offlineCount > 1) recommendations.push({ icon: 'battery-warning', text: `${offlineCount} جهاز غير متصل — تحقق من تغطية الشبكة أو شحن الأجهزة الميدانية.`, color: '#64748B' });
+    if (anomalies.length > 0) recommendations.push({ icon: 'activity', text: `رُصدت ${anomalies.length} حالة انحراف حيوي غير معتاد تستحق مراجعة يدوية.`, color: '#33C7F4' });
+    if (recommendations.length === 0) recommendations.push({ icon: 'check-circle-2', text: 'لا توجد إجراءات عاجلة مطلوبة — استمر بالمراقبة الدورية.', color: '#22D488' });
+
+    const filters = [
+      { key: 'ALL', label: 'الكل' }, { key: 'SOS', label: 'SOS' }, { key: 'WARNING', label: 'تحذير' },
+      { key: 'NORMAL', label: 'طبيعي' }, { key: 'OFFLINE', label: 'غير متصل' }
+    ].map(f => {
+      const active = s.statusFilter === f.key;
+      return { label: f.label, borderColor: active ? '#33C7F4' : '#202C40', bg: active ? '#33C7F4' : '#101827', fg: active ? '#04222c' : '#8291A8', onClick: () => { this.setState({ statusFilter: f.key }); this.filterEmployees(); } };
     });
 
-    cleaned.forEach(e => {
-      const st = effectiveStatus(e);
-      const prev = state.prevStatuses[e.emp_id];
-      if (prev !== undefined && prev !== st) {
-        if (st === 'SOS') { state.incidentsToday += 1; logEvent('sos', `استغاثة SOS: ${e.emp_name} (#${e.emp_id})`); state.incidentPoints.push([e.lat, e.lng, 1]); }
-        else if (prev === 'SOS' || prev === 'RESOLVING') logEvent('resolved', `تم إنهاء حالة الطوارئ: ${e.emp_name} (#${e.emp_id})`);
-        else if (st === 'OFFLINE') logEvent('offline', `انقطع الاتصال: ${e.emp_name} (#${e.emp_id})`);
-        else if (prev === 'OFFLINE') logEvent('online', `عاد الاتصال: ${e.emp_name} (#${e.emp_id})`);
-        else if (st === 'WARNING') { logEvent('warning', `دخل حالة تحذير: ${e.emp_name} (#${e.emp_id})`); state.incidentPoints.push([e.lat, e.lng, 0.5]); }
-        if (state.incidentPoints.length > 300) state.incidentPoints.shift();
-      }
-      state.prevStatuses[e.emp_id] = st;
-      state.prevSteps[e.emp_id] = e.steps;
-    });
-
-    const avgHr = cleaned.length ? Math.round(cleaned.reduce((s, e) => s + e.heart_rate, 0) / cleaned.length) : 0;
-    state.snapshots.push({ t: Date.now(), avgHr });
-    if (state.snapshots.length > SNAPSHOT_LIMIT) state.snapshots.shift();
-
-    state.employees = cleaned;
-    state.connectionError = false;
-    state.lastUpdate = Date.now();
-    document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
-    document.getElementById('connectionErrorBadge').classList.add('hidden');
-
-    filterEmployees();
-    updateStats();
-    checkSosAlerts();
-    updateHeaderPulseAndInsight();
-    if (state.activeView === 'analytics') renderAnalyticsView();
-
-    if (state.selectedEmployeeId) {
-      const cur = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
-      if (cur) showEmployeeDetails(cur); else deselectEmployee();
+    const detailEmp = s.selectedEmployeeId ? employees.find(e => e.emp_id === s.selectedEmployeeId) : null;
+    let detail = null;
+    if (detailEmp) {
+      const status = this.effectiveStatus(detailEmp);
+      const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+      const fatigue = detailEmp.fatigue || { score: 0, level: '', reason: '' };
+      detail = {
+        name: detailEmp.emp_name, id: detailEmp.emp_id, dotColor: colors.dot,
+        isSos: status === 'SOS', isOffline: status === 'OFFLINE',
+        responder: detailEmp.responder ? detailEmp.responder.text : '', responderEta: detailEmp.responder ? detailEmp.responder.eta : '',
+        fatigueScore: fatigue.score, fatigueColor: fatigue.score >= 75 ? '#FF3B4E' : fatigue.score >= 50 ? '#F5A623' : fatigue.score >= 25 ? '#33C7F4' : '#22D488',
+        fatigueReason: fatigue.reason,
+        sparkPoints: this.sparkPath(s.heartHistory[detailEmp.emp_id] || [], 52, 16),
+        heartRate: `${detailEmp.heart_rate} BPM`, bp: detailEmp.blood_pressure, spo2: detailEmp.spo2, temp: detailEmp.temperature,
+        steps: detailEmp.steps.toLocaleString(), battery: detailEmp.battery, relTime: this.relTime(detailEmp.timestamp),
+        geofenceOut: !detailEmp.insideGeofence, noToken: !detailEmp.fcm_token,
+        assignedZoneName: this.assignedZoneName(detailEmp),
+        zoneOptions: s.zones.map(z => ({ id: z.id, name: z.name })),
+        assignedZoneId: s.zoneAssignments[detailEmp.emp_id] || '',
+        onZoneAssign: e => this.assignZone(detailEmp.emp_id, e.target.value)
+      };
     }
-  } catch (err) {
-    if (err.name === 'AbortError') return;
-    console.error('telemetry fetch error:', err);
-    state.connectionError = true;
-    document.getElementById('connectionErrorBadge').classList.remove('hidden');
-  } finally {
-    if (indicator) setTimeout(() => { indicator.style.animation = 'none'; }, 500);
+
+    const cmdColors = k => ({ borderKey: s.selectedCommand === k ? '#33C7F4' : '#202C40', bgKey: s.selectedCommand === k ? '#33C7F4' : '#0B121E', fgKey: s.selectedCommand === k ? '#04222c' : '#8291A8' });
+    const alertC = cmdColors('ALERT'), checkC = cmdColors('CHECK_IN'), recallC = cmdColors('RECALL');
+    const weather = s.weather;
+    const wMeta = this.weatherMeta(weather ? weather.weather_code : null);
+
+    return {
+      hasSos: hasSos ? '#FF3B4E' : '#22D488',
+      systemChip, connectionError: s.connectionError,
+      lastUpdateLabel: s.lastUpdate ? new Date(s.lastUpdate).toLocaleTimeString('ar-SA', { hour12: false }) : '--:--:--',
+      clockLabel: new Date().toLocaleTimeString('ar-SA', { hour12: false }),
+      apiUrl: s.apiUrl, onApiUrlChange: e => { this.setState({ apiUrl: e.target.value }); this.fetchTelemetryData(); },
+      toggleMute: () => this.setState({ isMuted: !s.isMuted }),
+      muteIconName: s.isMuted ? 'volume-x' : 'volume-2', muteIconColor: s.isMuted ? '#FF3B4E' : '#22D488',
+      muteLabel: s.isMuted ? 'مكتوم' : 'نشط',
+      autoRefresh: s.autoRefresh, onToggleAutoRefresh: e => { this.setState({ autoRefresh: e.target.checked }); this.scheduleRefresh(); },
+      onRefreshRateChange: e => { this.setState({ refreshRate: parseInt(e.target.value) }); this.scheduleRefresh(); },
+      manualRefresh: () => this.fetchTelemetryData(), refreshSpin: s.refreshing ? 'spinCw 1s linear infinite' : 'none',
+      setViewMap: () => this.setState({ activeView: 'map' }), setViewAnalytics: () => this.setState({ activeView: 'analytics' }),
+      tabMapBg: s.activeView === 'map' ? '#101827' : 'transparent', tabMapFg: s.activeView === 'map' ? '#33C7F4' : '#8291A8',
+      tabAnalyticsBg: s.activeView === 'analytics' ? '#101827' : 'transparent', tabAnalyticsFg: s.activeView === 'analytics' ? '#33C7F4' : '#8291A8',
+      isMapView: s.activeView === 'map', isAnalyticsView: s.activeView === 'analytics',
+      statTotal, statNormal, statWarning, statSos, statRisk,
+      insightIcon, insightColor, insightText,
+      searchQuery: s.searchQuery, onSearchChange: e => { this.setState({ searchQuery: e.target.value.toLowerCase() }); this.filterEmployees(); },
+      filterChips: filters,
+      setSidebarList: () => this.setState({ sidebarTab: 'list' }), setSidebarLog: () => this.setState({ sidebarTab: 'log' }),
+      tabListBorder: s.sidebarTab === 'list' ? '#33C7F4' : 'transparent', tabListBg: s.sidebarTab === 'list' ? 'rgba(51,199,244,0.12)' : '#0B121E', tabListFg: s.sidebarTab === 'list' ? '#33C7F4' : '#8291A8',
+      tabLogBorder: s.sidebarTab === 'log' ? '#33C7F4' : 'transparent', tabLogBg: s.sidebarTab === 'log' ? 'rgba(51,199,244,0.12)' : '#0B121E', tabLogFg: s.sidebarTab === 'log' ? '#33C7F4' : '#8291A8',
+      sidebarListVisible: s.sidebarTab === 'list', sidebarLogVisible: s.sidebarTab === 'log',
+      hasEmployees: employeeItems.length > 0, noEmployees: employeeItems.length === 0, employeeItems,
+      hasLog: logItems.length > 0, noLog: logItems.length === 0, logItems,
+      fitAll: () => { if (!this.map || !s.filteredEmployees.length) return; this.map.fitBounds(s.filteredEmployees.map(e => [e.lat, e.lng]), { padding: [50, 50], maxZoom: 16 }); },
+      toggleGeofence: () => this.setState({ showGeofence: !s.showGeofence }),
+      geofenceBtnBorder: s.showGeofence ? '#33C7F4' : '#202C40', geofenceBtnBg: s.showGeofence ? 'rgba(51,199,244,0.15)' : '#101827', geofenceBtnFg: s.showGeofence ? '#33C7F4' : '#8291A8',
+      toggleZonesPanel: () => this.setState({ showZonesPanel: !s.showZonesPanel, zonePickMode: false }),
+      zonesBtnBorder: s.showZonesPanel ? '#33C7F4' : '#202C40', zonesBtnBg: s.showZonesPanel ? 'rgba(51,199,244,0.15)' : '#101827', zonesBtnFg: s.showZonesPanel ? '#33C7F4' : '#8291A8',
+      zonesPanelVisible: s.showZonesPanel,
+      startPickZone: () => this.setState({ zonePickMode: true }),
+      zonePickMode: s.zonePickMode,
+      pickZoneLabel: s.zonePickMode ? 'انقر على الخريطة لتحديد مركز المنطقة الجديدة...' : '+ إضافة منطقة جديدة (بالنقر على الخريطة)',
+      newZoneRadius: s.newZoneRadius, onNewZoneRadiusChange: e => this.setState({ newZoneRadius: parseInt(e.target.value) || 3000 }),
+      zoneItems: s.zones.map(z => ({
+        id: z.id, name: z.name, radius: z.radius,
+        onNameChange: e => this.renameZone(z.id, e.target.value),
+        onRadiusChange: e => this.resizeZone(z.id, parseInt(e.target.value) || z.radius),
+        onDelete: () => this.deleteZone(z.id)
+      })),
+      hasZones: s.zones.length > 0, noZones: s.zones.length === 0,
+      toggleWeather: () => this.setState({ showWeather: !s.showWeather }),
+      weatherBtnBorder: s.showWeather ? '#33C7F4' : '#202C40', weatherBtnBg: s.showWeather ? 'rgba(51,199,244,0.15)' : '#101827', weatherBtnFg: s.showWeather ? '#33C7F4' : '#8291A8',
+      toggleHeat: () => this.setState({ showHeat: !s.showHeat }),
+      heatBtnBorder: s.showHeat ? '#FF3B4E' : '#202C40', heatBtnBg: s.showHeat ? 'rgba(255,59,78,0.15)' : '#101827', heatBtnFg: s.showHeat ? '#FF3B4E' : '#8291A8',
+      toggleTrails: () => this.setState({ showTrails: !s.showTrails }),
+      trailBtnBorder: s.showTrails ? '#33C7F4' : '#202C40', trailBtnBg: s.showTrails ? 'rgba(51,199,244,0.15)' : '#101827', trailBtnFg: s.showTrails ? '#33C7F4' : '#8291A8',
+      toggleTraffic: () => this.setState({ showTraffic: !s.showTraffic }),
+      trafficBtnBorder: s.showTraffic ? '#33C7F4' : '#202C40', trafficBtnBg: s.showTraffic ? 'rgba(51,199,244,0.15)' : '#101827', trafficBtnFg: s.showTraffic ? '#33C7F4' : '#8291A8',
+      trafficApiKey: s.trafficApiKey, onTrafficKeyChange: e => this.setTrafficKey(e.target.value),
+      needsTrafficKey: s.showTraffic && !s.trafficApiKey,
+      toggleAllLayers: () => this.toggleAllLayers(),
+      allLayersOn: this.allLayersVisible(),
+      allLayersIcon: this.allLayersVisible() ? 'eye' : 'eye-off',
+      allLayersBtnBorder: '#202C40', allLayersBtnBg: '#101827', allLayersBtnFg: '#8291A8',
+      showWeather: s.showWeather && !!weather, weatherIcon: wMeta.icon, weatherLabel: wMeta.label,
+      weatherTemp: weather ? `${Math.round(weather.temperature_2m)}°` : '--', weatherWind: weather ? `${Math.round(weather.wind_speed_10m)} كم/س` : '--',
+      isRaining: !!weather && weather.weather_code >= 51 && weather.weather_code <= 82,
+      hasDetail: !!detail, detail: detail || {}, closeDetail: () => this.setState({ selectedEmployeeId: null }),
+      resolveEmergency: () => {
+        if (!detailEmp) return;
+        this.state.resolvedSuppression[detailEmp.emp_id] = Date.now();
+        detailEmp.status = 'NORMAL';
+        this.filterEmployees();
+        const url = `${s.apiUrl}?action=resolve&emp_id=${encodeURIComponent(detailEmp.emp_id)}`;
+        fetch(url).then(() => this.fetchTelemetryData()).catch(() => {});
+      },
+      setCmdAlert: () => this.setState({ selectedCommand: 'ALERT', messageText: 'تنبيه إداري من غرفة العمليات' }),
+      setCmdCheck: () => this.setState({ selectedCommand: 'CHECK_IN', messageText: 'يرجى تأكيد سلامتك الآن' }),
+      setCmdRecall: () => this.setState({ selectedCommand: 'RECALL', messageText: 'يرجى العودة فوراً لأقرب نقطة تجمع' }),
+      cmdAlertBorder: alertC.borderKey, cmdAlertBg: alertC.bgKey, cmdAlertFg: alertC.fgKey,
+      cmdCheckBorder: checkC.borderKey, cmdCheckBg: checkC.bgKey, cmdCheckFg: checkC.fgKey,
+      cmdRecallBorder: recallC.borderKey, cmdRecallBg: recallC.bgKey, cmdRecallFg: recallC.fgKey,
+      messageText: s.messageText, onMessageChange: e => this.setState({ messageText: e.target.value }),
+      sendBtnLabel: 'إرسال',
+      sendMessage: async () => {
+        if (!detailEmp || !detailEmp.fcm_token) return;
+        const url = `${s.apiUrl}?action=send_message&emp_id=${encodeURIComponent(detailEmp.emp_id)}&command=${encodeURIComponent(s.selectedCommand)}&message=${encodeURIComponent(s.messageText)}`;
+        try { await fetch(url); this.setState({ messageText: '' }); } catch (e) {}
+      },
+      aiSummary, trendLinePath, trendAreaPath, donutSegments, donutLegend, hourBuckets,
+      hasFatigueBoard: fatigueBoard.length > 0, noFatigueBoard: fatigueBoard.length === 0, fatigueBoard,
+      hasRiskList: riskList.length > 0, noRiskList: riskList.length === 0, riskList,
+      stability, stabilityColor, stabilityLabel,
+      forecastDir, forecastArrow, forecastColor, forecastPct,
+      hasAnomalies: anomalies.length > 0, noAnomalies: anomalies.length === 0, anomalies,
+      recommendations
+    };
   }
-}
-function toggleAutoRefresh(enable) {
-  state.autoRefresh = enable;
-  if (enable) { if (!refreshTimeoutId) performAutoRefresh(); }
-  else if (refreshTimeoutId) { clearTimeout(refreshTimeoutId); refreshTimeoutId = null; }
-}
-async function performAutoRefresh() {
-  if (!state.autoRefresh) return;
-  await fetchTelemetryData();
-  if (state.autoRefresh) refreshTimeoutId = setTimeout(performAutoRefresh, state.refreshRate);
-}
-
-/* ---------- filtering + list rendering ---------- */
-function filterEmployees() {
-  state.filteredEmployees = state.employees.filter(e => {
-    const q = state.searchQuery;
-    const matchQ = !q || e.emp_name.toLowerCase().includes(q) || e.emp_id.toLowerCase().includes(q);
-    if (!matchQ) return false;
-    return matchesStatusFilter(e, state.statusFilter);
-  });
-  const prio = { SOS: 5, RESOLVING: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
-  state.filteredEmployees.sort((a, b) => (prio[effectiveStatus(b)] || 0) - (prio[effectiveStatus(a)] || 0));
-  renderEmployeeList();
-  updateMapMarkers();
-}
-function renderEmployeeList() {
-  const container = document.getElementById('employeeList');
-  if (state.filteredEmployees.length === 0) {
-    container.innerHTML = `<div style="text-align:center;padding:40px 0;font-size:12px;color:var(--text-muted);">لا يوجد نتائج تطابق البحث.</div>`;
-    return;
-  }
-  container.innerHTML = '';
-  state.filteredEmployees.forEach(emp => {
-    const status = effectiveStatus(emp);
-    const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
-    const active = state.selectedEmployeeId === emp.emp_id;
-    const fatigue = emp.fatigue || { score: 0, level: 'منخفض' };
-    const fColor = fatigueColor(fatigue.score);
-    const hist = state.heartHistory[emp.emp_id] || [];
-    const rising = hist.length > 1 && hist[hist.length - 1] >= hist[0];
-    const sparkPts = buildSparklineSVG(hist, 44, 14);
-
-    const card = document.createElement('div');
-    card.className = 'employee-card' + (active ? ' active-focus' : '');
-    card.style.borderInlineStartColor = colors.dot;
-    card.setAttribute('data-id', emp.emp_id);
-    card.setAttribute('tabindex', '0');
-    card.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;">
-        <span style="font-weight:700;font-size:13px;color:var(--text-primary);">${escapeHTML(emp.emp_name)}</span>
-        <span class="badge" style="background:${colors.bg};color:${colors.fg};">${colors.label}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-secondary);">
-        <span class="font-mono">${emp.heart_rate} BPM</span>
-        <svg width="44" height="14" viewBox="0 0 44 14" style="overflow:visible;"><polyline points="${sparkPts}" fill="none" stroke="${rising ? 'var(--warning)' : 'var(--accent)'}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
-        <span class="font-mono" style="color:${parseInt(emp.battery) < 15 ? 'var(--warning)' : 'var(--text-secondary)'};">${escapeHTML(emp.battery)}</span>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-          <span class="font-mono" style="font-size:9px;color:var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
-          <span class="relative-time-update" data-timestamp="${emp.timestamp}" style="font-size:9px;font-weight:600;color:var(--text-muted);">${getRelativeTimeString(emp.timestamp)}</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border-soft);">
-        <i data-lucide="brain-circuit" style="width:12px;height:12px;color:${fColor};"></i>
-        <span style="font-size:10px;color:${fColor};font-weight:600;">إرهاق تنبؤي: ${fatigue.score}% · ${fatigue.level}</span>
-        ${!emp.insideGeofence ? `<span style="margin-inline-start:auto;font-size:9px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--warning-soft);color:var(--warning);">خارج المنطقة</span>` : ''}
-      </div>
-    `;
-    card.addEventListener('click', () => selectEmployee(emp));
-    card.addEventListener('keydown', e => { if (e.key === 'Enter') selectEmployee(emp); });
-    container.appendChild(card);
-  });
-  lucide.createIcons();
-}
-function renderActivityLog() {
-  const container = document.getElementById('activityLogPanel');
-  if (state.activityLog.length === 0) { container.innerHTML = `<div style="text-align:center;padding:40px 0;font-size:12px;color:var(--text-muted);">لا توجد أحداث مسجلة بعد.</div>`; return; }
-  const colorMap = { sos: 'var(--sos)', resolved: 'var(--normal)', offline: 'var(--offline)', online: 'var(--accent)', warning: 'var(--warning)' };
-  container.innerHTML = state.activityLog.slice(0, 30).map(en => `
-    <div class="log-entry">
-      <span class="log-dot" style="background:${colorMap[en.type] || 'var(--text-muted)'};"></span>
-      <div style="flex:1;"><span style="color:var(--text-primary);">${escapeHTML(en.message)}</span><span class="font-mono" style="display:block;font-size:10px;color:var(--text-muted);">${new Date(en.time).toLocaleTimeString('ar-SA', { hour12: false })}</span></div>
-    </div>`).join('');
-}
-function logEvent(type, message) {
-  state.activityLog.unshift({ time: new Date().toISOString(), type, message });
-  if (state.activityLog.length > ACTIVITY_LOG_LIMIT) state.activityLog.pop();
-  if (state.sidebarTab === 'log') renderActivityLog();
-}
-
-/* ---------- stats + insight ---------- */
-function updateStats() {
-  const emps = state.employees;
-  document.getElementById('statTotal').innerText = emps.length;
-  document.getElementById('statNormal').innerText = emps.filter(e => effectiveStatus(e) === 'NORMAL').length;
-  document.getElementById('statWarning').innerText = emps.filter(e => effectiveStatus(e) === 'WARNING').length;
-  document.getElementById('statSos').innerText = emps.filter(e => e.status === 'SOS' && effectiveStatus(e) === 'SOS').length;
-  document.getElementById('statRisk').innerText = emps.filter(e => e.fatigue && e.fatigue.score >= 50).length;
-}
-function updateHeaderPulseAndInsight() {
-  const emps = state.employees;
-  const statSos = emps.filter(e => e.status === 'SOS' && effectiveStatus(e) === 'SOS').length;
-  const resolvingCount = emps.filter(e => effectiveStatus(e) === 'RESOLVING').length;
-  const statWarning = emps.filter(e => effectiveStatus(e) === 'WARNING').length;
-  const offlineCount = emps.filter(e => effectiveStatus(e) === 'OFFLINE').length;
-  const statRisk = emps.filter(e => e.fatigue && e.fatigue.score >= 50).length;
-
-  document.getElementById('headerPulse').classList.toggle('sos', statSos > 0);
-
-  const icon = document.getElementById('insightIcon');
-  const textEl = document.getElementById('insightText');
-  const chip = document.getElementById('systemChip');
-  let text, iconName, color, chipLabel, chipBg, chipFg;
-  if (statSos > 0) { text = `تنبيه حرج: ${statSos} حالة استغاثة نشطة تتطلب استجابة فورية.`; iconName = 'siren'; color = 'var(--sos)'; chipLabel = 'حالة طوارئ'; chipBg = STATUS_COLORS.SOS.bg; chipFg = '#fff'; }
-  else if (resolvingCount > 0) { text = `تم إنهاء ${resolvingCount} حالة استغاثة، بانتظار تأكيد إيقاف الجهاز ميدانياً.`; iconName = 'clock'; color = 'var(--accent)'; chipLabel = 'قيد التأكيد'; chipBg = STATUS_COLORS.RESOLVING.bg; chipFg = STATUS_COLORS.RESOLVING.fg; }
-  else if (statRisk > 0) { text = `الذكاء التحليلي رصد ${statRisk} حالة إرهاق مرتفع الخطورة — يوصى بالمتابعة الاستباقية.`; iconName = 'brain-circuit'; color = 'var(--accent)'; chipLabel = 'مراقبة استباقية'; chipBg = 'rgba(51,199,244,0.12)'; chipFg = '#33C7F4'; }
-  else if (statWarning > 0) { text = `${statWarning} موظف في حالة تحذير حركة — يُنصح بالتحقق من حالتهم.`; iconName = 'alert-triangle'; color = 'var(--warning)'; chipLabel = 'يتطلب متابعة'; chipBg = STATUS_COLORS.WARNING.bg; chipFg = STATUS_COLORS.WARNING.fg; }
-  else if (offlineCount > 0) { text = `${offlineCount} جهاز غير متصل حالياً — تحقق من تغطية الشبكة أو البطارية.`; iconName = 'wifi-off'; color = 'var(--offline)'; chipLabel = 'تغطية جزئية'; chipBg = STATUS_COLORS.OFFLINE.bg; chipFg = STATUS_COLORS.OFFLINE.fg; }
-  else { text = 'جميع الموظفين ضمن الحالة الطبيعية، ولا توجد حوادث نشطة حالياً.'; iconName = 'activity'; color = 'var(--normal)'; chipLabel = 'تشغيل طبيعي'; chipBg = STATUS_COLORS.NORMAL.bg; chipFg = STATUS_COLORS.NORMAL.fg; }
-  textEl.innerText = text; icon.setAttribute('data-lucide', iconName); icon.style.color = color;
-  chip.innerText = chipLabel; chip.style.background = chipBg; chip.style.color = chipFg;
-  lucide.createIcons();
-}
-
-/* ---------- map markers, geofence/heat/trail/route ---------- */
-function updateMapMarkers() {
-  const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
-  Object.keys(markers).forEach(id => {
-    if (!activeIds.has(id)) {
-      const m = markers[id];
-      (m.status === 'SOS' ? sosLayerGroup : clusterGroup).removeLayer(m.marker);
-      delete markers[id];
-    }
-  });
-  state.filteredEmployees.forEach(emp => {
-    const status = effectiveStatus(emp);
-    const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
-    const latLng = [emp.lat, emp.lng];
-    const anim = status === 'SOS' ? 'animation:pulseMarker 1s infinite;' : '';
-    const icon = L.divIcon({ className: '', iconSize: [26, 26], iconAnchor: [13, 24], html: `<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #060911;background:${colors.dot};${anim}"></div>` });
-    const popup = `<div dir="rtl" style="font-size:12px;">
-      <b style="display:block;font-size:13px;margin-bottom:4px;color:#EAF0FB;">${escapeHTML(emp.emp_name)}</b>
-      <span style="display:block;font-family:'JetBrains Mono',monospace;color:#4F5E76;">#${escapeHTML(emp.emp_id)}</span>
-      <span style="display:block;margin-top:3px;">الحالة: <b style="color:${colors.dot};">${colors.label}</b></span>
-      <span style="display:block;font-family:'JetBrains Mono',monospace;">${emp.heart_rate} BPM</span>
-    </div>`;
-    let entry = markers[emp.emp_id];
-    if (entry) {
-      entry.marker.setLatLng(latLng); entry.marker.setIcon(icon); entry.marker.setPopupContent(popup);
-      if (entry.status !== status) { (entry.status === 'SOS' ? sosLayerGroup : clusterGroup).removeLayer(entry.marker); (status === 'SOS' ? sosLayerGroup : clusterGroup).addLayer(entry.marker); }
-      entry.status = status;
-    } else {
-      const marker = L.marker(latLng, { icon }).bindPopup(popup);
-      marker.on('click', () => selectEmployee(emp));
-      entry = { marker, status };
-      markers[emp.emp_id] = entry;
-      (status === 'SOS' ? sosLayerGroup : clusterGroup).addLayer(marker);
-    }
-  });
-  if (state.showHeat) { if (!map.hasLayer(heatLayer)) heatLayer.addTo(map); heatLayer.setLatLngs(state.incidentPoints); }
-  updateRouteAndTrail();
-}
-function updateRouteAndTrail() {
-  routeLayer.clearLayers();
-  trailLayer.clearLayers();
-  const sel = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
-  if (!sel) return;
-  if (sel.status === 'SOS' && sel.responder && sel.responder.target) {
-    L.polyline([[sel.lat, sel.lng], [sel.responder.target.lat, sel.responder.target.lng]], { color: '#22D488', weight: 2, dashArray: '4,8' }).addTo(routeLayer);
-  }
-  if (state.showTrails) {
-    const pts = state.trails[sel.emp_id] || [];
-    if (pts.length > 1) {
-      L.polyline(pts, { color: '#33C7F4', weight: 2.5, opacity: 0.7, dashArray: '1,7', lineCap: 'round' }).addTo(trailLayer);
-      pts.forEach((p, i) => { if (i < pts.length - 1) L.circleMarker(p, { radius: 2.5, color: '#33C7F4', weight: 0, fillOpacity: 0.5 }).addTo(trailLayer); });
-    }
-  }
-}
-
-/* ---------- selection + detail panel ---------- */
-function selectEmployee(emp) {
-  state.selectedEmployeeId = emp.emp_id;
-  document.querySelectorAll('.employee-card').forEach(c => c.classList.toggle('active-focus', c.getAttribute('data-id') === emp.emp_id));
-  showEmployeeDetails(emp);
-  if (state.activeView === 'map') { map.panTo([emp.lat, emp.lng]); updateRouteAndTrail(); }
-}
-function deselectEmployee() {
-  state.selectedEmployeeId = null;
-  document.getElementById('detailPanel').classList.add('hidden');
-  document.querySelectorAll('.employee-card').forEach(c => c.classList.remove('active-focus'));
-  updateRouteAndTrail();
-}
-function showEmployeeDetails(emp) {
-  document.getElementById('detailPanel').classList.remove('hidden');
-  const status = effectiveStatus(emp);
-  const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
-  document.getElementById('detailName').innerText = emp.emp_name;
-  document.getElementById('detailId').innerText = `#${emp.emp_id}`;
-  document.getElementById('detailStatusDot').style.background = colors.dot;
-  document.getElementById('detailHeartRate').innerText = `${emp.heart_rate} BPM`;
-  document.getElementById('detailBP').innerText = emp.blood_pressure;
-  document.getElementById('detailSpo2').innerText = emp.spo2;
-  document.getElementById('detailTemp').innerText = emp.temperature;
-  document.getElementById('detailSteps').innerText = emp.steps.toLocaleString();
-  document.getElementById('detailBattery').innerText = emp.battery;
-  document.getElementById('detailTime').innerText = getRelativeTimeString(emp.timestamp);
-  document.getElementById('detailTime').setAttribute('data-timestamp', emp.timestamp);
-
-  const spark = document.getElementById('heartSparkline');
-  const hist = state.heartHistory[emp.emp_id] || [];
-  spark.innerHTML = `<polyline points="${buildSparklineSVG(hist, 52, 16)}" fill="none" stroke="#33C7F4" stroke-width="1.5"></polyline>`;
-
-  const fatigue = emp.fatigue || { score: 0, reason: '' };
-  const fColor = fatigueColor(fatigue.score);
-  document.getElementById('detailFatigueBar').style.width = fatigue.score + '%';
-  document.getElementById('detailFatigueBar').style.background = fColor;
-  document.getElementById('detailFatiguePct').innerText = fatigue.score + '%';
-  document.getElementById('detailFatiguePct').style.color = fColor;
-  document.getElementById('detailFatigueReason').innerText = fatigue.reason;
-  document.getElementById('detailFatigueReason').style.color = fColor;
-
-  document.getElementById('responderBox').classList.toggle('hidden', status !== 'SOS');
-  if (status === 'SOS' && emp.responder) {
-    document.getElementById('detailResponder').innerText = emp.responder.text;
-    document.getElementById('detailResponderEta').innerText = 'وقت وصول متوقع: ' + emp.responder.eta;
-  }
-  document.getElementById('resolvingNotice').classList.toggle('hidden', status !== 'RESOLVING');
-  document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
-  document.getElementById('detailGeofenceNotice').classList.toggle('hidden', !!emp.insideGeofence);
-
-  const zoneSelect = document.getElementById('detailZoneSelect');
-  const assignedId = state.zoneAssignments[emp.emp_id] || '';
-  zoneSelect.innerHTML = '<option value="">أي منطقة معرّفة (افتراضي)</option>' +
-    state.zones.map(z => `<option value="${z.id}" ${z.id === assignedId ? 'selected' : ''}>${escapeHTML(z.name)}</option>`).join('');
-  zoneSelect.value = assignedId;
-
-  const hasToken = !!emp.fcm_token;
-  document.getElementById('noTokenNotice').classList.toggle('hidden', hasToken);
-  document.getElementById('sendMessageBtn').disabled = !hasToken;
-  document.getElementById('messageTextInput').disabled = !hasToken;
-  document.querySelectorAll('.quick-cmd').forEach(c => { c.disabled = !hasToken; c.classList.remove('active'); });
-  document.getElementById('messageTextInput').value = '';
-  state.selectedCommand = 'ALERT';
-  lucide.createIcons();
-}
-
-/* ---------- resolve + message actions ---------- */
-async function resolveEmergencyRemote(empId) {
-  state.resolvedSuppression[empId] = Date.now();
-  const emp = state.employees.find(e => e.emp_id === empId);
-  if (emp) { emp.status = 'NORMAL'; filterEmployees(); updateStats(); checkSosAlerts(); updateHeaderPulseAndInsight(); if (state.selectedEmployeeId === empId) showEmployeeDetails(emp); }
-  try {
-    const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`status ${response.status}`);
-    await fetchTelemetryData();
-    alert(`تم إنهاء حالة الطوارئ للموظف #${empId} بنجاح. يرجى إيقاف زر الاستغاثة من ساعة الموظف الميداني لكي لا يعاد تفعيل الإنذار تلقائياً.`);
-  } catch (err) {
-    console.error('resolve error:', err);
-    alert('تم التحديث محلياً ولكن تعذر إغلاقه على السيرفر. تحقق من الاتصال وحاول مرة أخرى.');
-  }
-}
-async function sendMessageToSelectedEmployee() {
-  const empId = state.selectedEmployeeId; if (!empId) return;
-  const emp = state.employees.find(e => e.emp_id === empId);
-  if (!emp || !emp.fcm_token) return;
-  const command = state.selectedCommand || 'ALERT';
-  const message = document.getElementById('messageTextInput').value.trim();
-  const btn = document.getElementById('sendMessageBtn');
-  btn.disabled = true; btn.innerText = 'جارٍ الإرسال...';
-  try {
-    const url = `${state.apiUrl}?action=send_message&emp_id=${encodeURIComponent(empId)}&command=${encodeURIComponent(command)}&message=${encodeURIComponent(message)}`;
-    const response = await fetch(url);
-    const result = await response.json().catch(() => null);
-    if (!response.ok || (result && result.result === 'error')) throw new Error((result && result.message) || `status ${response.status}`);
-    document.getElementById('messageTextInput').value = '';
-    document.querySelectorAll('.quick-cmd').forEach(c => c.classList.remove('active'));
-  } catch (err) {
-    console.error('send message error:', err);
-    alert('تعذر إرسال الرسالة. تحقق من الاتصال وحاول مرة أخرى.');
-  } finally { btn.disabled = false; btn.innerText = 'إرسال'; }
-}
-
-/* ---------- audible siren ---------- */
-function checkSosAlerts() {
-  const active = state.employees.filter(e => e.status === 'SOS' && effectiveStatus(e) === 'SOS');
-  if (active.length > 0) playAlarmSiren(); else stopAlarmSiren();
-}
-function playAlarmSiren() {
-  if (state.isMuted) return;
-  if (!state.audioContext) state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  if (state.sirenIntervalId) return;
-  state.sirenIntervalId = setInterval(() => {
-    if (state.audioContext.state === 'suspended') state.audioContext.resume();
-    const osc = state.audioContext.createOscillator(), gain = state.audioContext.createGain();
-    osc.connect(gain); gain.connect(state.audioContext.destination);
-    osc.type = 'sawtooth';
-    const t = state.audioContext.currentTime;
-    osc.frequency.setValueAtTime(580, t); osc.frequency.linearRampToValueAtTime(880, t + 0.35);
-    gain.gain.setValueAtTime(0.12, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
-    osc.start(t); osc.stop(t + 0.38);
-  }, 450);
-}
-function stopAlarmSiren() { if (state.sirenIntervalId) { clearInterval(state.sirenIntervalId); state.sirenIntervalId = null; } }
-function toggleMute() {
-  state.isMuted = !state.isMuted;
-  const icon = document.getElementById('muteIcon'), text = document.getElementById('muteText');
-  if (state.isMuted) { icon.setAttribute('data-lucide', 'volume-x'); icon.style.color = 'var(--sos)'; text.innerText = 'مكتوم'; stopAlarmSiren(); }
-  else { icon.setAttribute('data-lucide', 'volume-2'); icon.style.color = 'var(--normal)'; text.innerText = 'نشط'; checkSosAlerts(); }
-  lucide.createIcons();
-}
-
-/* ---------- analytics view ---------- */
-function renderAnalyticsView() {
-  const emps = state.employees;
-  const statTotal = emps.length;
-  const statSos = emps.filter(e => e.status === 'SOS' && effectiveStatus(e) === 'SOS').length;
-  const resolvingCount = emps.filter(e => effectiveStatus(e) === 'RESOLVING').length;
-  const statWarning = emps.filter(e => effectiveStatus(e) === 'WARNING').length;
-  const offlineCount = emps.filter(e => effectiveStatus(e) === 'OFFLINE').length;
-  const statRisk = emps.filter(e => e.fatigue && e.fatigue.score >= 50).length;
-  const outCount = emps.filter(e => !e.insideGeofence).length;
-
-  const avgHr = statTotal ? Math.round(emps.reduce((a, e) => a + e.heart_rate, 0) / statTotal) : 0;
-  document.getElementById('aiSummary').innerText = `${document.getElementById('insightText').innerText} ${outCount > 0 ? `كما رُصد ${outCount} موظف خارج نطاق المناطق التشغيلية المصرح بها. ` : ''}متوسط النبض العام للفريق ${avgHr} نبضة/دقيقة، و${statRisk} حالة مصنّفة ضمن الإرهاق المرتفع بحسب النموذج التنبؤي.`;
-
-  const stability = Math.round(Math.max(0, 100 - (statSos * 35 + resolvingCount * 15 + statWarning * 8 + offlineCount * 6 + statRisk * 5)));
-  const stColor = stability >= 80 ? 'var(--normal)' : stability >= 55 ? 'var(--warning)' : 'var(--sos)';
-  const stLabel = stability >= 80 ? 'مستقر' : stability >= 55 ? 'يتطلب انتباه' : 'حرج';
-  const stEl = document.getElementById('stabilityValue'); stEl.innerText = stability; stEl.style.color = stColor;
-  const stLabelEl = document.getElementById('stabilityLabel'); stLabelEl.innerText = stLabel; stLabelEl.style.color = stColor;
-
-  let forecastDir = 'مستقر', forecastArrow = 'minus', forecastColor = 'var(--text-secondary)', forecastPct = '0';
-  const snaps = state.snapshots;
-  if (snaps.length >= 4) {
-    const recent = snaps.slice(-4).map(x => x.avgHr);
-    const delta = recent[recent.length - 1] - recent[0];
-    const pct = recent[0] ? (delta / recent[0] * 100) : 0;
-    forecastPct = Math.abs(pct).toFixed(1);
-    if (pct > 3) { forecastDir = 'تصاعدي'; forecastArrow = 'trending-up'; forecastColor = 'var(--warning)'; }
-    else if (pct < -3) { forecastDir = 'تنازلي'; forecastArrow = 'trending-down'; forecastColor = 'var(--accent)'; }
-  }
-  const fArrowEl = document.getElementById('forecastArrow'); fArrowEl.setAttribute('data-lucide', forecastArrow); fArrowEl.style.color = forecastColor;
-  const fLabelEl = document.getElementById('forecastLabel'); fLabelEl.innerText = `${forecastDir} ${forecastPct}%`; fLabelEl.style.color = forecastColor;
-
-  if (snaps.length > 1) {
-    const vals = snaps.map(x => x.avgHr);
-    const min = Math.min(...vals), max = Math.max(...vals), range = (max - min) || 1;
-    const w = 480, h = 100, top = 10;
-    const pts = snaps.map((v, i) => [i * (w / (snaps.length - 1)), top + h - ((v.avgHr - min) / range) * h]);
-    const line = 'M' + pts.map(p => p.join(',')).join(' L');
-    document.getElementById('trendLinePath').setAttribute('d', line);
-    document.getElementById('trendAreaPath').setAttribute('d', line + ` L${pts[pts.length - 1][0]},120 L0,120 Z`);
-  }
-
-  const donutCounts = { NORMAL: 0, WARNING: 0, SOS: 0, OFFLINE: 0 };
-  emps.forEach(e => { const st = effectiveStatus(e); const key = st === 'RESOLVING' ? 'SOS' : st; donutCounts[key] = (donutCounts[key] || 0) + 1; });
-  const total = statTotal || 1, circumference = 2 * Math.PI * 54;
-  let acc = 0;
-  const donutOrder = ['NORMAL', 'WARNING', 'SOS', 'OFFLINE'];
-  const segG = document.getElementById('donutSegments');
-  segG.innerHTML = donutOrder.filter(k => donutCounts[k] > 0).map(k => {
-    const frac = donutCounts[k] / total, dash = frac * circumference;
-    const svg = `<circle cx="70" cy="70" r="54" fill="none" stroke="${STATUS_COLORS[k].dot}" stroke-width="18" stroke-dasharray="${dash} ${circumference - dash}" stroke-dashoffset="${-acc}" transform="rotate(-90 70 70)"></circle>`;
-    acc += dash; return svg;
-  }).join('');
-  document.getElementById('donutTotal').textContent = statTotal;
-  document.getElementById('donutLegend').innerHTML = donutOrder.map(k => `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-secondary);"><span style="width:8px;height:8px;border-radius:50%;background:${STATUS_COLORS[k].dot};display:inline-block;"></span>${STATUS_COLORS[k].label} (${donutCounts[k]})</span>`).join('');
-
-  const now = new Date();
-  const buckets = [];
-  for (let i = 5; i >= 0; i--) {
-    const hourStart = new Date(now.getTime() - i * 3600000);
-    const count = state.activityLog.filter(en => en.type === 'sos' && Math.floor((now - new Date(en.time)) / 3600000) === i).length;
-    buckets.push({ label: `${hourStart.getHours()}:00`, count, h: Math.max(4, count * 22) });
-  }
-  document.getElementById('hourBuckets').innerHTML = buckets.map(b => `
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-      <span class="font-mono" style="font-size:10px;color:var(--text-secondary);">${b.count}</span>
-      <div style="width:100%;border-radius:5px 5px 0 0;background:var(--sos);height:${b.h}px;min-height:2px;"></div>
-      <span style="font-size:9px;color:var(--text-muted);">${b.label}</span>
-    </div>`).join('');
-
-  const fatigueBoard = emps.filter(e => e.fatigue).slice().sort((a, b) => b.fatigue.score - a.fatigue.score).slice(0, 5);
-  document.getElementById('fatigueBoard').innerHTML = fatigueBoard.length ? fatigueBoard.map(e => `
-    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
-      <span style="width:90px;flex-shrink:0;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(e.emp_name)}</span>
-      <div class="fatigue-bar-wrap"><div class="fatigue-bar-fill" style="width:${e.fatigue.score}%;background:${fatigueColor(e.fatigue.score)};"></div></div>
-      <span class="font-mono" style="width:34px;text-align:left;font-weight:700;color:${fatigueColor(e.fatigue.score)};">${e.fatigue.score}%</span>
-    </div>`).join('') : `<span style="font-size:11px;color:var(--text-muted);">لا توجد بيانات كافية بعد.</span>`;
-
-  const anomalies = emps.map(e => ({ e, a: detectAnomaly(e) })).filter(x => x.a);
-  document.getElementById('anomaliesList').innerHTML = anomalies.length ? anomalies.map(x => `
-    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;padding:7px 9px;border-radius:9px;background:var(--warning-soft);border:1px solid rgba(245,166,35,0.25);">
-      <i data-lucide="waves" style="width:14px;height:14px;flex-shrink:0;color:var(--warning);"></i>
-      <span style="color:var(--text-primary);font-weight:600;">${escapeHTML(x.e.emp_name)}</span><span style="color:var(--warning);">${x.a.dir} غير معتاد بالنبض (${x.e.heart_rate} مقابل متوسطه ${x.a.mean} BPM، z=${x.a.z})</span>
-    </div>`).join('') : `<span style="font-size:11px;color:var(--text-muted);">لا توجد انحرافات غير معتادة حالياً في المؤشرات الحيوية.</span>`;
-
-  const recs = [];
-  if (statSos > 0) recs.push({ icon: 'siren', text: `استدعِ فرق الدعم الميداني فوراً لـ ${statSos} حالة استغاثة نشطة.`, color: 'var(--sos)' });
-  if (outCount > 0) recs.push({ icon: 'map-pin-off', text: `تحقق من سبب خروج ${outCount} موظف عن المناطق التشغيلية المصرح بها.`, color: 'var(--warning)' });
-  if (statRisk > 0) recs.push({ icon: 'brain-circuit', text: `راجع الحالة الصحية لأصحاب الإرهاق المرتفع (${statRisk}) قبل تفاقم الحالة.`, color: 'var(--accent)' });
-  if (offlineCount > 1) recs.push({ icon: 'battery-warning', text: `${offlineCount} جهاز غير متصل — تحقق من تغطية الشبكة أو شحن الأجهزة الميدانية.`, color: 'var(--offline)' });
-  if (anomalies.length > 0) recs.push({ icon: 'activity', text: `رُصدت ${anomalies.length} حالة انحراف حيوي غير معتاد تستحق مراجعة يدوية.`, color: 'var(--accent)' });
-  if (recs.length === 0) recs.push({ icon: 'check-circle-2', text: 'لا توجد إجراءات عاجلة مطلوبة — استمر بالمراقبة الدورية.', color: 'var(--normal)' });
-  document.getElementById('recommendationsList').innerHTML = recs.map(r => `<div style="display:flex;align-items:center;gap:8px;font-size:11.5px;padding:7px 9px;"><i data-lucide="${r.icon}" style="width:14px;height:14px;flex-shrink:0;color:${r.color};"></i><span style="color:var(--text-primary);">${r.text}</span></div>`).join('');
-
-  const riskList = emps.filter(e => e.fatigue && e.fatigue.score >= 50).sort((a, b) => b.fatigue.score - a.fatigue.score);
-  document.getElementById('riskList').innerHTML = riskList.length ? riskList.map(e => {
-    const crit = e.fatigue.score >= 75;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;border:1px solid ${crit ? 'rgba(255,59,78,0.35)' : 'rgba(245,166,35,0.35)'};background:${crit ? 'rgba(255,59,78,0.08)' : 'rgba(245,166,35,0.08)'};">
-      <i data-lucide="alert-octagon" style="width:16px;height:16px;flex-shrink:0;color:${crit ? 'var(--sos)' : 'var(--warning)'};"></i>
-      <div style="flex:1;"><span style="font-size:12px;font-weight:700;color:var(--text-primary);">${escapeHTML(e.emp_name)}</span><span style="display:block;font-size:11px;color:${crit ? 'var(--sos)' : 'var(--warning)'};">${e.fatigue.reason}</span></div>
-      <span class="badge" style="background:${crit ? 'rgba(255,59,78,0.16)' : 'rgba(245,166,35,0.16)'};color:${crit ? 'var(--sos)' : 'var(--warning)'};flex-shrink:0;">${e.fatigue.level}</span>
-    </div>`;
-  }).join('') : `<span style="font-size:11px;color:var(--text-muted);">لا توجد حالات مصنّفة كخطر مرتفع حالياً — الوضع مستقر.</span>`;
-
-  lucide.createIcons();
 }
 </script>
 </body>
