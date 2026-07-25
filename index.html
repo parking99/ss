@@ -95,10 +95,11 @@
         .log-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
 
         input:focus-visible, button:focus-visible, .employee-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .hidden { display: none !important; }
         @media (prefers-reduced-motion: reduce) { .live-pulse::after, .refreshing { animation: none !important; } }
     </style>
 </head>
-<body class="h-screen" style="height:100vh;width:100%;display:flex;flex-direction:column;overflow:hidden;">
+<body style="height:100vh;width:100%;display:flex;flex-direction:column;overflow:hidden;">
 
     <!-- Header -->
     <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
