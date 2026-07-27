@@ -175,7 +175,7 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
     <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft);display:flex;">
       <div id="map"></div>
 
-      <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:340px;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(14,21,33,.96);box-shadow:var(--shadow-md);">
+      <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;top:16px;width:340px;max-height:calc(100% - 32px);overflow-y:auto;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(14,21,33,.96);box-shadow:var(--shadow-md);">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border-soft);padding-bottom:8px;margin-bottom:12px;">
           <div>
             <h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:14px;">—</h3>
@@ -201,6 +201,8 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
           </div>
           <button id="setZoneBtn" type="button"><i data-lucide="crosshair" style="width:13px;height:13px;"></i>تحديد مركز النطاق على الخريطة</button>
         </div>
+
+        <div id="decisionBox" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);"></div>
       </div>
     </div>
 
@@ -234,6 +236,11 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
       <div class="analytics-card" style="display:flex;flex-direction:column;height:220px;">
         <h4 style="margin:0 0 16px 0;font-size:14px;">اتجاه متوسط النبض الميداني (آخر دقيقتين)</h4>
         <div style="flex:1;position:relative;"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="analytics-card">
+        <h4 style="margin:0 0 12px 0;font-size:14px;display:flex;align-items:center;gap:7px;"><i data-lucide="clipboard-list" style="width:16px;height:16px;color:var(--accent);"></i>مركز دعم القرار الأمني</h4>
+        <div id="decisionCenter" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
 
       <div id="insightBox" class="analytics-card" style="display:flex;gap:10px;align-items:flex-start;border-inline-start:3px solid var(--accent);"></div>
@@ -305,6 +312,90 @@ function computeRisk(){
   const warn = employeesData.filter(e=>e.status==='WARNING').length;
   const zone = employeesData.filter(e=>e.outOfZone).length;
   return Math.min(100, Math.round((((sos*30)+(warn*10)+(zone*6))/total)*10));
+}
+
+/* ==========================================================
+   مركز دعم القرار الأمني — تصنيف خطورة + إجراء موصى به + بروتوكول تصعيد
+   لكل حالة نشطة، يعمل محلياً بالكامل على بيانات الميدان الحالية
+   ========================================================== */
+function getDecisionSupport(emp){
+  const issues = [];
+  if(emp.status === 'SOS'){
+    issues.push({
+      label: 'إشارة طوارئ (SOS)', severity: 'حرجة', rank: 3, color: 'var(--sos)',
+      action: 'التواصل الفوري مع الفرد والتحقق من سلامته، وتوجيه أقرب دورية إلى موقعه مباشرة.',
+      escalation: 'المستوى 3 — تصعيد فوري لغرفة العمليات المركزية وفرق الطوارئ.'
+    });
+  }
+  if(emp.status === 'WARNING'){
+    issues.push({
+      label: 'ارتفاع غير طبيعي في معدل النبض', severity: 'متوسطة', rank: 2, color: 'var(--warning)',
+      action: 'التواصل اللاسلكي للاطمئنان على الحالة الصحية ومتابعة المؤشرات لحين استقرارها.',
+      escalation: 'المستوى 2 — إبلاغ مشرف المناوبة والمتابعة الدورية.'
+    });
+  }
+  if(emp.outOfZone){
+    issues.push({
+      label: 'خروج عن النطاق الأمني المحدد', severity: 'متوسطة', rank: 2, color: 'var(--warning)',
+      action: 'التحقق من سبب الخروج عن النطاق المحدد له، وتوجيهه للعودة أو تحديث تكليفه الميداني.',
+      escalation: 'المستوى 2 — إبلاغ مشرف المناوبة بموقع الفرد الحالي.'
+    });
+  }
+  if(emp.battery < 20 && emp.status !== 'SOS'){
+    issues.push({
+      label: 'انخفاض حرج في شحن الجهاز', severity: 'منخفضة', rank: 1, color: 'var(--text-secondary)',
+      action: 'توجيه الفرد لأقرب نقطة شحن قبل انقطاع الاتصال والتتبع.',
+      escalation: 'المستوى 1 — تنبيه روتيني، لا يتطلب تصعيداً.'
+    });
+  }
+  return issues.sort((a,b)=>b.rank-a.rank);
+}
+
+function renderDecisionBox(emp){
+  const box = document.getElementById('decisionBox');
+  if(!box) return;
+  const issues = getDecisionSupport(emp);
+  if(issues.length === 0){
+    box.innerHTML = `<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--normal);"><i data-lucide="check-circle" style="width:14px;height:14px;"></i>لا يوجد إجراء مطلوب حالياً — الوضع مستقر.</div>`;
+  } else {
+    box.innerHTML = `<div style="font-size:11.5px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;display:flex;align-items:center;gap:5px;"><i data-lucide="clipboard-list" style="width:13px;height:13px;"></i>توصيات اتخاذ القرار</div>` +
+      issues.map(is => `
+        <div style="background:var(--bg-subtle);border:1px solid var(--border-soft);border-inline-start:2px solid ${is.color};border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span style="font-size:11.5px;font-weight:700;color:${is.color};">${is.label}</span>
+            <span style="font-size:9.5px;color:var(--text-muted);">${is.severity}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">${is.action}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">${is.escalation}</div>
+        </div>`).join('');
+  }
+  lucide.createIcons();
+}
+
+function renderDecisionCenter(){
+  const box = document.getElementById('decisionCenter');
+  if(!box) return;
+  const rows = [];
+  employeesData.forEach(emp => {
+    getDecisionSupport(emp).forEach(is => rows.push({emp, is}));
+  });
+  rows.sort((a,b)=>b.is.rank-a.is.rank);
+  if(rows.length === 0){
+    box.innerHTML = `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--normal);"><i data-lucide="check-circle" style="width:16px;height:16px;"></i>لا توجد حالات تستدعي اتخاذ قرار حالياً — جميع الأفراد ضمن الوضع الطبيعي.</div>`;
+  } else {
+    box.innerHTML = rows.map(r => `
+      <div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg-subtle);border:1px solid var(--border-soft);border-inline-start:3px solid ${r.is.color};border-radius:10px;padding:10px 12px;">
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:12.5px;">${r.emp.name}</strong>
+            <span style="font-size:10px;font-weight:700;color:${r.is.color};">${r.is.severity}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:3px;">${r.is.label} — ${r.is.action}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${r.is.escalation}</div>
+        </div>
+      </div>`).join('');
+  }
+  lucide.createIcons();
 }
 
 function renderAll(){
@@ -404,6 +495,7 @@ function selectEmployee(id){
   document.getElementById('zoneRadiusInput').value = emp.zoneRadius;
   document.getElementById('zoneRadiusLabel').textContent = emp.zoneRadius + ' م';
   updateZoneStatusTag(emp);
+  renderDecisionBox(emp);
   toggleZonePick(false);
   renderEmployeeList();
   updateZoneCircles();
@@ -575,6 +667,7 @@ function updateAnalyticsData(){
   });
 
   renderInsight(riskIndex, sosCount, warnCount, zoneCount, avgHeart, avgBatt);
+  renderDecisionCenter();
 }
 
 function renderInsight(risk, sos, warn, zoneCount, avgHeart, avgBatt){
@@ -664,11 +757,14 @@ function pushAlertToast(kind, empName, message, empId){
   toast.className = 'alert-toast ' + kind;
   const icon = kind === 'sos' ? 'siren' : 'map-pin-off';
   const color = kind === 'sos' ? 'var(--sos)' : 'var(--warning)';
+  const emp = employeesData.find(e=>e.id===empId);
+  const issue = emp ? getDecisionSupport(emp).find(i => (kind==='sos' && i.label.includes('طوارئ')) || (kind==='zone' && i.label.includes('النطاق'))) : null;
   toast.innerHTML = `
     <i data-lucide="${icon}" style="width:18px;height:18px;color:${color};flex-shrink:0;margin-top:2px;"></i>
     <div style="flex:1;">
       <div style="font-weight:700;font-size:12.5px;color:${color};">${empName}</div>
       <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px;">${message}</div>
+      ${issue ? `<div style="font-size:10.5px;color:var(--text-muted);margin-top:5px;padding-top:5px;border-top:1px dashed var(--border-soft);"><b>الإجراء:</b> ${issue.action}<br><b>التصعيد:</b> ${issue.escalation}</div>` : ''}
     </div>
     ${kind==='sos' ? `<button class="ack-btn">إقرار الحالة</button>` : ''}
     <button class="close-x"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
@@ -746,6 +842,7 @@ function simulateLiveData(){
       document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
       document.getElementById('detailBattery').textContent = emp.battery + '%';
       updateZoneStatusTag(emp);
+      renderDecisionBox(emp);
       map.panTo([emp.lat, emp.lng], {animate:true});
       drawSparkline('detailSpark', emp.history, statusColor(emp.status));
     }
@@ -757,7 +854,7 @@ function simulateLiveData(){
    المساعد الميداني الذكي — يعمل بالكامل محلياً داخل المتصفح
    بدون أي مفتاح API وبدون اتصال خارجي (بديل مجاني عن Gemini)
    ========================================================== */
-const AI_SUGGESTIONS = ['ما حالة الطوارئ الآن؟','من خارج نطاقه الأمني؟','ملخص الوضع الميداني','أعلى نبض مسجل'];
+const AI_SUGGESTIONS = ['ما حالة الطوارئ الآن؟','من خارج نطاقه الأمني؟','ما التوصيات الحالية؟','ملخص الوضع الميداني'];
 
 function initAIModule(){
   const toggleBtn = document.getElementById('aiToggleBtn');
@@ -830,7 +927,19 @@ function localFieldAssistant(rawQuery){
     return norm.includes(n.split('/').pop().trim()) || norm.includes(e.id.toLowerCase());
   });
   if(matchedEmp){
-    return `<b>${matchedEmp.name}</b> (${matchedEmp.id})<br>الحالة: <span style="color:${statusColor(matchedEmp.status)}">${STATUS_LABEL[matchedEmp.status]}</span><br>النطاق الأمني: ${matchedEmp.outOfZone ? '<span style="color:var(--warning)">خارج النطاق</span>' : 'داخل النطاق'}<br>النبض: ${matchedEmp.heartRate} BPM · البطارية: ${matchedEmp.battery}%`;
+    const empIssues = getDecisionSupport(matchedEmp);
+    const issueText = empIssues.length
+      ? `<br><br><b>التوصية:</b> ${empIssues[0].action}<br><b>التصعيد:</b> ${empIssues[0].escalation}`
+      : `<br><br><span style="color:var(--normal)">لا يوجد إجراء مطلوب حالياً.</span>`;
+    return `<b>${matchedEmp.name}</b> (${matchedEmp.id})<br>الحالة: <span style="color:${statusColor(matchedEmp.status)}">${STATUS_LABEL[matchedEmp.status]}</span><br>النطاق الأمني: ${matchedEmp.outOfZone ? '<span style="color:var(--warning)">خارج النطاق</span>' : 'داخل النطاق'}<br>النبض: ${matchedEmp.heartRate} BPM · البطارية: ${matchedEmp.battery}%${issueText}`;
+  }
+
+  if(/توصيه|اجراء|ماذا افعل|ماذا نفعل|قرار|تصعيد|خطوات/.test(norm)){
+    const rows = [];
+    employeesData.forEach(e => getDecisionSupport(e).forEach(is => rows.push({e,is})));
+    rows.sort((a,b)=>b.is.rank-a.is.rank);
+    if(rows.length===0) return 'لا توجد أي حالة تستدعي اتخاذ قرار حالياً — جميع الأفراد ضمن الوضع الطبيعي.';
+    return `<b>توصيات اتخاذ القرار الحالية (${rows.length}):</b><br>` + rows.map(r=>`• <b>${r.e.name}</b> — ${r.is.label}<br>&nbsp;&nbsp;الإجراء: ${r.is.action}<br>&nbsp;&nbsp;${r.is.escalation}`).join('<br><br>');
   }
 
   if(/طوار|sos|خطر عاجل/.test(norm)){
