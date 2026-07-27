@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مركز القيادة والمراقبة الأمنية الذكي - مع المساعد الذكي Gemini</title>
+    <title>مركز القيادة والمراقبة الأمنية الذكي - النسخة الشاملة</title>
     
     <!-- Leaflet & MarkerCluster CSS/JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -13,6 +13,9 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     
+    <!-- Chart.js للوحة التحليلية -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
@@ -48,13 +51,13 @@
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
         ::-webkit-scrollbar-track { background: transparent; }
 
-        #map { height: 100%; width: 100%; z-index: 1; background: var(--bg-subtle); }
+        #map { height: 100%; width: 100%; z-index: 1; background: var(--bg-subtle); border-radius: 14px; }
         .leaflet-control-zoom a { background-color: var(--bg-panel) !important; color: var(--text-primary) !important; border-color: var(--border-soft) !important; }
         .leaflet-popup-content-wrapper { background-color: var(--bg-elevated) !important; color: var(--text-primary) !important; border-radius: 0.75rem !important; border: 1px solid var(--border-soft); box-shadow: var(--shadow-md) !important; }
         .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
 
         @keyframes livePulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
-        .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); }
+        .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); display:inline-block;}
         .live-pulse::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid rgba(34,212,136,0.55); animation: livePulse 2s ease-out infinite; }
 
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
@@ -67,11 +70,8 @@
         .chip:hover { border-color: var(--accent); color: var(--accent); }
         .chip.active { background: var(--accent); color: #04222c; border-color: var(--accent); }
 
-        .stab { flex: 1; text-align: center; font-size: 11px; font-weight: 600; padding: 8px 4px; border-radius: .6rem; border: 1px solid transparent; cursor: pointer; transition: all .15s ease; color: var(--text-secondary); background: var(--bg-subtle); }
-        .stab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-
         .view-tab { padding: 9px 20px; border-radius: 10px 10px 0 0; border: 1px solid var(--border-soft); border-bottom: none; font-size: 13px; font-weight: 700; cursor: pointer; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
-        .view-tab.active { background: var(--bg-panel); color: var(--accent); }
+        .view-tab.active { background: var(--bg-panel); color: var(--accent); border-bottom: 2px solid var(--accent); }
 
         .employee-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-inline-start: 3px solid var(--border-soft); border-radius: .7rem; padding: .8rem .9rem; cursor: pointer; transition: all .15s ease; }
         .employee-card:hover { border-color: var(--accent); border-inline-start-color: var(--accent); background: var(--bg-elevated); }
@@ -79,24 +79,16 @@
         .map-tool-btn { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 9px; box-shadow: var(--shadow-sm); padding: 9px; cursor: pointer; color: var(--text-secondary); display: flex; transition: all .15s ease; }
         .map-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-        .fatigue-bar-wrap { flex: 1; height: 8px; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; }
-        .fatigue-bar-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
         .hidden { display: none !important; }
 
-        /* AI Chatbot Styles */
-        #aiToggleBtn {
-            position: fixed; bottom: 24px; left: 24px; z-index: 999; padding: 12px 18px; border-radius: 999px;
-            border: 1px solid var(--accent); background: rgba(16, 24, 39, 0.92); color: var(--accent);
-            font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 15px rgba(51,199,244,0.3); cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s ease;
-        }
-        #aiToggleBtn:hover { transform: translateY(-2px); background: var(--accent); color: #04222c; }
+        /* تنسيقات اللوحة التحليلية */
+        .analytics-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 14px; padding: 16px; box-shadow: var(--shadow-sm); }
+        .stat-value { font-size: 24px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--text-primary); margin-top: 8px;}
 
-        #aiChatBox {
-            position: fixed; bottom: 80px; left: 24px; z-index: 999; width: 380px; height: 520px;
-            border-radius: 16px; border: 1px solid var(--border-soft); background: rgba(16, 24, 39, 0.96);
-            box-shadow: var(--shadow-md); display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(12px);
-        }
+        /* تنسيق الذكاء الاصطناعي */
+        #aiToggleBtn { position: fixed; bottom: 24px; left: 24px; z-index: 999; padding: 12px 18px; border-radius: 999px; border: 1px solid var(--accent); background: rgba(16, 24, 39, 0.92); color: var(--accent); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s ease; }
+        #aiToggleBtn:hover { background: var(--accent); color: #04222c; }
+        #aiChatBox { position: fixed; bottom: 80px; left: 24px; z-index: 999; width: 380px; height: 520px; border-radius: 16px; border: 1px solid var(--border-soft); background: rgba(16, 24, 39, 0.96); box-shadow: var(--shadow-md); display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(12px); }
         .ai-msg { padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.5; max-width: 88%; word-break: break-word; }
         .ai-msg.user { align-self: flex-end; background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(51,199,244,0.3); border-bottom-left-radius: 2px; }
         .ai-msg.bot { align-self: flex-start; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-soft); border-bottom-right-radius: 2px; }
@@ -104,7 +96,7 @@
 </head>
 <body style="display:flex;flex-direction:column;">
 
-    <!-- Header -->
+    <!-- الهيدر -->
     <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
         <div style="display:flex;align-items:center;gap:12px;">
             <div style="padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--navy-soft);color:var(--navy);display:flex;">
@@ -114,88 +106,103 @@
                 <h1 class="font-display" style="margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
                     <span class="live-pulse"></span> مركز القيادة والمراقبة الأمنية الذكي
                 </h1>
-                <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--text-secondary);">
-                    <span class="badge normal">تشغيل طبيعي</span> تتبع حي بالذكاء التحليلي · آخر تحديث <span id="lastUpdateTime" class="font-mono" style="font-weight:700;color:var(--text-primary);">--:--:--</span>
+                <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;color:var(--text-secondary);">
+                    <span class="badge normal">تشغيل طبيعي</span> تتبع حي وتحليل بيانات · <span id="liveClock" class="font-mono" style="color:var(--accent);">--:--:--</span>
                 </p>
             </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-            <div id="liveClock" class="font-mono" style="font-size:14px;font-weight:700;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--accent);">--:--:--</div>
-        </div>
     </header>
 
-    <!-- Layout Container -->
+    <!-- التبويبات -->
+    <div style="display:flex;gap:10px;padding:10px 16px 0;background:var(--bg-panel);">
+        <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية</button>
+        <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>اللوحة التحليلية</button>
+    </div>
+
+    <!-- مساحة العمل الرئيسية -->
     <div style="flex:1;display:flex;overflow:hidden;padding:16px;gap:12px;background:var(--bg-page);">
         
-        <!-- Sidebar -->
-        <aside style="width:340px;min-width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
+        <!-- القائمة الجانبية (ثابتة في كلا العرضين) -->
+        <aside style="width:320px;min-width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);">
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono" style="font-weight:800;font-size:14px;color:var(--text-primary);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">طبيعي</span><span id="statNormal" class="font-mono" style="font-weight:800;font-size:14px;color:var(--normal);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">تحذير</span><span id="statWarning" class="font-mono" style="font-weight:800;font-size:14px;color:var(--warning);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">SOS</span><span id="statSos" class="font-mono" style="font-weight:800;font-size:14px;color:var(--sos);">0</span></div>
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono stat-value" style="font-size:14px;">0</span></div>
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">طبيعي</span><span id="statNormal" class="font-mono stat-value" style="font-size:14px;color:var(--normal);">0</span></div>
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">تحذير</span><span id="statWarning" class="font-mono stat-value" style="font-size:14px;color:var(--warning);">0</span></div>
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">SOS</span><span id="statSos" class="font-mono stat-value" style="font-size:14px;color:var(--sos);">0</span></div>
             </div>
 
-            <div id="filterChips" style="display:flex;align-items:center;gap:6px;overflow-x:auto;">
+            <div id="filterChips" style="display:flex;align-items:center;gap:6px;overflow-x:auto;padding-bottom:4px;">
                 <button class="chip active" data-filter="ALL">الكل</button>
                 <button class="chip" data-filter="SOS">SOS</button>
                 <button class="chip" data-filter="WARNING">تحذير</button>
                 <button class="chip" data-filter="NORMAL">طبيعي</button>
             </div>
 
-            <div id="employeeList" style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
-                <!-- Employee cards go here -->
+            <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
+                <!-- بطاقات الموظفين تُدرج هنا -->
             </div>
         </aside>
 
-        <!-- Main Workspace -->
+        <!-- العرض المتغير (الخريطة أو التحليلات) -->
         <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;">
-            <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft);">
+            
+            <!-- عرض الخريطة (MapView) -->
+            <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft); display:flex;">
                 <div id="map"></div>
+                
+                <!-- تفاصيل الموظف فوق الخريطة -->
+                <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:340px;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,.95);box-shadow:var(--shadow-md);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border-soft);padding-bottom:8px;margin-bottom:12px;">
+                        <div>
+                            <h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:14px;color:var(--text-primary);">—</h3>
+                            <span id="detailId" class="font-mono" style="font-size:11px;color:var(--text-muted);">#—</span>
+                        </div>
+                        <button id="closeDetailBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+                        <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">النبض</span><span id="detailHeartRate" class="font-mono" style="font-weight:700;color:var(--normal);">--</span></div>
+                        <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">البطارية</span><span id="detailBattery" class="font-mono" style="font-weight:700;color:var(--text-primary);">--</span></div>
+                    </div>
+                </div>
+            </div>
 
-                <!-- Floating Toolbar -->
-                <div style="position:absolute;top:12px;left:12px;z-index:15;display:flex;flex-direction:column;gap:6px;">
-                    <button class="map-tool-btn" type="button"><i data-lucide="maximize" style="width:16px;height:16px;"></i></button>
-                    <button class="map-tool-btn on" type="button"><i data-lucide="shield" style="width:16px;height:16px;"></i></button>
+            <!-- اللوحة التحليلية (AnalyticsView) -->
+            <div id="analyticsView" class="hidden" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;">
+                    <div class="analytics-card">
+                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
+                            <i data-lucide="activity" style="width:18px;height:18px;color:var(--accent);"></i>
+                            <span style="font-size:13px;font-weight:700;">متوسط النبض العام</span>
+                        </div>
+                        <div id="avgHeartRate" class="stat-value">-- BPM</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
+                            <i data-lucide="battery-medium" style="width:18px;height:18px;color:var(--normal);"></i>
+                            <span style="font-size:13px;font-weight:700;">متوسط شحن الأجهزة</span>
+                        </div>
+                        <div id="avgBattery" class="stat-value">-- %</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
+                            <i data-lucide="flame" style="width:18px;height:18px;color:var(--sos);"></i>
+                            <span style="font-size:13px;font-weight:700;">مؤشر الخطر الإجمالي</span>
+                        </div>
+                        <div id="totalRiskIndex" class="stat-value" style="color:var(--sos);">-- / 100</div>
+                    </div>
                 </div>
 
-                <!-- Details Slide Panel -->
-                <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:380px;max-height:calc(100% - 32px);overflow-y:auto;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,.97);box-shadow:var(--shadow-md);">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:1px solid var(--border-soft);padding-bottom:8px;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span class="status-dot" style="background:var(--normal);"></span>
-                            <div>
-                                <h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:15px;color:var(--text-primary);">—</h3>
-                                <span id="detailId" class="font-mono" style="font-size:11px;color:var(--text-muted);">#—</span>
-                            </div>
-                        </div>
-                        <button id="closeDetailBtn" style="padding:4px;border-radius:8px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:15px;height:15px;"></i></button>
-                    </div>
-
-                    <!-- Predictive Fatigue Bar -->
-                    <div style="margin-bottom:12px;padding:10px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;background:rgba(51,199,244,.08);border:1px solid rgba(51,199,244,.25);">
-                        <i data-lucide="brain-circuit" style="width:18px;height:18px;flex-shrink:0;color:var(--accent);"></i>
-                        <div style="flex:1;">
-                            <span style="display:block;font-size:10px;color:var(--text-muted);">مؤشر الإرهاق التنبؤي</span>
-                            <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
-                                <div class="fatigue-bar-wrap"><div id="detailFatigueBar" class="fatigue-bar-fill" style="width:0%;background:var(--normal);"></div></div>
-                                <span id="detailFatiguePct" class="font-mono" style="font-weight:700;font-size:12px;color:var(--normal);">0%</span>
-                            </div>
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:16px; flex:1;">
+                    <div class="analytics-card" style="display:flex;flex-direction:column;">
+                        <h4 style="margin:0 0 16px 0; font-size:14px; color:var(--text-primary);">توزيع الحالات الأمنية</h4>
+                        <div style="flex:1; position:relative;">
+                            <canvas id="barChart"></canvas>
                         </div>
                     </div>
-
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
-                            <span style="font-size:10px;color:var(--text-muted);">النبض</span>
-                            <span id="detailHeartRate" class="font-mono" style="display:block;font-weight:700;color:var(--normal);">0 BPM</span>
-                        </div>
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
-                            <span style="display:block;font-size:10px;color:var(--text-muted);">ضغط الدم</span>
-                            <span id="detailBP" class="font-mono" style="font-weight:700;color:var(--warning);">--</span>
-                        </div>
-                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
-                            <span style="display:block;font-size:10px;color:var(--text-muted);">البطارية</span>
-                            <span id="detailBattery" class="font-mono" style="font-weight:700;color:var(--text-primary);">--</span>
+                    <div class="analytics-card" style="display:flex;flex-direction:column;">
+                        <h4 style="margin:0 0 16px 0; font-size:14px; color:var(--text-primary);">نسبة الجاهزية</h4>
+                        <div style="flex:1; position:relative; display:flex; justify-content:center; align-items:center;">
+                            <canvas id="doughnutChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -203,54 +210,42 @@
         </main>
     </div>
 
-    <!-- Floating AI Copilot Button -->
-    <button id="aiToggleBtn" type="button">
-        <i data-lucide="bot" style="width:18px;height:18px;"></i>
-        <span>المساعد الأمني (Gemini)</span>
-    </button>
-
-    <!-- AI Chatbot Box -->
+    <!-- نافذة المساعد الذكي -->
+    <button id="aiToggleBtn" type="button"><i data-lucide="bot"></i><span>مساعد الذكاء الاصطناعي</span></button>
     <div id="aiChatBox" class="hidden">
-        <!-- Header -->
         <div style="padding:12px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-elevated);display:flex;justify-content:space-between;align-items:center;">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <i data-lucide="sparkles" style="width:16px;height:16px;color:var(--accent);"></i>
-                <span style="font-weight:700;font-size:13px;color:var(--text-primary);">Gemini AI Copilot</span>
+            <div style="display:flex;align-items:center;gap:8px;color:var(--accent);font-weight:700;font-size:13px;">
+                <i data-lucide="sparkles" style="width:16px;height:16px;"></i> المساعد الأمني Gemini
             </div>
             <button id="aiCloseBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
         </div>
-
-        <!-- API Key Input -->
         <div style="padding:8px 12px;background:var(--bg-subtle);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:6px;">
             <i data-lucide="key" style="width:13px;height:13px;color:var(--warning);"></i>
-            <input type="password" id="geminiApiKeyInput" placeholder="أدخل مفتاح Gemini API هنا..." style="flex:1;background:transparent;border:none;outline:none;font-size:11px;color:var(--text-primary);">
+            <input type="password" id="geminiApiKeyInput" placeholder="أدخل مفتاح API هنا..." style="flex:1;background:transparent;border:none;outline:none;font-size:11px;color:var(--text-primary);">
         </div>
-
-        <!-- Messages Area -->
         <div id="aiMessages" style="flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
-            <div class="ai-msg bot">
-                مرحباً! أنا المساعد الأمني المربوط بـ <strong>Gemini AI</strong>. أدخل مفتاحك بالأعلى ويمكنني تقديم تقرير فوري أو اقتراح خطط للتعامل مع أي حالة ميدانية.
-            </div>
+            <div class="ai-msg bot">مرحباً! أنا جاهز لتحليل اللوحة التفصيلية وإرشادك. أدخل المفتاح وسلني ما تشاء.</div>
         </div>
-
-        <!-- Input Area -->
         <div style="padding:10px;border-top:1px solid var(--border-soft);display:flex;gap:6px;background:var(--bg-panel);">
-            <input type="text" id="aiInput" placeholder="اسأل المساعد..." style="flex:1;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:8px;padding:8px 10px;color:var(--text-primary);font-size:12px;outline:none;">
-            <button id="aiSendBtn" style="background:var(--accent);color:#04222c;border:none;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;"><i data-lucide="send" style="width:14px;height:14px;"></i></button>
+            <input type="text" id="aiInput" placeholder="اكتب سؤالك..." style="flex:1;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:8px;padding:8px;color:var(--text-primary);font-size:12px;outline:none;">
+            <button id="aiSendBtn" style="background:var(--accent);color:#04222c;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;"><i data-lucide="send" style="width:14px;height:14px;"></i></button>
         </div>
     </div>
 
-    <!-- Main JavaScript -->
+    <!-- المنطق البرمجي (JavaScript) -->
     <script>
-        // عينة من البيانات لتعمل اللوحة فوراً 
+        // --- 1. البيانات الوهمية ---
         let employeesData = [
-            { id: "EMP-101", name: "النقيب/ خالد العتيبي", status: "NORMAL", lat: 24.7136, lng: 46.6753, heartRate: 74, bp: "120/80", battery: 85 },
-            { id: "EMP-102", name: "الملازم/ فهد الشمري", status: "SOS", lat: 24.7200, lng: 46.6800, heartRate: 135, bp: "145/95", battery: 18 },
-            { id: "EMP-103", name: "العريف/ سارة الدوسري", status: "WARNING", lat: 24.7050, lng: 46.6600, heartRate: 105, bp: "130/85", battery: 42 }
+            { id: "EMP-101", name: "النقيب/ خالد العتيبي", status: "NORMAL", lat: 24.7136, lng: 46.6753, heartRate: 74, battery: 85 },
+            { id: "EMP-102", name: "الملازم/ فهد الشمري", status: "SOS", lat: 24.7200, lng: 46.6800, heartRate: 135, battery: 18 },
+            { id: "EMP-103", name: "العريف/ سارة الدوسري", status: "WARNING", lat: 24.7050, lng: 46.6600, heartRate: 105, battery: 42 },
+            { id: "EMP-104", name: "جندي/ أحمد الزهراني", status: "NORMAL", lat: 24.7300, lng: 46.6900, heartRate: 80, battery: 90 },
+            { id: "EMP-105", name: "رقيب/ محمد الشهراني", status: "NORMAL", lat: 24.6950, lng: 46.6500, heartRate: 78, battery: 75 },
         ];
 
         let map, markersGroup;
         let activeFilter = 'ALL';
+        let chartsInstance = {};
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -258,20 +253,17 @@
             initMap();
             renderStats();
             renderEmployeeList();
+            initTabs();
             initAIModule();
+            
+            // إعدادات افتراضية للمكتبة البيانية لتناسب الـ Dark Theme
+            Chart.defaults.color = '#8291A8';
+            Chart.defaults.font.family = 'Cairo';
         });
 
-        function initClock() {
-            setInterval(() => {
-                const now = new Date();
-                const timeStr = now.toLocaleTimeString('ar-SA');
-                document.getElementById('liveClock').textContent = timeStr;
-                document.getElementById('lastUpdateTime').textContent = timeStr;
-            }, 1000);
-        }
-
+        // --- 2. إعدادات الخريطة ---
         function initMap() {
-            map = L.map('map').setView([24.7136, 46.6753], 13);
+            map = L.map('map').setView([24.7136, 46.6753], 12);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
             markersGroup = L.layerGroup().addTo(map);
             updateMapMarkers();
@@ -281,17 +273,23 @@
             markersGroup.clearLayers();
             employeesData.forEach(emp => {
                 if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
-
                 const color = emp.status === 'SOS' ? '#FF3B4E' : emp.status === 'WARNING' ? '#F5A623' : '#22D488';
-                const markerHtml = `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};"></div>`;
-                const customIcon = L.divIcon({ html: markerHtml, className: '' });
-
+                const customIcon = L.divIcon({ html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};"></div>`, className: '' });
                 const marker = L.marker([emp.lat, emp.lng], { icon: customIcon }).addTo(markersGroup);
-                marker.bindPopup(`<b>${emp.name}</b><br>الحالة: ${emp.status}`);
-                marker.on('click', () => selectEmployee(emp));
+                marker.on('click', () => {
+                    document.getElementById('detailPanel').classList.remove('hidden');
+                    document.getElementById('detailName').textContent = emp.name;
+                    document.getElementById('detailId').textContent = emp.id;
+                    document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
+                    document.getElementById('detailBattery').textContent = emp.battery + '%';
+                    map.flyTo([emp.lat, emp.lng], 15);
+                });
             });
         }
 
+        document.getElementById('closeDetailBtn').onclick = () => document.getElementById('detailPanel').classList.add('hidden');
+
+        // --- 3. القائمة الجانبية والإحصائيات ---
         function renderStats() {
             document.getElementById('statTotal').textContent = employeesData.length;
             document.getElementById('statNormal').textContent = employeesData.filter(e => e.status === 'NORMAL').length;
@@ -302,39 +300,17 @@
         function renderEmployeeList() {
             const container = document.getElementById('employeeList');
             container.innerHTML = '';
-
             employeesData.forEach(emp => {
                 if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
-
                 const borderCol = emp.status === 'SOS' ? 'var(--sos)' : emp.status === 'WARNING' ? 'var(--warning)' : 'var(--normal)';
                 const card = document.createElement('div');
                 card.className = 'employee-card';
                 card.style.borderInlineStartColor = borderCol;
-                card.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <strong style="font-size:12.5px;color:var(--text-primary);">${emp.name}</strong>
-                        <span class="badge ${emp.status.toLowerCase()}">${emp.status}</span>
-                    </div>
-                `;
-                card.onclick = () => { selectEmployee(emp); map.flyTo([emp.lat, emp.lng], 15); };
+                card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><strong style="font-size:12.5px;color:var(--text-primary);">${emp.name}</strong><span class="badge ${emp.status.toLowerCase()}">${emp.status}</span></div>`;
+                card.onclick = () => { map.flyTo([emp.lat, emp.lng], 15); };
                 container.appendChild(card);
             });
         }
-
-        function selectEmployee(emp) {
-            document.getElementById('detailPanel').classList.remove('hidden');
-            document.getElementById('detailName').textContent = emp.name;
-            document.getElementById('detailId').textContent = emp.id;
-            document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
-            document.getElementById('detailBP').textContent = emp.bp;
-            document.getElementById('detailBattery').textContent = emp.battery + '%';
-
-            let fatigue = (emp.heartRate > 100 ? 40 : 0) + (emp.battery < 30 ? 30 : 0);
-            document.getElementById('detailFatigueBar').style.width = fatigue + '%';
-            document.getElementById('detailFatiguePct').textContent = fatigue + '%';
-        }
-
-        document.getElementById('closeDetailBtn').onclick = () => document.getElementById('detailPanel').classList.add('hidden');
 
         document.querySelectorAll('#filterChips .chip').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -346,9 +322,84 @@
             });
         });
 
-        // ==========================================
-        // Gemini AI Logic (تم الإصلاح هنا)
-        // ==========================================
+        function initClock() { setInterval(() => { document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('ar-SA'); }, 1000); }
+
+        // --- 4. التبديل بين الخريطة واللوحة التحليلية (Tab Switching Logic) ---
+        function initTabs() {
+            const mapTab = document.getElementById('tabMapBtn');
+            const analyticsTab = document.getElementById('tabAnalyticsBtn');
+            const mapView = document.getElementById('mapView');
+            const analyticsView = document.getElementById('analyticsView');
+
+            mapTab.addEventListener('click', () => {
+                mapTab.classList.add('active');
+                analyticsTab.classList.remove('active');
+                mapView.classList.remove('hidden');
+                analyticsView.classList.add('hidden');
+                map.invalidateSize(); // تصحيح حجم الخريطة بعد الإظهار
+            });
+
+            analyticsTab.addEventListener('click', () => {
+                analyticsTab.classList.add('active');
+                mapTab.classList.remove('active');
+                analyticsView.classList.remove('hidden');
+                mapView.classList.add('hidden');
+                updateAnalyticsData(); // تحديث الرسوم البيانية
+            });
+        }
+
+        // --- 5. منطق اللوحة التحليلية والرسوم البيانية ---
+        function updateAnalyticsData() {
+            // حساب المتوسطات
+            const total = employeesData.length;
+            const avgHeart = Math.round(employeesData.reduce((acc, val) => acc + val.heartRate, 0) / total);
+            const avgBatt = Math.round(employeesData.reduce((acc, val) => acc + val.battery, 0) / total);
+            const sosCount = employeesData.filter(e => e.status === 'SOS').length;
+            const warnCount = employeesData.filter(e => e.status === 'WARNING').length;
+            const normCount = employeesData.filter(e => e.status === 'NORMAL').length;
+            
+            const riskIndex = Math.min(100, Math.round(((sosCount * 30) + (warnCount * 10)) / total * 10));
+
+            document.getElementById('avgHeartRate').textContent = avgHeart + ' BPM';
+            document.getElementById('avgBattery').textContent = avgBatt + ' %';
+            document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
+
+            // رسم الأعمدة (توزيع الحالات)
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            if(chartsInstance.bar) chartsInstance.bar.destroy();
+            chartsInstance.bar = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['طبيعي', 'تحذير', 'طوارئ SOS'],
+                    datasets: [{
+                        label: 'عدد الموظفين',
+                        data: [normCount, warnCount, sosCount],
+                        backgroundColor: ['#22D488', '#F5A623', '#FF3B4E'],
+                        borderRadius: 6
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#202C40' } }, x: { grid: { display: false } } } }
+            });
+
+            // رسم الدائرة (نسبة الجاهزية)
+            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+            if(chartsInstance.doughnut) chartsInstance.doughnut.destroy();
+            chartsInstance.doughnut = new Chart(doughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['جاهز للعمل', 'غير متاح/طوارئ'],
+                    datasets: [{
+                        data: [normCount, warnCount + sosCount],
+                        backgroundColor: ['#33C7F4', '#2E3D56'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        // --- 6. المساعد الذكي Gemini ---
         function initAIModule() {
             const aiToggleBtn = document.getElementById('aiToggleBtn');
             const aiChatBox = document.getElementById('aiChatBox');
@@ -357,13 +408,10 @@
             const aiInput = document.getElementById('aiInput');
             const apiKeyInput = document.getElementById('geminiApiKeyInput');
 
-            // استرجاع المفتاح المحفوظ مسبقاً
-            const savedKey = localStorage.getItem('gemini_api_key');
-            if (savedKey) apiKeyInput.value = savedKey;
+            if (localStorage.getItem('gemini_api_key')) apiKeyInput.value = localStorage.getItem('gemini_api_key');
 
             aiToggleBtn.addEventListener('click', () => aiChatBox.classList.toggle('hidden'));
             aiCloseBtn.addEventListener('click', () => aiChatBox.classList.add('hidden'));
-
             aiSendBtn.addEventListener('click', handleAISend);
             aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAISend(); });
         }
@@ -372,66 +420,43 @@
             const aiInput = document.getElementById('aiInput');
             const aiMessages = document.getElementById('aiMessages');
             const apiKeyInput = document.getElementById('geminiApiKeyInput');
-            
             const query = aiInput.value.trim();
             const apiKey = apiKeyInput.value.trim();
 
             if (!query) return;
-
-            // حفظ المفتاح في المتصفح
             if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
 
-            // إضافة رسالة المستخدم للواجهة
             aiMessages.innerHTML += `<div class="ai-msg user">${query}</div>`;
             aiInput.value = '';
             aiMessages.scrollTop = aiMessages.scrollHeight;
 
             if (!apiKey) {
-                setTimeout(() => {
-                    aiMessages.innerHTML += `<div class="ai-msg bot" style="border-color:var(--warning);">⚠️ <strong>تنبيه:</strong> يرجى إدخال مفتاح <strong>Gemini API</strong> في الأعلى ليعمل المساعد.</div>`;
-                    aiMessages.scrollTop = aiMessages.scrollHeight;
-                }, 300);
-                return;
+                aiMessages.innerHTML += `<div class="ai-msg bot" style="border-color:var(--warning);">يرجى إدخال مفتاح الـ API في الأعلى.</div>`;
+                aiMessages.scrollTop = aiMessages.scrollHeight; return;
             }
 
-            // مؤشر التحميل
             const loadingId = 'loading-' + Date.now();
             aiMessages.innerHTML += `<div id="${loadingId}" class="ai-msg bot">جاري التحليل...</div>`;
             aiMessages.scrollTop = aiMessages.scrollHeight;
 
-            // تجهيز السياق الأمني (الميدان)
-            const sosList = employeesData.filter(e => e.status === 'SOS');
-            const context = `العدد الإجمالي: ${employeesData.length} | حالات الطوارئ (SOS): ${sosList.length}`;
+            const context = `عدد الموظفين: ${employeesData.length} | حالات الطوارئ (SOS): ${employeesData.filter(e=>e.status==='SOS').length}`;
             const systemPrompt = `أنت مساعد أمني ذكي لمشرف غرفة التحكم. أجب باختصار واحترافية. حالة الميدان الآن: ${context}`;
 
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: systemPrompt + "\\n\\nالسؤال: " + query }] }]
-                    })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\n\nالسؤال: " + query }] }] })
                 });
 
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || "خطأ غير معروف.");
                 
-                // التقاط الخطأ إذا كان المفتاح غير صالح
-                if (!response.ok) {
-                    throw new Error(data.error?.message || "خطأ غير معروف في الـ API.");
-                }
-
-                // استخراج الرد
-                const reply = data.candidates[0].content.parts[0].text;
-                
-                // استبدال النزول بسطر (\n) بـ <br> بطريقة صحيحة برمجياً
-                const formattedReply = reply.replace(/\n/g, '<br>');
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot">${formattedReply}</div>`;
-
+                const reply = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot">${reply}</div>`;
             } catch (err) {
-                console.error("Gemini Error: ", err);
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot" style="color:var(--sos);">❌ عذراً، فشل الاتصال بالذكاء الاصطناعي. تأكد من صحة مفتاح الـ API وأنك متصل بالإنترنت.<br><small>${err.message}</small></div>`;
+                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot" style="color:var(--sos);">❌ فشل الاتصال: <br><small>${err.message}</small></div>`;
             }
-
             aiMessages.scrollTop = aiMessages.scrollHeight;
         }
     </script>
