@@ -81,11 +81,9 @@
 
         .hidden { display: none !important; }
 
-        /* تنسيقات اللوحة التحليلية */
         .analytics-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 14px; padding: 16px; box-shadow: var(--shadow-sm); }
         .stat-value { font-size: 24px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--text-primary); margin-top: 8px;}
 
-        /* تنسيق الذكاء الاصطناعي */
         #aiToggleBtn { position: fixed; bottom: 24px; left: 24px; z-index: 999; padding: 12px 18px; border-radius: 999px; border: 1px solid var(--accent); background: rgba(16, 24, 39, 0.92); color: var(--accent); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s ease; }
         #aiToggleBtn:hover { background: var(--accent); color: #04222c; }
         #aiChatBox { position: fixed; bottom: 80px; left: 24px; z-index: 999; width: 380px; height: 520px; border-radius: 16px; border: 1px solid var(--border-soft); background: rgba(16, 24, 39, 0.96); box-shadow: var(--shadow-md); display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(12px); }
@@ -122,7 +120,7 @@
     <!-- مساحة العمل الرئيسية -->
     <div style="flex:1;display:flex;overflow:hidden;padding:16px;gap:12px;background:var(--bg-page);">
         
-        <!-- القائمة الجانبية (ثابتة في كلا العرضين) -->
+        <!-- القائمة الجانبية -->
         <aside style="width:320px;min-width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);">
                 <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono stat-value" style="font-size:14px;">0</span></div>
@@ -139,18 +137,18 @@
             </div>
 
             <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
-                <!-- بطاقات الموظفين تُدرج هنا -->
+                <!-- بطاقات الموظفين -->
             </div>
         </aside>
 
-        <!-- العرض المتغير (الخريطة أو التحليلات) -->
+        <!-- العرض المتغير -->
         <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;">
             
             <!-- عرض الخريطة (MapView) -->
             <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft); display:flex;">
                 <div id="map"></div>
                 
-                <!-- تفاصيل الموظف فوق الخريطة -->
+                <!-- تفاصيل الموظف -->
                 <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:340px;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,.95);box-shadow:var(--shadow-md);">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border-soft);padding-bottom:8px;margin-bottom:12px;">
                         <div>
@@ -221,10 +219,10 @@
         </div>
         <div style="padding:8px 12px;background:var(--bg-subtle);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:6px;">
             <i data-lucide="key" style="width:13px;height:13px;color:var(--warning);"></i>
-            <input type="password" id="geminiApiKeyInput" placeholder="أدخل مفتاح API هنا..." style="flex:1;background:transparent;border:none;outline:none;font-size:11px;color:var(--text-primary);">
+            <input type="password" id="geminiApiKeyInput" placeholder="أدخل مفتاح AI Studio هنا..." style="flex:1;background:transparent;border:none;outline:none;font-size:11px;color:var(--text-primary);">
         </div>
         <div id="aiMessages" style="flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
-            <div class="ai-msg bot">مرحباً! أنا جاهز لتحليل اللوحة التفصيلية وإرشادك. أدخل المفتاح وسلني ما تشاء.</div>
+            <div class="ai-msg bot">مرحباً! أنا المساعد الأمني المعزز بنماذج Gemini. ضع المفتاح في الخانة أعلاه وأرسل سؤالك.</div>
         </div>
         <div style="padding:10px;border-top:1px solid var(--border-soft);display:flex;gap:6px;background:var(--bg-panel);">
             <input type="text" id="aiInput" placeholder="اكتب سؤالك..." style="flex:1;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:8px;padding:8px;color:var(--text-primary);font-size:12px;outline:none;">
@@ -234,7 +232,6 @@
 
     <!-- المنطق البرمجي (JavaScript) -->
     <script>
-        // --- 1. البيانات الوهمية ---
         let employeesData = [
             { id: "EMP-101", name: "النقيب/ خالد العتيبي", status: "NORMAL", lat: 24.7136, lng: 46.6753, heartRate: 74, battery: 85 },
             { id: "EMP-102", name: "الملازم/ فهد الشمري", status: "SOS", lat: 24.7200, lng: 46.6800, heartRate: 135, battery: 18 },
@@ -256,12 +253,10 @@
             initTabs();
             initAIModule();
             
-            // إعدادات افتراضية للمكتبة البيانية لتناسب الـ Dark Theme
             Chart.defaults.color = '#8291A8';
             Chart.defaults.font.family = 'Cairo';
         });
 
-        // --- 2. إعدادات الخريطة ---
         function initMap() {
             map = L.map('map').setView([24.7136, 46.6753], 12);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
@@ -289,7 +284,6 @@
 
         document.getElementById('closeDetailBtn').onclick = () => document.getElementById('detailPanel').classList.add('hidden');
 
-        // --- 3. القائمة الجانبية والإحصائيات ---
         function renderStats() {
             document.getElementById('statTotal').textContent = employeesData.length;
             document.getElementById('statNormal').textContent = employeesData.filter(e => e.status === 'NORMAL').length;
@@ -324,7 +318,6 @@
 
         function initClock() { setInterval(() => { document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('ar-SA'); }, 1000); }
 
-        // --- 4. التبديل بين الخريطة واللوحة التحليلية (Tab Switching Logic) ---
         function initTabs() {
             const mapTab = document.getElementById('tabMapBtn');
             const analyticsTab = document.getElementById('tabAnalyticsBtn');
@@ -336,7 +329,7 @@
                 analyticsTab.classList.remove('active');
                 mapView.classList.remove('hidden');
                 analyticsView.classList.add('hidden');
-                map.invalidateSize(); // تصحيح حجم الخريطة بعد الإظهار
+                map.invalidateSize();
             });
 
             analyticsTab.addEventListener('click', () => {
@@ -344,13 +337,11 @@
                 mapTab.classList.remove('active');
                 analyticsView.classList.remove('hidden');
                 mapView.classList.add('hidden');
-                updateAnalyticsData(); // تحديث الرسوم البيانية
+                updateAnalyticsData();
             });
         }
 
-        // --- 5. منطق اللوحة التحليلية والرسوم البيانية ---
         function updateAnalyticsData() {
-            // حساب المتوسطات
             const total = employeesData.length;
             const avgHeart = Math.round(employeesData.reduce((acc, val) => acc + val.heartRate, 0) / total);
             const avgBatt = Math.round(employeesData.reduce((acc, val) => acc + val.battery, 0) / total);
@@ -364,7 +355,6 @@
             document.getElementById('avgBattery').textContent = avgBatt + ' %';
             document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
 
-            // رسم الأعمدة (توزيع الحالات)
             const barCtx = document.getElementById('barChart').getContext('2d');
             if(chartsInstance.bar) chartsInstance.bar.destroy();
             chartsInstance.bar = new Chart(barCtx, {
@@ -381,7 +371,6 @@
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#202C40' } }, x: { grid: { display: false } } } }
             });
 
-            // رسم الدائرة (نسبة الجاهزية)
             const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
             if(chartsInstance.doughnut) chartsInstance.doughnut.destroy();
             chartsInstance.doughnut = new Chart(doughnutCtx, {
@@ -399,7 +388,9 @@
             });
         }
 
-        // --- 6. المساعد الذكي Gemini ---
+        // ==========================================
+        // Gemini AI API (المصلح والمحدث للاتصال بـ v1beta)
+        // ==========================================
         function initAIModule() {
             const aiToggleBtn = document.getElementById('aiToggleBtn');
             const aiChatBox = document.getElementById('aiChatBox');
@@ -414,6 +405,35 @@
             aiCloseBtn.addEventListener('click', () => aiChatBox.classList.add('hidden'));
             aiSendBtn.addEventListener('click', handleAISend);
             aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAISend(); });
+        }
+
+        async function fetchGeminiAPI(apiKey, promptText) {
+            // محاولة أولية باستخدام النموذج السريع المعتمد v1beta
+            const primaryEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const fallbackEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{
+                    parts: [{ text: promptText }]
+                }]
+            };
+
+            let response = await fetch(primaryEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            // إذا فشل النموذج الجديد للطلب الحالي، نستخدم المسار المباشر المضمون
+            if (!response.ok) {
+                response = await fetch(fallbackEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+
+            return response;
         }
 
         async function handleAISend() {
@@ -431,31 +451,30 @@
             aiMessages.scrollTop = aiMessages.scrollHeight;
 
             if (!apiKey) {
-                aiMessages.innerHTML += `<div class="ai-msg bot" style="border-color:var(--warning);">يرجى إدخال مفتاح الـ API في الأعلى.</div>`;
-                aiMessages.scrollTop = aiMessages.scrollHeight; return;
+                aiMessages.innerHTML += `<div class="ai-msg bot" style="border-color:var(--warning);">يرجى أدخال مفتاح Gemini API في الخانة أعلاه.</div>`;
+                aiMessages.scrollTop = aiMessages.scrollHeight; 
+                return;
             }
 
             const loadingId = 'loading-' + Date.now();
-            aiMessages.innerHTML += `<div id="${loadingId}" class="ai-msg bot">جاري التحليل...</div>`;
+            aiMessages.innerHTML += `<div id="${loadingId}" class="ai-msg bot">جاري تحليل الميدان والإجابة...</div>`;
             aiMessages.scrollTop = aiMessages.scrollHeight;
 
-            const context = `عدد الموظفين: ${employeesData.length} | حالات الطوارئ (SOS): ${employeesData.filter(e=>e.status==='SOS').length}`;
-            const systemPrompt = `أنت مساعد أمني ذكي لمشرف غرفة التحكم. أجب باختصار واحترافية. حالة الميدان الآن: ${context}`;
+            const context = `إجمالي الموظفين: ${employeesData.length} | حالات الطوارئ: ${employeesData.filter(e=>e.status==='SOS').length}`;
+            const promptText = `أنت المساعد الأمني الذكي في مركز المراقبة. أجب باختصار باللغة العربية.\nبيانات الميدان الحالية: [${context}]\n\nسؤال المشرف: ${query}`;
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\n\nالسؤال: " + query }] }] })
-                });
-
+                const response = await fetchGeminiAPI(apiKey, promptText);
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error?.message || "خطأ غير معروف.");
-                
+
+                if (!response.ok) {
+                    throw new Error(data.error?.message || "خطأ في المصادقة أو المفتاح.");
+                }
+
                 const reply = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
                 document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot">${reply}</div>`;
             } catch (err) {
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot" style="color:var(--sos);">❌ فشل الاتصال: <br><small>${err.message}</small></div>`;
+                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot" style="color:var(--sos);">❌ خطأ أثناء الاتصال بالذكاء الاصطناعي:<br><small>${err.message}</small></div>`;
             }
             aiMessages.scrollTop = aiMessages.scrollHeight;
         }
