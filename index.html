@@ -1,483 +1,624 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مركز القيادة والمراقبة الأمنية الذكي - النسخة الشاملة</title>
-    
-    <!-- Leaflet & MarkerCluster CSS/JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    
-    <!-- Chart.js للوحة التحليلية -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مركز القيادة والمراقبة الأمنية الذكي</title>
 
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    
-    <style>
-        :root {
-            --bg-void: #060911; --bg-page: #0A0F19; --bg-panel: #101827; --bg-subtle: #0B121E;
-            --bg-elevated: #16202F; --border-soft: #202C40; --border-strong: #2E3D56;
-            --text-primary: #EAF0FB; --text-secondary: #8291A8; --text-muted: #4F5E76;
-            --navy: #3E8EDE; --navy-soft: rgba(62,142,222,0.12);
-            --accent: #33C7F4; --accent-soft: rgba(51,199,244,0.12);
-            --normal: #22D488; --normal-soft: rgba(34,212,136,0.12);
-            --warning: #F5A623; --warning-soft: rgba(245,166,35,0.14);
-            --sos: #FF3B4E; --sos-soft: rgba(255,59,78,0.16);
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.35); --shadow-md: 0 16px 40px rgba(0,0,0,0.55);
-        }
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
-        * { box-sizing: border-box; font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
-        .font-display { font-family: 'Cairo', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; direction: ltr; unicode-bidi: isolate; }
+<style>
+:root{
+  --bg-void:#04060B; --bg-page:#080C14; --bg-panel:#0E1521; --bg-subtle:#0A101B; --bg-elevated:#141E2E;
+  --border-soft:#1C2636; --border-strong:#2A374C;
+  --text-primary:#EAF1FB; --text-secondary:#7E8FA8; --text-muted:#48566E;
+  --accent:#2FD1E8; --accent-soft:rgba(47,209,232,0.12); --accent-dim:#1B4A55;
+  --normal:#22D488; --normal-soft:rgba(34,212,136,0.12);
+  --warning:#FFA83D; --warning-soft:rgba(255,168,61,0.14);
+  --sos:#FF3B57; --sos-soft:rgba(255,59,87,0.16);
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.4); --shadow-md:0 20px 50px rgba(0,0,0,0.6);
+}
+*{box-sizing:border-box; font-family:'IBM Plex Sans Arabic','Cairo',sans-serif;}
+.font-display{font-family:'Cairo',sans-serif;}
+.font-mono{font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:isolate;}
+html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:var(--bg-void);color:var(--text-primary);
+  background-image:linear-gradient(var(--bg-page),var(--bg-page)),
+  repeating-linear-gradient(0deg,rgba(47,209,232,0.025) 0px,rgba(47,209,232,0.025) 1px,transparent 1px,transparent 44px),
+  repeating-linear-gradient(90deg,rgba(47,209,232,0.025) 0px,rgba(47,209,232,0.025) 1px,transparent 1px,transparent 44px);}
+::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:999px;} ::-webkit-scrollbar-track{background:transparent;}
 
-        html, body {
-            margin: 0; padding: 0; height: 100vh; width: 100%; overflow: hidden;
-            background-color: var(--bg-void); color: var(--text-primary);
-            background-image: linear-gradient(var(--bg-page), var(--bg-page)), 
-                              repeating-linear-gradient(0deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px), 
-                              repeating-linear-gradient(90deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px);
-        }
+#map{height:100%;width:100%;z-index:1;background:var(--bg-subtle);border-radius:14px;}
+.leaflet-control-zoom a{background:var(--bg-panel) !important;color:var(--text-primary) !important;border-color:var(--border-soft) !important;}
+.leaflet-popup-content-wrapper{background:var(--bg-elevated) !important;color:var(--text-primary) !important;border-radius:.75rem !important;border:1px solid var(--border-soft);box-shadow:var(--shadow-md) !important;}
+.leaflet-popup-tip{background:var(--bg-elevated) !important;}
 
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
-        ::-webkit-scrollbar-track { background: transparent; }
+@keyframes livePulse{0%{transform:scale(.6);opacity:1;}100%{transform:scale(2.6);opacity:0;}}
+.live-pulse{position:relative;width:10px;height:10px;border-radius:50%;background:var(--normal);display:inline-block;}
+.live-pulse::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1.5px solid rgba(34,212,136,.55);animation:livePulse 2s ease-out infinite;}
+.live-pulse.sos{background:var(--sos);} .live-pulse.sos::after{border-color:rgba(255,59,87,.6);}
+.live-pulse.warning{background:var(--warning);} .live-pulse.warning::after{border-color:rgba(255,168,61,.6);}
 
-        #map { height: 100%; width: 100%; z-index: 1; background: var(--bg-subtle); border-radius: 14px; }
-        .leaflet-control-zoom a { background-color: var(--bg-panel) !important; color: var(--text-primary) !important; border-color: var(--border-soft) !important; }
-        .leaflet-popup-content-wrapper { background-color: var(--bg-elevated) !important; color: var(--text-primary) !important; border-radius: 0.75rem !important; border: 1px solid var(--border-soft); box-shadow: var(--shadow-md) !important; }
-        .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
+.badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;letter-spacing:.3px;font-family:'Cairo',sans-serif;}
+.badge.normal{background:var(--normal-soft);color:var(--normal);border:1px solid rgba(34,212,136,.3);}
+.badge.sos{background:var(--sos-soft);color:var(--sos);border:1px solid rgba(255,59,87,.3);}
+.badge.warning{background:var(--warning-soft);color:var(--warning);border:1px solid rgba(255,168,61,.3);}
 
-        @keyframes livePulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
-        .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); display:inline-block;}
-        .live-pulse::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid rgba(34,212,136,0.55); animation: livePulse 2s ease-out infinite; }
+.chip{font-size:11px;font-weight:600;padding:5px 12px;border-radius:999px;border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-secondary);cursor:pointer;transition:all .15s ease;white-space:nowrap;}
+.chip:hover{border-color:var(--accent);color:var(--accent);}
+.chip.active{background:var(--accent);color:#03222A;border-color:var(--accent);}
 
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-        .badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: .3px; font-family: 'Cairo', sans-serif; }
-        .badge.normal { background: var(--normal-soft); color: var(--normal); border: 1px solid rgba(34,212,136,0.3); }
-        .badge.sos { background: var(--sos-soft); color: var(--sos); border: 1px solid rgba(255,59,78,0.3); }
-        .badge.warning { background: var(--warning-soft); color: var(--warning); border: 1px solid rgba(245,166,35,0.3); }
+.view-tab{padding:9px 20px;border-radius:10px 10px 0 0;border:1px solid var(--border-soft);border-bottom:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text-secondary);display:flex;align-items:center;gap:6px;}
+.view-tab.active{background:var(--bg-panel);color:var(--accent);border-bottom:2px solid var(--accent);}
 
-        .chip { font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-soft); background: var(--bg-panel); color: var(--text-secondary); cursor: pointer; transition: all .15s ease; white-space: nowrap; }
-        .chip:hover { border-color: var(--accent); color: var(--accent); }
-        .chip.active { background: var(--accent); color: #04222c; border-color: var(--accent); }
+.employee-card{background:var(--bg-panel);border:1px solid var(--border-soft);border-inline-start:3px solid var(--border-soft);border-radius:.75rem;padding:.7rem .85rem;cursor:pointer;transition:all .15s ease;}
+.employee-card:hover{border-color:var(--accent);border-inline-start-color:var(--accent);background:var(--bg-elevated);}
+.employee-card.selected{background:var(--bg-elevated);border-color:var(--accent);}
+.mini-bar{height:4px;border-radius:999px;background:var(--bg-subtle);overflow:hidden;flex:1;}
+.mini-bar>span{display:block;height:100%;border-radius:999px;}
 
-        .view-tab { padding: 9px 20px; border-radius: 10px 10px 0 0; border: 1px solid var(--border-soft); border-bottom: none; font-size: 13px; font-weight: 700; cursor: pointer; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
-        .view-tab.active { background: var(--bg-panel); color: var(--accent); border-bottom: 2px solid var(--accent); }
+.analytics-card{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:14px;padding:16px;box-shadow:var(--shadow-sm);}
+.stat-value{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text-primary);margin-top:8px;}
 
-        .employee-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-inline-start: 3px solid var(--border-soft); border-radius: .7rem; padding: .8rem .9rem; cursor: pointer; transition: all .15s ease; }
-        .employee-card:hover { border-color: var(--accent); border-inline-start-color: var(--accent); background: var(--bg-elevated); }
+.hidden{display:none !important;}
+.map-tool-btn{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:9px;box-shadow:var(--shadow-sm);padding:9px;cursor:pointer;color:var(--text-secondary);display:flex;transition:all .15s ease;}
+.map-tool-btn:hover{border-color:var(--accent);color:var(--accent);}
 
-        .map-tool-btn { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 9px; box-shadow: var(--shadow-sm); padding: 9px; cursor: pointer; color: var(--text-secondary); display: flex; transition: all .15s ease; }
-        .map-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+/* ECG signature strip */
+#ecgWrap{width:180px;height:34px;position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);}
+#ecgSvg{position:absolute;top:0;right:0;height:100%;}
+.ecg-path{fill:none;stroke:var(--normal);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 3px var(--normal));}
 
-        .hidden { display: none !important; }
-
-        .analytics-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 14px; padding: 16px; box-shadow: var(--shadow-sm); }
-        .stat-value { font-size: 24px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--text-primary); margin-top: 8px;}
-
-        #aiToggleBtn { position: fixed; bottom: 24px; left: 24px; z-index: 999; padding: 12px 18px; border-radius: 999px; border: 1px solid var(--accent); background: rgba(16, 24, 39, 0.92); color: var(--accent); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s ease; }
-        #aiToggleBtn:hover { background: var(--accent); color: #04222c; }
-        #aiChatBox { position: fixed; bottom: 80px; left: 24px; z-index: 999; width: 380px; height: 520px; border-radius: 16px; border: 1px solid var(--border-soft); background: rgba(16, 24, 39, 0.96); box-shadow: var(--shadow-md); display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(12px); }
-        .ai-msg { padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.5; max-width: 88%; word-break: break-word; }
-        .ai-msg.user { align-self: flex-end; background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(51,199,244,0.3); border-bottom-left-radius: 2px; }
-        .ai-msg.bot { align-self: flex-start; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-soft); border-bottom-right-radius: 2px; }
-    </style>
+/* AI assistant */
+#aiToggleBtn{position:fixed;bottom:24px;left:24px;z-index:999;padding:12px 18px;border-radius:999px;border:1px solid var(--accent);background:rgba(14,21,33,.94);color:var(--accent);font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);cursor:pointer;backdrop-filter:blur(10px);transition:all .2s ease;}
+#aiToggleBtn:hover{background:var(--accent);color:#03222A;}
+#aiChatBox{position:fixed;bottom:80px;left:24px;z-index:999;width:380px;height:520px;border-radius:16px;border:1px solid var(--border-soft);background:rgba(14,21,33,.97);box-shadow:var(--shadow-md);display:flex;flex-direction:column;overflow:hidden;backdrop-filter:blur(12px);}
+.ai-msg{padding:10px 12px;border-radius:12px;font-size:12.5px;line-height:1.6;max-width:88%;word-break:break-word;}
+.ai-msg.user{align-self:flex-end;background:var(--accent-soft);color:var(--accent);border:1px solid rgba(47,209,232,.3);border-bottom-left-radius:2px;}
+.ai-msg.bot{align-self:flex-start;background:var(--bg-subtle);color:var(--text-primary);border:1px solid var(--border-soft);border-bottom-right-radius:2px;}
+.ai-suggest{font-size:10.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;white-space:nowrap;}
+.ai-suggest:hover{border-color:var(--accent);color:var(--accent);}
+</style>
 </head>
 <body style="display:flex;flex-direction:column;">
 
-    <!-- الهيدر -->
-    <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
-        <div style="display:flex;align-items:center;gap:12px;">
-            <div style="padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--navy-soft);color:var(--navy);display:flex;">
-                <i data-lucide="shield-check" style="width:24px;height:24px;"></i>
-            </div>
-            <div>
-                <h1 class="font-display" style="margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
-                    <span class="live-pulse"></span> مركز القيادة والمراقبة الأمنية الذكي
-                </h1>
-                <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;color:var(--text-secondary);">
-                    <span class="badge normal">تشغيل طبيعي</span> تتبع حي وتحليل بيانات · <span id="liveClock" class="font-mono" style="color:var(--accent);">--:--:--</span>
-                </p>
-            </div>
-        </div>
-    </header>
+<header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--accent-soft);color:var(--accent);display:flex;">
+      <i data-lucide="shield-check" style="width:24px;height:24px;"></i>
+    </div>
+    <div>
+      <h1 class="font-display" style="margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;">
+        <span id="headerPulse" class="live-pulse"></span> مركز القيادة والمراقبة الأمنية الذكي
+      </h1>
+      <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;color:var(--text-secondary);">
+        <span id="headerBadge" class="badge normal">تشغيل طبيعي</span> تتبع حي وتحليل بيانات ميداني · <span id="liveClock" class="font-mono" style="color:var(--accent);">--:--:--</span>
+      </p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="text-align:center;">
+      <span style="display:block;font-size:9px;color:var(--text-muted);">مؤشر الخطر</span>
+      <span id="headerRisk" class="font-mono" style="font-weight:800;font-size:15px;color:var(--normal);">0/100</span>
+    </div>
+    <div id="ecgWrap" title="نبض الميدان الإجمالي">
+      <svg id="ecgSvg" viewBox="0 0 400 34" preserveAspectRatio="none"><path id="ecgPath" class="ecg-path" d=""/></svg>
+    </div>
+  </div>
+</header>
 
-    <!-- التبويبات -->
-    <div style="display:flex;gap:10px;padding:10px 16px 0;background:var(--bg-panel);">
-        <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية</button>
-        <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>اللوحة التحليلية</button>
+<div style="display:flex;gap:10px;padding:10px 16px 0;background:var(--bg-panel);">
+  <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية</button>
+  <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>اللوحة التحليلية</button>
+</div>
+
+<div style="flex:1;display:flex;overflow:hidden;padding:16px;gap:12px;background:var(--bg-page);">
+
+  <aside style="width:330px;min-width:330px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);">
+      <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono stat-value" style="font-size:14px;">0</span></div>
+      <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">طبيعي</span><span id="statNormal" class="font-mono stat-value" style="font-size:14px;color:var(--normal);">0</span></div>
+      <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">تحذير</span><span id="statWarning" class="font-mono stat-value" style="font-size:14px;color:var(--warning);">0</span></div>
+      <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">SOS</span><span id="statSos" class="font-mono stat-value" style="font-size:14px;color:var(--sos);">0</span></div>
     </div>
 
-    <!-- مساحة العمل الرئيسية -->
-    <div style="flex:1;display:flex;overflow:hidden;padding:16px;gap:12px;background:var(--bg-page);">
-        
-        <!-- القائمة الجانبية -->
-        <aside style="width:320px;min-width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);">
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono stat-value" style="font-size:14px;">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">طبيعي</span><span id="statNormal" class="font-mono stat-value" style="font-size:14px;color:var(--normal);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">تحذير</span><span id="statWarning" class="font-mono stat-value" style="font-size:14px;color:var(--warning);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">SOS</span><span id="statSos" class="font-mono stat-value" style="font-size:14px;color:var(--sos);">0</span></div>
-            </div>
-
-            <div id="filterChips" style="display:flex;align-items:center;gap:6px;overflow-x:auto;padding-bottom:4px;">
-                <button class="chip active" data-filter="ALL">الكل</button>
-                <button class="chip" data-filter="SOS">SOS</button>
-                <button class="chip" data-filter="WARNING">تحذير</button>
-                <button class="chip" data-filter="NORMAL">طبيعي</button>
-            </div>
-
-            <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
-                <!-- بطاقات الموظفين -->
-            </div>
-        </aside>
-
-        <!-- العرض المتغير -->
-        <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;">
-            
-            <!-- عرض الخريطة (MapView) -->
-            <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft); display:flex;">
-                <div id="map"></div>
-                
-                <!-- تفاصيل الموظف -->
-                <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:340px;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,.95);box-shadow:var(--shadow-md);">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border-soft);padding-bottom:8px;margin-bottom:12px;">
-                        <div>
-                            <h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:14px;color:var(--text-primary);">—</h3>
-                            <span id="detailId" class="font-mono" style="font-size:11px;color:var(--text-muted);">#—</span>
-                        </div>
-                        <button id="closeDetailBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-                        <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">النبض</span><span id="detailHeartRate" class="font-mono" style="font-weight:700;color:var(--normal);">--</span></div>
-                        <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">البطارية</span><span id="detailBattery" class="font-mono" style="font-weight:700;color:var(--text-primary);">--</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- اللوحة التحليلية (AnalyticsView) -->
-            <div id="analyticsView" class="hidden" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
-                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;">
-                    <div class="analytics-card">
-                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
-                            <i data-lucide="activity" style="width:18px;height:18px;color:var(--accent);"></i>
-                            <span style="font-size:13px;font-weight:700;">متوسط النبض العام</span>
-                        </div>
-                        <div id="avgHeartRate" class="stat-value">-- BPM</div>
-                    </div>
-                    <div class="analytics-card">
-                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
-                            <i data-lucide="battery-medium" style="width:18px;height:18px;color:var(--normal);"></i>
-                            <span style="font-size:13px;font-weight:700;">متوسط شحن الأجهزة</span>
-                        </div>
-                        <div id="avgBattery" class="stat-value">-- %</div>
-                    </div>
-                    <div class="analytics-card">
-                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
-                            <i data-lucide="flame" style="width:18px;height:18px;color:var(--sos);"></i>
-                            <span style="font-size:13px;font-weight:700;">مؤشر الخطر الإجمالي</span>
-                        </div>
-                        <div id="totalRiskIndex" class="stat-value" style="color:var(--sos);">-- / 100</div>
-                    </div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:16px; flex:1;">
-                    <div class="analytics-card" style="display:flex;flex-direction:column;">
-                        <h4 style="margin:0 0 16px 0; font-size:14px; color:var(--text-primary);">توزيع الحالات الأمنية</h4>
-                        <div style="flex:1; position:relative;">
-                            <canvas id="barChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="analytics-card" style="display:flex;flex-direction:column;">
-                        <h4 style="margin:0 0 16px 0; font-size:14px; color:var(--text-primary);">نسبة الجاهزية</h4>
-                        <div style="flex:1; position:relative; display:flex; justify-content:center; align-items:center;">
-                            <canvas id="doughnutChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
+    <div style="position:relative;">
+      <i data-lucide="search" style="position:absolute;top:9px;right:10px;width:14px;height:14px;color:var(--text-muted);"></i>
+      <input id="searchInput" type="text" placeholder="ابحث عن موظف بالاسم أو الرقم..." style="width:100%;padding:8px 32px 8px 10px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-primary);font-size:12px;outline:none;">
     </div>
 
-    <!-- نافذة المساعد الذكي -->
-    <button id="aiToggleBtn" type="button"><i data-lucide="bot"></i><span>مساعد الذكاء الاصطناعي</span></button>
-    <div id="aiChatBox" class="hidden">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-elevated);display:flex;justify-content:space-between;align-items:center;">
-            <div style="display:flex;align-items:center;gap:8px;color:var(--accent);font-weight:700;font-size:13px;">
-                <i data-lucide="sparkles" style="width:16px;height:16px;"></i> المساعد الأمني Gemini
-            </div>
-            <button id="aiCloseBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
-        </div>
-        <div style="padding:8px 12px;background:var(--bg-subtle);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:6px;">
-            <i data-lucide="key" style="width:13px;height:13px;color:var(--warning);"></i>
-            <input type="password" id="geminiApiKeyInput" placeholder="أدخل مفتاح AI Studio هنا..." style="flex:1;background:transparent;border:none;outline:none;font-size:11px;color:var(--text-primary);">
-        </div>
-        <div id="aiMessages" style="flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
-            <div class="ai-msg bot">مرحباً! أنا المساعد الأمني المعزز بنماذج Gemini. ضع المفتاح في الخانة أعلاه وأرسل سؤالك.</div>
-        </div>
-        <div style="padding:10px;border-top:1px solid var(--border-soft);display:flex;gap:6px;background:var(--bg-panel);">
-            <input type="text" id="aiInput" placeholder="اكتب سؤالك..." style="flex:1;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:8px;padding:8px;color:var(--text-primary);font-size:12px;outline:none;">
-            <button id="aiSendBtn" style="background:var(--accent);color:#04222c;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;"><i data-lucide="send" style="width:14px;height:14px;"></i></button>
-        </div>
+    <div id="filterChips" style="display:flex;align-items:center;gap:6px;overflow-x:auto;padding-bottom:4px;">
+      <button class="chip active" data-filter="ALL">الكل</button>
+      <button class="chip" data-filter="SOS">SOS</button>
+      <button class="chip" data-filter="WARNING">تحذير</button>
+      <button class="chip" data-filter="NORMAL">طبيعي</button>
     </div>
 
-    <!-- المنطق البرمجي (JavaScript) -->
-    <script>
-        let employeesData = [
-            { id: "EMP-101", name: "النقيب/ خالد العتيبي", status: "NORMAL", lat: 24.7136, lng: 46.6753, heartRate: 74, battery: 85 },
-            { id: "EMP-102", name: "الملازم/ فهد الشمري", status: "SOS", lat: 24.7200, lng: 46.6800, heartRate: 135, battery: 18 },
-            { id: "EMP-103", name: "العريف/ سارة الدوسري", status: "WARNING", lat: 24.7050, lng: 46.6600, heartRate: 105, battery: 42 },
-            { id: "EMP-104", name: "جندي/ أحمد الزهراني", status: "NORMAL", lat: 24.7300, lng: 46.6900, heartRate: 80, battery: 90 },
-            { id: "EMP-105", name: "رقيب/ محمد الشهراني", status: "NORMAL", lat: 24.6950, lng: 46.6500, heartRate: 78, battery: 75 },
-        ];
+    <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;"></div>
+  </aside>
 
-        let map, markersGroup;
-        let activeFilter = 'ALL';
-        let chartsInstance = {};
+  <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;">
 
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            initClock();
-            initMap();
-            renderStats();
-            renderEmployeeList();
-            initTabs();
-            initAIModule();
-            
-            Chart.defaults.color = '#8291A8';
-            Chart.defaults.font.family = 'Cairo';
-        });
+    <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft);display:flex;">
+      <div id="map"></div>
 
-        function initMap() {
-            map = L.map('map').setView([24.7136, 46.6753], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
-            markersGroup = L.layerGroup().addTo(map);
-            updateMapMarkers();
-        }
+      <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:340px;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(14,21,33,.96);box-shadow:var(--shadow-md);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border-soft);padding-bottom:8px;margin-bottom:12px;">
+          <div>
+            <h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:14px;">—</h3>
+            <span id="detailId" class="font-mono" style="font-size:11px;color:var(--text-muted);">#—</span>
+          </div>
+          <button id="closeDetailBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:10px;">
+          <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">النبض</span><span id="detailHeartRate" class="font-mono" style="font-weight:700;color:var(--normal);">--</span></div>
+          <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">البطارية</span><span id="detailBattery" class="font-mono" style="font-weight:700;">--</span></div>
+        </div>
+        <canvas id="detailSpark" height="50"></canvas>
+      </div>
+    </div>
 
-        function updateMapMarkers() {
-            markersGroup.clearLayers();
-            employeesData.forEach(emp => {
-                if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
-                const color = emp.status === 'SOS' ? '#FF3B4E' : emp.status === 'WARNING' ? '#F5A623' : '#22D488';
-                const customIcon = L.divIcon({ html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};"></div>`, className: '' });
-                const marker = L.marker([emp.lat, emp.lng], { icon: customIcon }).addTo(markersGroup);
-                marker.on('click', () => {
-                    document.getElementById('detailPanel').classList.remove('hidden');
-                    document.getElementById('detailName').textContent = emp.name;
-                    document.getElementById('detailId').textContent = emp.id;
-                    document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
-                    document.getElementById('detailBattery').textContent = emp.battery + '%';
-                    map.flyTo([emp.lat, emp.lng], 15);
-                });
-            });
-        }
+    <div id="analyticsView" class="hidden" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+        <div class="analytics-card">
+          <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);"><i data-lucide="activity" style="width:18px;height:18px;color:var(--accent);"></i><span style="font-size:13px;font-weight:700;">متوسط النبض العام</span></div>
+          <div id="avgHeartRate" class="stat-value">-- BPM</div>
+        </div>
+        <div class="analytics-card">
+          <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);"><i data-lucide="battery-medium" style="width:18px;height:18px;color:var(--normal);"></i><span style="font-size:13px;font-weight:700;">متوسط شحن الأجهزة</span></div>
+          <div id="avgBattery" class="stat-value">-- %</div>
+        </div>
+        <div class="analytics-card">
+          <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);"><i data-lucide="flame" style="width:18px;height:18px;color:var(--sos);"></i><span style="font-size:13px;font-weight:700;">مؤشر الخطر الإجمالي</span></div>
+          <div id="totalRiskIndex" class="stat-value" style="color:var(--sos);">-- / 100</div>
+        </div>
+      </div>
 
-        document.getElementById('closeDetailBtn').onclick = () => document.getElementById('detailPanel').classList.add('hidden');
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+        <div class="analytics-card" style="display:flex;flex-direction:column;height:230px;">
+          <h4 style="margin:0 0 16px 0;font-size:14px;">توزيع الحالات الأمنية</h4>
+          <div style="flex:1;position:relative;"><canvas id="barChart"></canvas></div>
+        </div>
+        <div class="analytics-card" style="display:flex;flex-direction:column;height:230px;">
+          <h4 style="margin:0 0 16px 0;font-size:14px;">نسبة الجاهزية</h4>
+          <div style="flex:1;position:relative;display:flex;justify-content:center;align-items:center;"><canvas id="doughnutChart"></canvas></div>
+        </div>
+      </div>
 
-        function renderStats() {
-            document.getElementById('statTotal').textContent = employeesData.length;
-            document.getElementById('statNormal').textContent = employeesData.filter(e => e.status === 'NORMAL').length;
-            document.getElementById('statWarning').textContent = employeesData.filter(e => e.status === 'WARNING').length;
-            document.getElementById('statSos').textContent = employeesData.filter(e => e.status === 'SOS').length;
-        }
+      <div class="analytics-card" style="display:flex;flex-direction:column;height:220px;">
+        <h4 style="margin:0 0 16px 0;font-size:14px;">اتجاه متوسط النبض الميداني (آخر دقيقتين)</h4>
+        <div style="flex:1;position:relative;"><canvas id="trendChart"></canvas></div>
+      </div>
 
-        function renderEmployeeList() {
-            const container = document.getElementById('employeeList');
-            container.innerHTML = '';
-            employeesData.forEach(emp => {
-                if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
-                const borderCol = emp.status === 'SOS' ? 'var(--sos)' : emp.status === 'WARNING' ? 'var(--warning)' : 'var(--normal)';
-                const card = document.createElement('div');
-                card.className = 'employee-card';
-                card.style.borderInlineStartColor = borderCol;
-                card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><strong style="font-size:12.5px;color:var(--text-primary);">${emp.name}</strong><span class="badge ${emp.status.toLowerCase()}">${emp.status}</span></div>`;
-                card.onclick = () => { map.flyTo([emp.lat, emp.lng], 15); };
-                container.appendChild(card);
-            });
-        }
+      <div id="insightBox" class="analytics-card" style="display:flex;gap:10px;align-items:flex-start;border-inline-start:3px solid var(--accent);"></div>
+    </div>
+  </main>
+</div>
 
-        document.querySelectorAll('#filterChips .chip').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-                activeFilter = btn.getAttribute('data-filter');
-                renderEmployeeList();
-                updateMapMarkers();
-            });
-        });
+<button id="aiToggleBtn" type="button"><i data-lucide="bot"></i><span>المساعد الميداني الذكي</span></button>
+<div id="aiChatBox" class="hidden">
+  <div style="padding:12px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-elevated);display:flex;justify-content:space-between;align-items:center;">
+    <div style="display:flex;align-items:center;gap:8px;color:var(--accent);font-weight:700;font-size:13px;">
+      <i data-lucide="sparkles" style="width:16px;height:16px;"></i> المساعد الميداني الذكي
+    </div>
+    <button id="aiCloseBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+  </div>
+  <div style="padding:7px 12px;background:var(--bg-subtle);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:6px;">
+    <i data-lucide="cpu" style="width:12px;height:12px;color:var(--normal);"></i>
+    <span style="font-size:10.5px;color:var(--text-secondary);">يعمل محلياً داخل المتصفح — بدون مفتاح API وبدون اتصال خارجي</span>
+  </div>
+  <div id="aiMessages" style="flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
+  <div id="aiSuggestRow" style="display:flex;gap:6px;padding:0 12px 8px;overflow-x:auto;"></div>
+  <div style="padding:10px;border-top:1px solid var(--border-soft);display:flex;gap:6px;background:var(--bg-panel);">
+    <input type="text" id="aiInput" placeholder="اسأل عن الحالة الميدانية..." style="flex:1;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:8px;padding:8px;color:var(--text-primary);font-size:12px;outline:none;">
+    <button id="aiSendBtn" style="background:var(--accent);color:#03222A;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;"><i data-lucide="send" style="width:14px;height:14px;"></i></button>
+  </div>
+</div>
 
-        function initClock() { setInterval(() => { document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('ar-SA'); }, 1000); }
+<script>
+let employeesData = [
+  { id:"EMP-101", name:"النقيب/ خالد العتيبي", status:"NORMAL", lat:24.7136, lng:46.6753, heartRate:74, battery:85, history:[] },
+  { id:"EMP-102", name:"الملازم/ فهد الشمري", status:"SOS", lat:24.7200, lng:46.6800, heartRate:135, battery:18, history:[] },
+  { id:"EMP-103", name:"العريف/ سارة الدوسري", status:"WARNING", lat:24.7050, lng:46.6600, heartRate:105, battery:42, history:[] },
+  { id:"EMP-104", name:"جندي/ أحمد الزهراني", status:"NORMAL", lat:24.7300, lng:46.6900, heartRate:80, battery:90, history:[] },
+  { id:"EMP-105", name:"رقيب/ محمد الشهراني", status:"NORMAL", lat:24.6950, lng:46.6500, heartRate:78, battery:75, history:[] },
+];
+employeesData.forEach(e => { for(let i=0;i<20;i++) e.history.push(e.heartRate + Math.round((Math.random()-0.5)*6)); });
 
-        function initTabs() {
-            const mapTab = document.getElementById('tabMapBtn');
-            const analyticsTab = document.getElementById('tabAnalyticsBtn');
-            const mapView = document.getElementById('mapView');
-            const analyticsView = document.getElementById('analyticsView');
+let map, markersGroup, markerRefs = {};
+let activeFilter = 'ALL', searchQuery = '', selectedId = null;
+let chartsInstance = {}, trendHistory = [];
+const STATUS_LABEL = {NORMAL:'طبيعي', WARNING:'تحذير', SOS:'طوارئ SOS'};
 
-            mapTab.addEventListener('click', () => {
-                mapTab.classList.add('active');
-                analyticsTab.classList.remove('active');
-                mapView.classList.remove('hidden');
-                analyticsView.classList.add('hidden');
-                map.invalidateSize();
-            });
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+  initClock();
+  initMap();
+  renderAll();
+  initTabs();
+  initFilters();
+  initSearch();
+  initAIModule();
+  Chart.defaults.color = '#7E8FA8';
+  Chart.defaults.font.family = 'Cairo';
+  drawECG();
+  setInterval(simulateLiveData, 3000);
+});
 
-            analyticsTab.addEventListener('click', () => {
-                analyticsTab.classList.add('active');
-                mapTab.classList.remove('active');
-                analyticsView.classList.remove('hidden');
-                mapView.classList.add('hidden');
-                updateAnalyticsData();
-            });
-        }
+function computeRisk(){
+  const total = employeesData.length;
+  const sos = employeesData.filter(e=>e.status==='SOS').length;
+  const warn = employeesData.filter(e=>e.status==='WARNING').length;
+  return Math.min(100, Math.round(((sos*30)+(warn*10))/total*10));
+}
 
-        function updateAnalyticsData() {
-            const total = employeesData.length;
-            const avgHeart = Math.round(employeesData.reduce((acc, val) => acc + val.heartRate, 0) / total);
-            const avgBatt = Math.round(employeesData.reduce((acc, val) => acc + val.battery, 0) / total);
-            const sosCount = employeesData.filter(e => e.status === 'SOS').length;
-            const warnCount = employeesData.filter(e => e.status === 'WARNING').length;
-            const normCount = employeesData.filter(e => e.status === 'NORMAL').length;
-            
-            const riskIndex = Math.min(100, Math.round(((sosCount * 30) + (warnCount * 10)) / total * 10));
+function renderAll(){
+  renderStats();
+  renderEmployeeList();
+  updateMapMarkers();
+  refreshHeader();
+}
 
-            document.getElementById('avgHeartRate').textContent = avgHeart + ' BPM';
-            document.getElementById('avgBattery').textContent = avgBatt + ' %';
-            document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
+function refreshHeader(){
+  const risk = computeRisk();
+  const riskEl = document.getElementById('headerRisk');
+  riskEl.textContent = risk + '/100';
+  riskEl.style.color = risk>=50?'var(--sos)':risk>=20?'var(--warning)':'var(--normal)';
 
-            const barCtx = document.getElementById('barChart').getContext('2d');
-            if(chartsInstance.bar) chartsInstance.bar.destroy();
-            chartsInstance.bar = new Chart(barCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['طبيعي', 'تحذير', 'طوارئ SOS'],
-                    datasets: [{
-                        label: 'عدد الموظفين',
-                        data: [normCount, warnCount, sosCount],
-                        backgroundColor: ['#22D488', '#F5A623', '#FF3B4E'],
-                        borderRadius: 6
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#202C40' } }, x: { grid: { display: false } } } }
-            });
+  const sosCount = employeesData.filter(e=>e.status==='SOS').length;
+  const warnCount = employeesData.filter(e=>e.status==='WARNING').length;
+  const badge = document.getElementById('headerBadge');
+  const pulse = document.getElementById('headerPulse');
+  pulse.className = 'live-pulse';
+  if(sosCount>0){ badge.className='badge sos'; badge.textContent='حالة طوارئ نشطة'; pulse.classList.add('sos'); }
+  else if(warnCount>0){ badge.className='badge warning'; badge.textContent='تنبيهات قيد المتابعة'; pulse.classList.add('warning'); }
+  else { badge.className='badge normal'; badge.textContent='تشغيل طبيعي'; }
+}
 
-            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
-            if(chartsInstance.doughnut) chartsInstance.doughnut.destroy();
-            chartsInstance.doughnut = new Chart(doughnutCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['جاهز للعمل', 'غير متاح/طوارئ'],
-                    datasets: [{
-                        data: [normCount, warnCount + sosCount],
-                        backgroundColor: ['#33C7F4', '#2E3D56'],
-                        borderWidth: 0,
-                        cutout: '75%'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-            });
-        }
+function initMap(){
+  map = L.map('map', {zoomControl:true}).setView([24.7136, 46.6753], 12);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(map);
+  markersGroup = L.layerGroup().addTo(map);
+}
 
-        // ==========================================
-        // Gemini AI API (المصلح والمحدث للاتصال بـ v1beta)
-        // ==========================================
-        function initAIModule() {
-            const aiToggleBtn = document.getElementById('aiToggleBtn');
-            const aiChatBox = document.getElementById('aiChatBox');
-            const aiCloseBtn = document.getElementById('aiCloseBtn');
-            const aiSendBtn = document.getElementById('aiSendBtn');
-            const aiInput = document.getElementById('aiInput');
-            const apiKeyInput = document.getElementById('geminiApiKeyInput');
+function statusColor(s){ return s==='SOS'?'#FF3B57':s==='WARNING'?'#FFA83D':'#22D488'; }
 
-            if (localStorage.getItem('gemini_api_key')) apiKeyInput.value = localStorage.getItem('gemini_api_key');
+function updateMapMarkers(){
+  markersGroup.clearLayers(); markerRefs = {};
+  getFilteredEmployees().forEach(emp => {
+    const color = statusColor(emp.status);
+    const ring = emp.status !== 'NORMAL' ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${color};opacity:.55;animation:livePulse 1.4s ease-out infinite;"></div>` : '';
+    const icon = L.divIcon({
+      html:`<div style="position:relative;width:16px;height:16px;">${ring}<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};"></div></div>`,
+      className:''
+    });
+    const marker = L.marker([emp.lat, emp.lng], {icon}).addTo(markersGroup);
+    marker.on('click', () => selectEmployee(emp.id));
+    markerRefs[emp.id] = marker;
+  });
+}
 
-            aiToggleBtn.addEventListener('click', () => aiChatBox.classList.toggle('hidden'));
-            aiCloseBtn.addEventListener('click', () => aiChatBox.classList.add('hidden'));
-            aiSendBtn.addEventListener('click', handleAISend);
-            aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAISend(); });
-        }
+function selectEmployee(id){
+  const emp = employeesData.find(e=>e.id===id);
+  if(!emp) return;
+  selectedId = id;
+  document.getElementById('detailPanel').classList.remove('hidden');
+  document.getElementById('detailName').textContent = emp.name;
+  document.getElementById('detailId').textContent = emp.id;
+  document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
+  document.getElementById('detailBattery').textContent = emp.battery + '%';
+  document.getElementById('detailBattery').style.color = emp.battery<25?'var(--sos)':emp.battery<50?'var(--warning)':'var(--normal)';
+  map.flyTo([emp.lat, emp.lng], 15);
+  drawSparkline('detailSpark', emp.history, statusColor(emp.status));
+  renderEmployeeList();
+}
 
-        async function fetchGeminiAPI(apiKey, promptText) {
-            // محاولة أولية باستخدام النموذج السريع المعتمد v1beta
-            const primaryEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const fallbackEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+document.getElementById('closeDetailBtn').onclick = () => { document.getElementById('detailPanel').classList.add('hidden'); selectedId=null; renderEmployeeList(); };
 
-            const payload = {
-                contents: [{
-                    parts: [{ text: promptText }]
-                }]
-            };
+function renderStats(){
+  document.getElementById('statTotal').textContent = employeesData.length;
+  document.getElementById('statNormal').textContent = employeesData.filter(e=>e.status==='NORMAL').length;
+  document.getElementById('statWarning').textContent = employeesData.filter(e=>e.status==='WARNING').length;
+  document.getElementById('statSos').textContent = employeesData.filter(e=>e.status==='SOS').length;
+}
 
-            let response = await fetch(primaryEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+function getFilteredEmployees(){
+  return employeesData.filter(e => {
+    const matchFilter = activeFilter==='ALL' || e.status===activeFilter;
+    const q = searchQuery.trim().toLowerCase();
+    const matchSearch = !q || e.name.toLowerCase().includes(q) || e.id.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+}
 
-            // إذا فشل النموذج الجديد للطلب الحالي، نستخدم المسار المباشر المضمون
-            if (!response.ok) {
-                response = await fetch(fallbackEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            }
+function renderEmployeeList(){
+  const container = document.getElementById('employeeList');
+  container.innerHTML = '';
+  const list = getFilteredEmployees();
+  if(list.length===0){
+    container.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px 0;">لا توجد نتائج مطابقة</div>`;
+    return;
+  }
+  list.forEach(emp => {
+    const borderCol = emp.status==='SOS'?'var(--sos)':emp.status==='WARNING'?'var(--warning)':'var(--normal)';
+    const battColor = emp.battery<25?'var(--sos)':emp.battery<50?'var(--warning)':'var(--normal)';
+    const card = document.createElement('div');
+    card.className = 'employee-card' + (selectedId===emp.id ? ' selected' : '');
+    card.style.borderInlineStartColor = borderCol;
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <strong style="font-size:12.5px;">${emp.name}</strong>
+        <span class="badge ${emp.status.toLowerCase()}">${STATUS_LABEL[emp.status]}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:10.5px;color:var(--text-muted);">
+        <span class="font-mono" style="display:flex;align-items:center;gap:3px;"><i data-lucide="heart-pulse" style="width:11px;height:11px;color:${borderCol};"></i>${emp.heartRate}</span>
+        <div style="display:flex;align-items:center;gap:5px;flex:1;">
+          <i data-lucide="battery-medium" style="width:11px;height:11px;"></i>
+          <div class="mini-bar"><span style="width:${emp.battery}%;background:${battColor};"></span></div>
+          <span class="font-mono">${emp.battery}%</span>
+        </div>
+      </div>`;
+    card.onclick = () => selectEmployee(emp.id);
+    container.appendChild(card);
+  });
+  lucide.createIcons();
+}
 
-            return response;
-        }
+function initFilters(){
+  document.querySelectorAll('#filterChips .chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#filterChips .chip').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.getAttribute('data-filter');
+      renderEmployeeList(); updateMapMarkers();
+    });
+  });
+}
+function initSearch(){
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    renderEmployeeList(); updateMapMarkers();
+  });
+}
 
-        async function handleAISend() {
-            const aiInput = document.getElementById('aiInput');
-            const aiMessages = document.getElementById('aiMessages');
-            const apiKeyInput = document.getElementById('geminiApiKeyInput');
-            const query = aiInput.value.trim();
-            const apiKey = apiKeyInput.value.trim();
+function initClock(){ setInterval(() => { document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('ar-SA'); }, 1000); }
 
-            if (!query) return;
-            if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
+function initTabs(){
+  const mapTab = document.getElementById('tabMapBtn'), analyticsTab = document.getElementById('tabAnalyticsBtn');
+  const mapView = document.getElementById('mapView'), analyticsView = document.getElementById('analyticsView');
+  mapTab.addEventListener('click', () => {
+    mapTab.classList.add('active'); analyticsTab.classList.remove('active');
+    mapView.classList.remove('hidden'); analyticsView.classList.add('hidden');
+    map.invalidateSize();
+  });
+  analyticsTab.addEventListener('click', () => {
+    analyticsTab.classList.add('active'); mapTab.classList.remove('active');
+    analyticsView.classList.remove('hidden'); mapView.classList.add('hidden');
+    updateAnalyticsData();
+  });
+}
 
-            aiMessages.innerHTML += `<div class="ai-msg user">${query}</div>`;
-            aiInput.value = '';
-            aiMessages.scrollTop = aiMessages.scrollHeight;
+function drawSparkline(canvasId, data, color){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(chartsInstance[canvasId]) chartsInstance[canvasId].destroy();
+  chartsInstance[canvasId] = new Chart(ctx, {
+    type:'line',
+    data:{ labels:data.map((_,i)=>i), datasets:[{ data, borderColor:color, borderWidth:2, pointRadius:0, tension:.35, fill:true, backgroundColor: color+'22' }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{display:false}} }
+  });
+}
 
-            if (!apiKey) {
-                aiMessages.innerHTML += `<div class="ai-msg bot" style="border-color:var(--warning);">يرجى أدخال مفتاح Gemini API في الخانة أعلاه.</div>`;
-                aiMessages.scrollTop = aiMessages.scrollHeight; 
-                return;
-            }
+function updateAnalyticsData(){
+  const total = employeesData.length;
+  const avgHeart = Math.round(employeesData.reduce((a,v)=>a+v.heartRate,0)/total);
+  const avgBatt = Math.round(employeesData.reduce((a,v)=>a+v.battery,0)/total);
+  const sosCount = employeesData.filter(e=>e.status==='SOS').length;
+  const warnCount = employeesData.filter(e=>e.status==='WARNING').length;
+  const normCount = employeesData.filter(e=>e.status==='NORMAL').length;
+  const riskIndex = computeRisk();
 
-            const loadingId = 'loading-' + Date.now();
-            aiMessages.innerHTML += `<div id="${loadingId}" class="ai-msg bot">جاري تحليل الميدان والإجابة...</div>`;
-            aiMessages.scrollTop = aiMessages.scrollHeight;
+  document.getElementById('avgHeartRate').textContent = avgHeart + ' BPM';
+  document.getElementById('avgBattery').textContent = avgBatt + ' %';
+  document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
 
-            const context = `إجمالي الموظفين: ${employeesData.length} | حالات الطوارئ: ${employeesData.filter(e=>e.status==='SOS').length}`;
-            const promptText = `أنت المساعد الأمني الذكي في مركز المراقبة. أجب باختصار باللغة العربية.\nبيانات الميدان الحالية: [${context}]\n\nسؤال المشرف: ${query}`;
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  if(chartsInstance.bar) chartsInstance.bar.destroy();
+  chartsInstance.bar = new Chart(barCtx, {
+    type:'bar',
+    data:{ labels:['طبيعي','تحذير','طوارئ SOS'], datasets:[{ data:[normCount,warnCount,sosCount], backgroundColor:['#22D488','#FFA83D','#FF3B57'], borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,grid:{color:'#1C2636'}},x:{grid:{display:false}}} }
+  });
 
-            try {
-                const response = await fetchGeminiAPI(apiKey, promptText);
-                const data = await response.json();
+  const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+  if(chartsInstance.doughnut) chartsInstance.doughnut.destroy();
+  chartsInstance.doughnut = new Chart(doughnutCtx, {
+    type:'doughnut',
+    data:{ labels:['جاهز للعمل','غير متاح/طوارئ'], datasets:[{ data:[normCount, warnCount+sosCount], backgroundColor:['#2FD1E8','#2A374C'], borderWidth:0, cutout:'75%' }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+  });
 
-                if (!response.ok) {
-                    throw new Error(data.error?.message || "خطأ في المصادقة أو المفتاح.");
-                }
+  const trendCtx = document.getElementById('trendChart').getContext('2d');
+  if(chartsInstance.trend) chartsInstance.trend.destroy();
+  chartsInstance.trend = new Chart(trendCtx, {
+    type:'line',
+    data:{ labels:trendHistory.map((_,i)=>i), datasets:[{ data:trendHistory.map(t=>t.avgHeart), borderColor:'#2FD1E8', backgroundColor:'rgba(47,209,232,0.12)', borderWidth:2, pointRadius:0, tension:.35, fill:true }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#1C2636'}}} }
+  });
 
-                const reply = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot">${reply}</div>`;
-            } catch (err) {
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot" style="color:var(--sos);">❌ خطأ أثناء الاتصال بالذكاء الاصطناعي:<br><small>${err.message}</small></div>`;
-            }
-            aiMessages.scrollTop = aiMessages.scrollHeight;
-        }
-    </script>
+  renderInsight(riskIndex, sosCount, warnCount, avgHeart, avgBatt);
+}
+
+function renderInsight(risk, sos, warn, avgHeart, avgBatt){
+  const box = document.getElementById('insightBox');
+  let icon='shield-check', color='var(--normal)', text='الوضع الميداني مستقر. جميع المؤشرات ضمن النطاق الطبيعي.';
+  if(sos>0){ icon='alert-triangle'; color='var(--sos)'; text=`يوجد ${sos} حالة طوارئ نشطة تتطلب استجابة فورية. متوسط النبض العام ${avgHeart} نبضة/د.`; }
+  else if(warn>0){ icon='alert-circle'; color='var(--warning)'; text=`${warn} حالة تحذير قيد المتابعة. يُنصح بالتواصل مع الأفراد المعنيين والتحقق من سلامتهم.`; }
+  else if(avgBatt<40){ icon='battery-warning'; color='var(--warning)'; text=`الوضع الأمني مستقر، لكن متوسط شحن الأجهزة منخفض (${avgBatt}%). يُنصح بجدولة إعادة شحن.`; }
+  box.innerHTML = `<i data-lucide="${icon}" style="width:20px;height:20px;color:${color};flex-shrink:0;margin-top:2px;"></i>
+    <div><div style="font-weight:700;font-size:12.5px;margin-bottom:3px;color:${color};">تحليل الذكاء الاصطناعي المحلي</div><div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">${text}</div></div>`;
+  lucide.createIcons();
+}
+
+/* ===== ECG signature strip ===== */
+function drawECG(){
+  const risk = computeRisk();
+  const color = risk>=50?'#FF3B57':risk>=20?'#FFA83D':'#22D488';
+  let d = 'M0,17 ';
+  for(let i=0;i<10;i++){
+    const x = i*40;
+    d += `L${x+8},17 L${x+14},${17-(6+risk/6)} L${x+18},${17+(10+risk/4)} L${x+22},17 L${x+40},17 `;
+  }
+  const path = document.getElementById('ecgPath');
+  path.setAttribute('d', d);
+  path.style.stroke = color;
+  path.style.filter = `drop-shadow(0 0 3px ${color})`;
+  path.style.animation = 'none'; void path.offsetWidth;
+}
+
+/* ===== Live data simulation (mock field telemetry) ===== */
+function simulateLiveData(){
+  employeesData.forEach(emp => {
+    if(emp.status !== 'SOS'){
+      emp.heartRate = Math.max(58, Math.min(140, emp.heartRate + Math.round((Math.random()-0.5)*8)));
+      emp.battery = Math.max(5, emp.battery - (Math.random()<0.3?1:0));
+    }
+    emp.history.push(emp.heartRate);
+    if(emp.history.length>20) emp.history.shift();
+    emp.lat += (Math.random()-0.5)*0.001;
+    emp.lng += (Math.random()-0.5)*0.001;
+    if(emp.status==='NORMAL' && emp.heartRate>100) emp.status='WARNING';
+    else if(emp.status==='WARNING' && emp.heartRate<95 && Math.random()<0.4) emp.status='NORMAL';
+  });
+
+  const avgHeart = Math.round(employeesData.reduce((a,v)=>a+v.heartRate,0)/employeesData.length);
+  trendHistory.push({avgHeart, t:Date.now()});
+  if(trendHistory.length>40) trendHistory.shift();
+
+  renderAll();
+  drawECG();
+  if(selectedId){
+    const emp = employeesData.find(e=>e.id===selectedId);
+    if(emp){
+      document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
+      document.getElementById('detailBattery').textContent = emp.battery + '%';
+      if(map.hasLayer(markersGroup)) map.panTo([emp.lat, emp.lng], {animate:true});
+      drawSparkline('detailSpark', emp.history, statusColor(emp.status));
+    }
+  }
+  if(!document.getElementById('analyticsView').classList.contains('hidden')) updateAnalyticsData();
+}
+
+/* ==========================================================
+   المساعد الميداني الذكي — يعمل بالكامل محلياً داخل المتصفح
+   بدون أي مفتاح API وبدون اتصال خارجي (بديل مجاني عن Gemini)
+   ========================================================== */
+const AI_SUGGESTIONS = ['ما حالة الطوارئ الآن؟','من لديه بطارية منخفضة؟','ملخص الوضع الميداني','أعلى نبض مسجل'];
+
+function initAIModule(){
+  const toggleBtn = document.getElementById('aiToggleBtn');
+  const chatBox = document.getElementById('aiChatBox');
+  const closeBtn = document.getElementById('aiCloseBtn');
+  const sendBtn = document.getElementById('aiSendBtn');
+  const input = document.getElementById('aiInput');
+
+  toggleBtn.addEventListener('click', () => {
+    chatBox.classList.toggle('hidden');
+    if(!chatBox.classList.contains('hidden') && document.getElementById('aiMessages').children.length===0){
+      pushAIMessage('bot', 'مرحباً، أنا المساعد الميداني الذكي. أعمل بالكامل محلياً داخل هذا الجهاز، أحلل بيانات الميدان الحالية مباشرة دون إرسال أي بيانات لأي خادم خارجي. اسألني عن حالات الطوارئ، البطارية، النبض، أو أي فرد من الفريق.');
+      renderAISuggestions();
+    }
+  });
+  closeBtn.addEventListener('click', () => chatBox.classList.add('hidden'));
+  sendBtn.addEventListener('click', handleAISend);
+  input.addEventListener('keypress', (e) => { if(e.key==='Enter') handleAISend(); });
+}
+
+function renderAISuggestions(){
+  const row = document.getElementById('aiSuggestRow');
+  row.innerHTML = '';
+  AI_SUGGESTIONS.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'ai-suggest'; b.textContent = s;
+    b.onclick = () => { document.getElementById('aiInput').value = s; handleAISend(); };
+    row.appendChild(b);
+  });
+}
+
+function pushAIMessage(role, text){
+  const box = document.getElementById('aiMessages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + role;
+  div.innerHTML = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+function handleAISend(){
+  const input = document.getElementById('aiInput');
+  const query = input.value.trim();
+  if(!query) return;
+  pushAIMessage('user', query);
+  input.value = '';
+  const thinking = pushAIMessage('bot', '<span style="color:var(--text-muted);">جاري تحليل بيانات الميدان...</span>');
+  setTimeout(() => {
+    thinking.innerHTML = localFieldAssistant(query);
+    document.getElementById('aiMessages').scrollTop = document.getElementById('aiMessages').scrollHeight;
+  }, 380);
+}
+
+function localFieldAssistant(rawQuery){
+  const q = rawQuery.trim();
+  const norm = q.replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase();
+
+  const sosList = employeesData.filter(e=>e.status==='SOS');
+  const warnList = employeesData.filter(e=>e.status==='WARNING');
+  const normalList = employeesData.filter(e=>e.status==='NORMAL');
+  const total = employeesData.length;
+  const avgHeart = Math.round(employeesData.reduce((a,v)=>a+v.heartRate,0)/total);
+  const avgBatt = Math.round(employeesData.reduce((a,v)=>a+v.battery,0)/total);
+  const risk = computeRisk();
+
+  // مطابقة اسم موظف محدد
+  const matchedEmp = employeesData.find(e => {
+    const n = e.name.replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase();
+    return norm.includes(n.split('/').pop().trim()) || norm.includes(e.id.toLowerCase());
+  });
+  if(matchedEmp){
+    return `<b>${matchedEmp.name}</b> (${matchedEmp.id})<br>الحالة: <span style="color:${statusColor(matchedEmp.status)}">${STATUS_LABEL[matchedEmp.status]}</span><br>النبض: ${matchedEmp.heartRate} BPM · البطارية: ${matchedEmp.battery}%`;
+  }
+
+  if(/طوار|sos|خطر عاجل/.test(norm)){
+    if(sosList.length===0) return 'لا توجد أي حالة طوارئ نشطة حالياً. جميع الأفراد ضمن الوضع الطبيعي أو تحت المتابعة فقط.';
+    return `يوجد <b style="color:var(--sos)">${sosList.length}</b> حالة طوارئ نشطة الآن:<br>` + sosList.map(e=>`• ${e.name} — نبض ${e.heartRate} BPM، بطارية ${e.battery}%`).join('<br>');
+  }
+  if(/بطاريه منخفض|شحن منخفض|بطاريه ضعيف/.test(norm) || /بطاريه/.test(norm)){
+    const low = [...employeesData].sort((a,b)=>a.battery-b.battery).slice(0,3);
+    return `الأفراد الأقل شحناً حالياً:<br>` + low.map(e=>`• ${e.name} — ${e.battery}%`).join('<br>') + `<br>متوسط شحن الأجهزة العام: ${avgBatt}%`;
+  }
+  if(/اعلي نبض|اعلى نبض|اسرع نبض/.test(norm)){
+    const top = [...employeesData].sort((a,b)=>b.heartRate-a.heartRate)[0];
+    return `أعلى نبض مسجل حالياً: <b>${top.name}</b> بمعدل ${top.heartRate} BPM (${STATUS_LABEL[top.status]}).`;
+  }
+  if(/تحذير/.test(norm)){
+    if(warnList.length===0) return 'لا توجد حالات تحذير حالياً.';
+    return `حالات التحذير الحالية (${warnList.length}):<br>` + warnList.map(e=>`• ${e.name} — نبض ${e.heartRate} BPM`).join('<br>');
+  }
+  if(/ملخص|الوضع|تقرير عام|كيف الوضع/.test(norm)){
+    return `<b>ملخص الميدان الحالي:</b><br>إجمالي الأفراد: ${total} · طبيعي: ${normalList.length} · تحذير: ${warnList.length} · طوارئ: ${sosList.length}<br>متوسط النبض: ${avgHeart} BPM · متوسط الشحن: ${avgBatt}%<br>مؤشر الخطر الإجمالي: <b style="color:${risk>=50?'var(--sos)':risk>=20?'var(--warning)':'var(--normal)'}">${risk}/100</b>`;
+  }
+  if(/كم عدد|عدد الافراد|عدد الموظفين/.test(norm)){
+    return `إجمالي عدد الأفراد المتتبعين حالياً: <b>${total}</b>.`;
+  }
+  if(/مؤشر الخطر|نسبه الخطر/.test(norm)){
+    return `مؤشر الخطر الإجمالي الحالي هو <b>${risk}/100</b>، ${risk>=50?'وهو مرتفع ويستدعي المتابعة الفورية.':risk>=20?'وهو متوسط، يُنصح بالمراقبة.':'وهو منخفض، الوضع مستقر.'}`;
+  }
+
+  return `لم أفهم السؤال بدقة. يمكنك سؤالي عن: حالات الطوارئ، البطارية المنخفضة، أعلى نبض، ملخص عام للوضع، أو اسم أحد الأفراد مباشرة.`;
+}
+</script>
 </body>
 </html>
