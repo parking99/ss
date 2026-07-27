@@ -32,6 +32,7 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
 ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:999px;} ::-webkit-scrollbar-track{background:transparent;}
 
 #map{height:100%;width:100%;z-index:1;background:var(--bg-subtle);border-radius:14px;}
+#map.zoneMode{cursor:crosshair;}
 .leaflet-control-zoom a{background:var(--bg-panel) !important;color:var(--text-primary) !important;border-color:var(--border-soft) !important;}
 .leaflet-popup-content-wrapper{background:var(--bg-elevated) !important;color:var(--text-primary) !important;border-radius:.75rem !important;border:1px solid var(--border-soft);box-shadow:var(--shadow-md) !important;}
 .leaflet-popup-tip{background:var(--bg-elevated) !important;}
@@ -46,6 +47,7 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
 .badge.normal{background:var(--normal-soft);color:var(--normal);border:1px solid rgba(34,212,136,.3);}
 .badge.sos{background:var(--sos-soft);color:var(--sos);border:1px solid rgba(255,59,87,.3);}
 .badge.warning{background:var(--warning-soft);color:var(--warning);border:1px solid rgba(255,168,61,.3);}
+.badge.zone{background:var(--warning-soft);color:var(--warning);border:1px solid rgba(255,168,61,.35);}
 
 .chip{font-size:11px;font-weight:600;padding:5px 12px;border-radius:999px;border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-secondary);cursor:pointer;transition:all .15s ease;white-space:nowrap;}
 .chip:hover{border-color:var(--accent);color:var(--accent);}
@@ -66,11 +68,29 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
 .hidden{display:none !important;}
 .map-tool-btn{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:9px;box-shadow:var(--shadow-sm);padding:9px;cursor:pointer;color:var(--text-secondary);display:flex;transition:all .15s ease;}
 .map-tool-btn:hover{border-color:var(--accent);color:var(--accent);}
+.map-tool-btn.active{border-color:var(--warning);color:var(--warning);background:var(--warning-soft);}
 
 /* ECG signature strip */
 #ecgWrap{width:180px;height:34px;position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);}
 #ecgSvg{position:absolute;top:0;right:0;height:100%;}
 .ecg-path{fill:none;stroke:var(--normal);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 3px var(--normal));}
+
+/* Alarm bell */
+#bellBtn{position:relative;background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:10px;padding:9px 12px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;transition:all .15s ease;}
+#bellBtn.enabled{border-color:var(--normal);color:var(--normal);background:var(--normal-soft);}
+#bellDot{position:absolute;top:-3px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--sos);display:none;}
+#bellDot.show{display:block;animation:livePulse 1.2s ease-out infinite;}
+
+/* Alert toasts */
+#alertStack{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1200;display:flex;flex-direction:column;gap:8px;width:min(440px,92vw);}
+.alert-toast{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;box-shadow:var(--shadow-md);backdrop-filter:blur(10px);animation:toastIn .25s ease;border:1px solid;}
+@keyframes toastIn{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
+.alert-toast.sos{background:rgba(255,59,87,.14);border-color:rgba(255,59,87,.5);}
+.alert-toast.zone{background:rgba(255,168,61,.14);border-color:rgba(255,168,61,.5);}
+.alert-toast .ack-btn{font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;border:1px solid currentColor;background:transparent;cursor:pointer;}
+.alert-toast.sos .ack-btn{color:var(--sos);}
+.alert-toast.zone .ack-btn{color:var(--warning);}
+.alert-toast .close-x{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;}
 
 /* AI assistant */
 #aiToggleBtn{position:fixed;bottom:24px;left:24px;z-index:999;padding:12px 18px;border-radius:999px;border:1px solid var(--accent);background:rgba(14,21,33,.94);color:var(--accent);font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);cursor:pointer;backdrop-filter:blur(10px);transition:all .2s ease;}
@@ -81,9 +101,17 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
 .ai-msg.bot{align-self:flex-start;background:var(--bg-subtle);color:var(--text-primary);border:1px solid var(--border-soft);border-bottom-right-radius:2px;}
 .ai-suggest{font-size:10.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;white-space:nowrap;}
 .ai-suggest:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Zone control in detail panel */
+.zone-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-secondary);}
+.zone-row input[type=range]{flex:1;accent-color:var(--accent);}
+#setZoneBtn{font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:5px;}
+#setZoneBtn.active{border-color:var(--warning);color:var(--warning);background:var(--warning-soft);}
 </style>
 </head>
 <body style="display:flex;flex-direction:column;">
+
+<div id="alertStack"></div>
 
 <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
   <div style="display:flex;align-items:center;gap:12px;">
@@ -99,7 +127,7 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
       </p>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:14px;">
+  <div style="display:flex;align-items:center;gap:12px;">
     <div style="text-align:center;">
       <span style="display:block;font-size:9px;color:var(--text-muted);">مؤشر الخطر</span>
       <span id="headerRisk" class="font-mono" style="font-weight:800;font-size:15px;color:var(--normal);">0/100</span>
@@ -107,6 +135,7 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
     <div id="ecgWrap" title="نبض الميدان الإجمالي">
       <svg id="ecgSvg" viewBox="0 0 400 34" preserveAspectRatio="none"><path id="ecgPath" class="ecg-path" d=""/></svg>
     </div>
+    <button id="bellBtn" type="button"><i data-lucide="bell" style="width:15px;height:15px;"></i><span id="bellLabel">تفعيل التنبيهات الصوتية</span><span id="bellDot"></span></button>
   </div>
 </header>
 
@@ -135,6 +164,7 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
       <button class="chip" data-filter="SOS">SOS</button>
       <button class="chip" data-filter="WARNING">تحذير</button>
       <button class="chip" data-filter="NORMAL">طبيعي</button>
+      <button class="chip" data-filter="ZONE">خارج النطاق</button>
     </div>
 
     <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;"></div>
@@ -157,7 +187,20 @@ html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:
           <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">النبض</span><span id="detailHeartRate" class="font-mono" style="font-weight:700;color:var(--normal);">--</span></div>
           <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">البطارية</span><span id="detailBattery" class="font-mono" style="font-weight:700;">--</span></div>
         </div>
-        <canvas id="detailSpark" height="50"></canvas>
+        <canvas id="detailSpark" height="46"></canvas>
+
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:11.5px;font-weight:700;color:var(--text-secondary);display:flex;align-items:center;gap:5px;"><i data-lucide="shield" style="width:13px;height:13px;"></i>النطاق الأمني</span>
+            <span id="zoneStatusTag" class="badge normal">داخل النطاق</span>
+          </div>
+          <div class="zone-row">
+            <span style="min-width:70px;">نصف القطر</span>
+            <input type="range" id="zoneRadiusInput" min="80" max="1200" step="20">
+            <span id="zoneRadiusLabel" class="font-mono" style="min-width:52px;text-align:left;">-- م</span>
+          </div>
+          <button id="setZoneBtn" type="button"><i data-lucide="crosshair" style="width:13px;height:13px;"></i>تحديد مركز النطاق على الخريطة</button>
+        </div>
       </div>
     </div>
 
@@ -226,11 +269,17 @@ let employeesData = [
   { id:"EMP-104", name:"جندي/ أحمد الزهراني", status:"NORMAL", lat:24.7300, lng:46.6900, heartRate:80, battery:90, history:[] },
   { id:"EMP-105", name:"رقيب/ محمد الشهراني", status:"NORMAL", lat:24.6950, lng:46.6500, heartRate:78, battery:75, history:[] },
 ];
-employeesData.forEach(e => { for(let i=0;i<20;i++) e.history.push(e.heartRate + Math.round((Math.random()-0.5)*6)); });
+employeesData.forEach(e => {
+  for(let i=0;i<20;i++) e.history.push(e.heartRate + Math.round((Math.random()-0.5)*6));
+  e.zoneLat = e.lat; e.zoneLng = e.lng; e.zoneRadius = 350;
+  e.outOfZone = false; e.prevStatus = e.status; e.prevOutOfZone = false;
+});
 
-let map, markersGroup, markerRefs = {};
+let map, markersGroup, zonesGroup, markerRefs = {}, zoneRefs = {};
 let activeFilter = 'ALL', searchQuery = '', selectedId = null;
 let chartsInstance = {}, trendHistory = [];
+let alarmEnabled = false, audioCtx = null;
+let zonePickMode = false;
 const STATUS_LABEL = {NORMAL:'طبيعي', WARNING:'تحذير', SOS:'طوارئ SOS'};
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -242,6 +291,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initFilters();
   initSearch();
   initAIModule();
+  initBell();
+  initZoneControls();
   Chart.defaults.color = '#7E8FA8';
   Chart.defaults.font.family = 'Cairo';
   drawECG();
@@ -252,13 +303,15 @@ function computeRisk(){
   const total = employeesData.length;
   const sos = employeesData.filter(e=>e.status==='SOS').length;
   const warn = employeesData.filter(e=>e.status==='WARNING').length;
-  return Math.min(100, Math.round(((sos*30)+(warn*10))/total*10));
+  const zone = employeesData.filter(e=>e.outOfZone).length;
+  return Math.min(100, Math.round((((sos*30)+(warn*10)+(zone*6))/total)*10));
 }
 
 function renderAll(){
   renderStats();
   renderEmployeeList();
   updateMapMarkers();
+  updateZoneCircles();
   refreshHeader();
 }
 
@@ -270,27 +323,62 @@ function refreshHeader(){
 
   const sosCount = employeesData.filter(e=>e.status==='SOS').length;
   const warnCount = employeesData.filter(e=>e.status==='WARNING').length;
+  const zoneCount = employeesData.filter(e=>e.outOfZone).length;
   const badge = document.getElementById('headerBadge');
   const pulse = document.getElementById('headerPulse');
   pulse.className = 'live-pulse';
   if(sosCount>0){ badge.className='badge sos'; badge.textContent='حالة طوارئ نشطة'; pulse.classList.add('sos'); }
-  else if(warnCount>0){ badge.className='badge warning'; badge.textContent='تنبيهات قيد المتابعة'; pulse.classList.add('warning'); }
+  else if(warnCount>0 || zoneCount>0){ badge.className='badge warning'; badge.textContent='تنبيهات قيد المتابعة'; pulse.classList.add('warning'); }
   else { badge.className='badge normal'; badge.textContent='تشغيل طبيعي'; }
 }
 
 function initMap(){
   map = L.map('map', {zoomControl:true}).setView([24.7136, 46.6753], 12);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(map);
+  zonesGroup = L.layerGroup().addTo(map);
   markersGroup = L.layerGroup().addTo(map);
+  map.on('click', (e) => {
+    if(zonePickMode && selectedId){
+      const emp = employeesData.find(x=>x.id===selectedId);
+      if(emp){
+        emp.zoneLat = e.latlng.lat; emp.zoneLng = e.latlng.lng;
+        emp.outOfZone = false; emp.prevOutOfZone = false;
+        toggleZonePick(false);
+        updateZoneCircles();
+        renderEmployeeList();
+        pushAIToast('zone-updated');
+      }
+    }
+  });
 }
 
 function statusColor(s){ return s==='SOS'?'#FF3B57':s==='WARNING'?'#FFA83D':'#22D488'; }
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371000, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function updateZoneCircles(){
+  zonesGroup.clearLayers(); zoneRefs = {};
+  getFilteredEmployees().forEach(emp => {
+    const color = emp.outOfZone ? '#FFA83D' : '#2FD1E8';
+    const circle = L.circle([emp.zoneLat, emp.zoneLng], {
+      radius: emp.zoneRadius, color, weight: emp.id===selectedId?2:1.2,
+      fillColor: color, fillOpacity: emp.outOfZone?0.12:0.05,
+      dashArray: emp.outOfZone ? null : '5,6'
+    }).addTo(zonesGroup);
+    zoneRefs[emp.id] = circle;
+  });
+}
 
 function updateMapMarkers(){
   markersGroup.clearLayers(); markerRefs = {};
   getFilteredEmployees().forEach(emp => {
     const color = statusColor(emp.status);
-    const ring = emp.status !== 'NORMAL' ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${color};opacity:.55;animation:livePulse 1.4s ease-out infinite;"></div>` : '';
+    const ringColor = emp.status==='SOS' ? '#FF3B57' : (emp.status==='WARNING'||emp.outOfZone) ? '#FFA83D' : null;
+    const ring = ringColor ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${ringColor};opacity:.55;animation:livePulse 1.4s ease-out infinite;"></div>` : '';
     const icon = L.divIcon({
       html:`<div style="position:relative;width:16px;height:16px;">${ring}<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};"></div></div>`,
       className:''
@@ -313,10 +401,44 @@ function selectEmployee(id){
   document.getElementById('detailBattery').style.color = emp.battery<25?'var(--sos)':emp.battery<50?'var(--warning)':'var(--normal)';
   map.flyTo([emp.lat, emp.lng], 15);
   drawSparkline('detailSpark', emp.history, statusColor(emp.status));
+  document.getElementById('zoneRadiusInput').value = emp.zoneRadius;
+  document.getElementById('zoneRadiusLabel').textContent = emp.zoneRadius + ' م';
+  updateZoneStatusTag(emp);
+  toggleZonePick(false);
   renderEmployeeList();
+  updateZoneCircles();
 }
 
-document.getElementById('closeDetailBtn').onclick = () => { document.getElementById('detailPanel').classList.add('hidden'); selectedId=null; renderEmployeeList(); };
+function updateZoneStatusTag(emp){
+  const tag = document.getElementById('zoneStatusTag');
+  if(emp.outOfZone){ tag.className='badge zone'; tag.textContent='خارج النطاق الأمني'; }
+  else { tag.className='badge normal'; tag.textContent='داخل النطاق'; }
+}
+
+document.getElementById('closeDetailBtn').onclick = () => { document.getElementById('detailPanel').classList.add('hidden'); selectedId=null; toggleZonePick(false); renderEmployeeList(); updateZoneCircles(); };
+
+function initZoneControls(){
+  const radiusInput = document.getElementById('zoneRadiusInput');
+  radiusInput.addEventListener('input', () => {
+    const emp = employeesData.find(e=>e.id===selectedId);
+    if(!emp) return;
+    emp.zoneRadius = parseInt(radiusInput.value, 10);
+    document.getElementById('zoneRadiusLabel').textContent = emp.zoneRadius + ' م';
+    updateZoneCircles();
+  });
+  document.getElementById('setZoneBtn').addEventListener('click', () => toggleZonePick(!zonePickMode));
+}
+
+function toggleZonePick(state){
+  zonePickMode = state;
+  const btn = document.getElementById('setZoneBtn');
+  btn.classList.toggle('active', zonePickMode);
+  document.getElementById('map').classList.toggle('zoneMode', zonePickMode);
+  btn.innerHTML = zonePickMode
+    ? '<i data-lucide="crosshair" style="width:13px;height:13px;"></i>انقر على الخريطة لتحديد المركز...'
+    : '<i data-lucide="crosshair" style="width:13px;height:13px;"></i>تحديد مركز النطاق على الخريطة';
+  lucide.createIcons();
+}
 
 function renderStats(){
   document.getElementById('statTotal').textContent = employeesData.length;
@@ -327,7 +449,7 @@ function renderStats(){
 
 function getFilteredEmployees(){
   return employeesData.filter(e => {
-    const matchFilter = activeFilter==='ALL' || e.status===activeFilter;
+    const matchFilter = activeFilter==='ALL' || (activeFilter==='ZONE' ? e.outOfZone : e.status===activeFilter);
     const q = searchQuery.trim().toLowerCase();
     const matchSearch = !q || e.name.toLowerCase().includes(q) || e.id.toLowerCase().includes(q);
     return matchFilter && matchSearch;
@@ -349,9 +471,12 @@ function renderEmployeeList(){
     card.className = 'employee-card' + (selectedId===emp.id ? ' selected' : '');
     card.style.borderInlineStartColor = borderCol;
     card.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;">
         <strong style="font-size:12.5px;">${emp.name}</strong>
-        <span class="badge ${emp.status.toLowerCase()}">${STATUS_LABEL[emp.status]}</span>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          ${emp.outOfZone ? '<span class="badge zone">خارج النطاق</span>' : ''}
+          <span class="badge ${emp.status.toLowerCase()}">${STATUS_LABEL[emp.status]}</span>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;font-size:10.5px;color:var(--text-muted);">
         <span class="font-mono" style="display:flex;align-items:center;gap:3px;"><i data-lucide="heart-pulse" style="width:11px;height:11px;color:${borderCol};"></i>${emp.heartRate}</span>
@@ -373,14 +498,14 @@ function initFilters(){
       document.querySelectorAll('#filterChips .chip').forEach(c=>c.classList.remove('active'));
       btn.classList.add('active');
       activeFilter = btn.getAttribute('data-filter');
-      renderEmployeeList(); updateMapMarkers();
+      renderEmployeeList(); updateMapMarkers(); updateZoneCircles();
     });
   });
 }
 function initSearch(){
   document.getElementById('searchInput').addEventListener('input', (e) => {
     searchQuery = e.target.value;
-    renderEmployeeList(); updateMapMarkers();
+    renderEmployeeList(); updateMapMarkers(); updateZoneCircles();
   });
 }
 
@@ -418,6 +543,7 @@ function updateAnalyticsData(){
   const sosCount = employeesData.filter(e=>e.status==='SOS').length;
   const warnCount = employeesData.filter(e=>e.status==='WARNING').length;
   const normCount = employeesData.filter(e=>e.status==='NORMAL').length;
+  const zoneCount = employeesData.filter(e=>e.outOfZone).length;
   const riskIndex = computeRisk();
 
   document.getElementById('avgHeartRate').textContent = avgHeart + ' BPM';
@@ -448,13 +574,14 @@ function updateAnalyticsData(){
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#1C2636'}}} }
   });
 
-  renderInsight(riskIndex, sosCount, warnCount, avgHeart, avgBatt);
+  renderInsight(riskIndex, sosCount, warnCount, zoneCount, avgHeart, avgBatt);
 }
 
-function renderInsight(risk, sos, warn, avgHeart, avgBatt){
+function renderInsight(risk, sos, warn, zoneCount, avgHeart, avgBatt){
   const box = document.getElementById('insightBox');
   let icon='shield-check', color='var(--normal)', text='الوضع الميداني مستقر. جميع المؤشرات ضمن النطاق الطبيعي.';
   if(sos>0){ icon='alert-triangle'; color='var(--sos)'; text=`يوجد ${sos} حالة طوارئ نشطة تتطلب استجابة فورية. متوسط النبض العام ${avgHeart} نبضة/د.`; }
+  else if(zoneCount>0){ icon='map-pin-off'; color='var(--warning)'; text=`${zoneCount} من الأفراد خارج نطاقهم الأمني المحدد حالياً. يُنصح بالتحقق من موقعهم.`; }
   else if(warn>0){ icon='alert-circle'; color='var(--warning)'; text=`${warn} حالة تحذير قيد المتابعة. يُنصح بالتواصل مع الأفراد المعنيين والتحقق من سلامتهم.`; }
   else if(avgBatt<40){ icon='battery-warning'; color='var(--warning)'; text=`الوضع الأمني مستقر، لكن متوسط شحن الأجهزة منخفض (${avgBatt}%). يُنصح بجدولة إعادة شحن.`; }
   box.innerHTML = `<i data-lucide="${icon}" style="width:20px;height:20px;color:${color};flex-shrink:0;margin-top:2px;"></i>
@@ -475,7 +602,103 @@ function drawECG(){
   path.setAttribute('d', d);
   path.style.stroke = color;
   path.style.filter = `drop-shadow(0 0 3px ${color})`;
-  path.style.animation = 'none'; void path.offsetWidth;
+}
+
+/* ===== Alarm sound + notifications (fully local, no API key) ===== */
+function ensureAudioCtx(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(AC) audioCtx = new AC();
+  }
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playAlarmSound(type){
+  if(!alarmEnabled) return;
+  const ctx = ensureAudioCtx();
+  if(!ctx) return;
+  const now = ctx.currentTime;
+  const pattern = type === 'sos'
+    ? [{f:880,t:0,d:.14},{f:660,t:.18,d:.14},{f:880,t:.36,d:.14},{f:660,t:.54,d:.18}]
+    : [{f:520,t:0,d:.18}];
+  pattern.forEach(n => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type === 'sos' ? 'square' : 'sine';
+    osc.frequency.value = n.f;
+    gain.gain.setValueAtTime(0.0001, now + n.t);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + n.t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now + n.t); osc.stop(now + n.t + n.d + 0.02);
+  });
+}
+
+function showBrowserNotification(title, body){
+  if(!alarmEnabled) return;
+  if('Notification' in window && Notification.permission === 'granted'){
+    try{ new Notification(title, {body, dir:'rtl', lang:'ar'}); }catch(e){}
+  }
+}
+
+function initBell(){
+  const btn = document.getElementById('bellBtn');
+  btn.addEventListener('click', () => {
+    alarmEnabled = !alarmEnabled;
+    btn.classList.toggle('enabled', alarmEnabled);
+    document.getElementById('bellLabel').textContent = alarmEnabled ? 'التنبيهات الصوتية مفعّلة' : 'تفعيل التنبيهات الصوتية';
+    if(alarmEnabled){
+      ensureAudioCtx();
+      playAlarmSound('zone');
+      if('Notification' in window && Notification.permission === 'default'){
+        Notification.requestPermission();
+      }
+    }
+  });
+}
+
+function pushAlertToast(kind, empName, message, empId){
+  const stack = document.getElementById('alertStack');
+  const toast = document.createElement('div');
+  toast.className = 'alert-toast ' + kind;
+  const icon = kind === 'sos' ? 'siren' : 'map-pin-off';
+  const color = kind === 'sos' ? 'var(--sos)' : 'var(--warning)';
+  toast.innerHTML = `
+    <i data-lucide="${icon}" style="width:18px;height:18px;color:${color};flex-shrink:0;margin-top:2px;"></i>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:12.5px;color:${color};">${empName}</div>
+      <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px;">${message}</div>
+    </div>
+    ${kind==='sos' ? `<button class="ack-btn">إقرار الحالة</button>` : ''}
+    <button class="close-x"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+  `;
+  stack.appendChild(toast);
+  lucide.createIcons();
+
+  toast.querySelector('.close-x').onclick = () => toast.remove();
+  const ackBtn = toast.querySelector('.ack-btn');
+  if(ackBtn){
+    ackBtn.onclick = () => {
+      const emp = employeesData.find(e=>e.id===empId);
+      if(emp){ emp.status = 'NORMAL'; emp.prevStatus = 'NORMAL'; renderAll(); }
+      toast.remove();
+    };
+  } else {
+    setTimeout(() => { toast.remove(); }, 9000);
+  }
+}
+
+function pushAIToast(kind){
+  if(kind === 'zone-updated'){
+    const stack = document.getElementById('alertStack');
+    const toast = document.createElement('div');
+    toast.className = 'alert-toast zone';
+    toast.innerHTML = `<i data-lucide="check-circle" style="width:18px;height:18px;color:var(--normal);"></i><div style="flex:1;font-size:12px;color:var(--text-secondary);">تم تحديث مركز النطاق الأمني.</div><button class="close-x"><i data-lucide="x" style="width:14px;height:14px;"></i></button>`;
+    stack.appendChild(toast); lucide.createIcons();
+    toast.querySelector('.close-x').onclick = () => toast.remove();
+    setTimeout(() => toast.remove(), 4000);
+  }
 }
 
 /* ===== Live data simulation (mock field telemetry) ===== */
@@ -489,8 +712,26 @@ function simulateLiveData(){
     if(emp.history.length>20) emp.history.shift();
     emp.lat += (Math.random()-0.5)*0.001;
     emp.lng += (Math.random()-0.5)*0.001;
+
     if(emp.status==='NORMAL' && emp.heartRate>100) emp.status='WARNING';
     else if(emp.status==='WARNING' && emp.heartRate<95 && Math.random()<0.4) emp.status='NORMAL';
+
+    const dist = haversine(emp.lat, emp.lng, emp.zoneLat, emp.zoneLng);
+    emp.outOfZone = dist > emp.zoneRadius;
+
+    // ---- alarm transitions ----
+    if(emp.status==='SOS' && emp.prevStatus!=='SOS'){
+      playAlarmSound('sos');
+      showBrowserNotification('🚨 حالة طوارئ: ' + emp.name, `تم رصد إشارة SOS — النبض ${emp.heartRate} BPM`);
+      pushAlertToast('sos', emp.name, `تم رصد إشارة طوارئ (SOS) — النبض ${emp.heartRate} BPM، البطارية ${emp.battery}%`, emp.id);
+    }
+    if(emp.outOfZone && !emp.prevOutOfZone){
+      playAlarmSound('zone');
+      showBrowserNotification('⚠️ خروج عن النطاق: ' + emp.name, 'الفرد خارج نطاقه الأمني المحدد');
+      pushAlertToast('zone', emp.name, 'خرج عن النطاق الأمني المحدد له. يُنصح بالتحقق من موقعه.', emp.id);
+    }
+    emp.prevStatus = emp.status;
+    emp.prevOutOfZone = emp.outOfZone;
   });
 
   const avgHeart = Math.round(employeesData.reduce((a,v)=>a+v.heartRate,0)/employeesData.length);
@@ -504,7 +745,8 @@ function simulateLiveData(){
     if(emp){
       document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
       document.getElementById('detailBattery').textContent = emp.battery + '%';
-      if(map.hasLayer(markersGroup)) map.panTo([emp.lat, emp.lng], {animate:true});
+      updateZoneStatusTag(emp);
+      map.panTo([emp.lat, emp.lng], {animate:true});
       drawSparkline('detailSpark', emp.history, statusColor(emp.status));
     }
   }
@@ -515,7 +757,7 @@ function simulateLiveData(){
    المساعد الميداني الذكي — يعمل بالكامل محلياً داخل المتصفح
    بدون أي مفتاح API وبدون اتصال خارجي (بديل مجاني عن Gemini)
    ========================================================== */
-const AI_SUGGESTIONS = ['ما حالة الطوارئ الآن؟','من لديه بطارية منخفضة؟','ملخص الوضع الميداني','أعلى نبض مسجل'];
+const AI_SUGGESTIONS = ['ما حالة الطوارئ الآن؟','من خارج نطاقه الأمني؟','ملخص الوضع الميداني','أعلى نبض مسجل'];
 
 function initAIModule(){
   const toggleBtn = document.getElementById('aiToggleBtn');
@@ -527,7 +769,7 @@ function initAIModule(){
   toggleBtn.addEventListener('click', () => {
     chatBox.classList.toggle('hidden');
     if(!chatBox.classList.contains('hidden') && document.getElementById('aiMessages').children.length===0){
-      pushAIMessage('bot', 'مرحباً، أنا المساعد الميداني الذكي. أعمل بالكامل محلياً داخل هذا الجهاز، أحلل بيانات الميدان الحالية مباشرة دون إرسال أي بيانات لأي خادم خارجي. اسألني عن حالات الطوارئ، البطارية، النبض، أو أي فرد من الفريق.');
+      pushAIMessage('bot', 'مرحباً، أنا المساعد الميداني الذكي. أعمل بالكامل محلياً داخل هذا الجهاز، أحلل بيانات الميدان الحالية مباشرة دون إرسال أي بيانات لأي خادم خارجي. اسألني عن حالات الطوارئ، الخروج عن النطاق الأمني، البطارية، النبض، أو أي فرد من الفريق.');
       renderAISuggestions();
     }
   });
@@ -577,25 +819,29 @@ function localFieldAssistant(rawQuery){
   const sosList = employeesData.filter(e=>e.status==='SOS');
   const warnList = employeesData.filter(e=>e.status==='WARNING');
   const normalList = employeesData.filter(e=>e.status==='NORMAL');
+  const zoneList = employeesData.filter(e=>e.outOfZone);
   const total = employeesData.length;
   const avgHeart = Math.round(employeesData.reduce((a,v)=>a+v.heartRate,0)/total);
   const avgBatt = Math.round(employeesData.reduce((a,v)=>a+v.battery,0)/total);
   const risk = computeRisk();
 
-  // مطابقة اسم موظف محدد
   const matchedEmp = employeesData.find(e => {
     const n = e.name.replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase();
     return norm.includes(n.split('/').pop().trim()) || norm.includes(e.id.toLowerCase());
   });
   if(matchedEmp){
-    return `<b>${matchedEmp.name}</b> (${matchedEmp.id})<br>الحالة: <span style="color:${statusColor(matchedEmp.status)}">${STATUS_LABEL[matchedEmp.status]}</span><br>النبض: ${matchedEmp.heartRate} BPM · البطارية: ${matchedEmp.battery}%`;
+    return `<b>${matchedEmp.name}</b> (${matchedEmp.id})<br>الحالة: <span style="color:${statusColor(matchedEmp.status)}">${STATUS_LABEL[matchedEmp.status]}</span><br>النطاق الأمني: ${matchedEmp.outOfZone ? '<span style="color:var(--warning)">خارج النطاق</span>' : 'داخل النطاق'}<br>النبض: ${matchedEmp.heartRate} BPM · البطارية: ${matchedEmp.battery}%`;
   }
 
   if(/طوار|sos|خطر عاجل/.test(norm)){
     if(sosList.length===0) return 'لا توجد أي حالة طوارئ نشطة حالياً. جميع الأفراد ضمن الوضع الطبيعي أو تحت المتابعة فقط.';
     return `يوجد <b style="color:var(--sos)">${sosList.length}</b> حالة طوارئ نشطة الآن:<br>` + sosList.map(e=>`• ${e.name} — نبض ${e.heartRate} BPM، بطارية ${e.battery}%`).join('<br>');
   }
-  if(/بطاريه منخفض|شحن منخفض|بطاريه ضعيف/.test(norm) || /بطاريه/.test(norm)){
+  if(/نطاق|خارج المنطقه|خرج/.test(norm)){
+    if(zoneList.length===0) return 'جميع الأفراد ضمن نطاقاتهم الأمنية المحددة حالياً.';
+    return `الأفراد خارج نطاقهم الأمني حالياً (${zoneList.length}):<br>` + zoneList.map(e=>`• ${e.name}`).join('<br>');
+  }
+  if(/بطاريه/.test(norm)){
     const low = [...employeesData].sort((a,b)=>a.battery-b.battery).slice(0,3);
     return `الأفراد الأقل شحناً حالياً:<br>` + low.map(e=>`• ${e.name} — ${e.battery}%`).join('<br>') + `<br>متوسط شحن الأجهزة العام: ${avgBatt}%`;
   }
@@ -608,7 +854,7 @@ function localFieldAssistant(rawQuery){
     return `حالات التحذير الحالية (${warnList.length}):<br>` + warnList.map(e=>`• ${e.name} — نبض ${e.heartRate} BPM`).join('<br>');
   }
   if(/ملخص|الوضع|تقرير عام|كيف الوضع/.test(norm)){
-    return `<b>ملخص الميدان الحالي:</b><br>إجمالي الأفراد: ${total} · طبيعي: ${normalList.length} · تحذير: ${warnList.length} · طوارئ: ${sosList.length}<br>متوسط النبض: ${avgHeart} BPM · متوسط الشحن: ${avgBatt}%<br>مؤشر الخطر الإجمالي: <b style="color:${risk>=50?'var(--sos)':risk>=20?'var(--warning)':'var(--normal)'}">${risk}/100</b>`;
+    return `<b>ملخص الميدان الحالي:</b><br>إجمالي الأفراد: ${total} · طبيعي: ${normalList.length} · تحذير: ${warnList.length} · طوارئ: ${sosList.length} · خارج النطاق: ${zoneList.length}<br>متوسط النبض: ${avgHeart} BPM · متوسط الشحن: ${avgBatt}%<br>مؤشر الخطر الإجمالي: <b style="color:${risk>=50?'var(--sos)':risk>=20?'var(--warning)':'var(--normal)'}">${risk}/100</b>`;
   }
   if(/كم عدد|عدد الافراد|عدد الموظفين/.test(norm)){
     return `إجمالي عدد الأفراد المتتبعين حالياً: <b>${total}</b>.`;
@@ -617,7 +863,7 @@ function localFieldAssistant(rawQuery){
     return `مؤشر الخطر الإجمالي الحالي هو <b>${risk}/100</b>، ${risk>=50?'وهو مرتفع ويستدعي المتابعة الفورية.':risk>=20?'وهو متوسط، يُنصح بالمراقبة.':'وهو منخفض، الوضع مستقر.'}`;
   }
 
-  return `لم أفهم السؤال بدقة. يمكنك سؤالي عن: حالات الطوارئ، البطارية المنخفضة، أعلى نبض، ملخص عام للوضع، أو اسم أحد الأفراد مباشرة.`;
+  return `لم أفهم السؤال بدقة. يمكنك سؤالي عن: حالات الطوارئ، الخروج عن النطاق الأمني، البطارية المنخفضة، أعلى نبض، ملخص عام للوضع، أو اسم أحد الأفراد مباشرة.`;
 }
 </script>
 </body>
