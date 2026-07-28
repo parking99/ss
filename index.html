@@ -172,7 +172,7 @@
             </div>
 
             <div id="insightBar" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);font-size:11.5px;line-height:1.6;">
-                <i data-lucide="activity" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;color:var(--normal);"></i>
+                <i id="insightIcon" data-lucide="activity" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;color:var(--normal);"></i>
                 <span id="insightText" style="color:var(--text-secondary);">جاري تحليل الوضع الميداني...</span>
             </div>
 
@@ -211,10 +211,31 @@
                 <div style="position:absolute;top:12px;left:12px;z-index:15;display:flex;flex-direction:column;gap:6px;">
                     <button id="fitAllBtn" class="map-tool-btn" type="button" title="تكبير لعرض جميع الموظفين"><i data-lucide="maximize" style="width:16px;height:16px;"></i></button>
                     <button id="toggleGeofenceBtn" class="map-tool-btn on" type="button" title="طبقة المناطق الجغرافية"><i data-lucide="shield" style="width:16px;height:16px;"></i></button>
+                    <button id="toggleZonesBtn" class="map-tool-btn" type="button" title="إدارة المناطق الأمنية"><i data-lucide="map-pinned" style="width:16px;height:16px;"></i></button>
                     <button id="toggleWeatherBtn" class="map-tool-btn on" type="button" title="طبقة الطقس"><i data-lucide="cloud-sun" style="width:16px;height:16px;"></i></button>
                     <button id="toggleHeatBtn" class="map-tool-btn heat-on" type="button" title="طبقة كثافة الحوادث"><i data-lucide="flame" style="width:16px;height:16px;"></i></button>
                     <button id="toggleTrailsBtn" class="map-tool-btn on" type="button" title="مسار الموظف المحدد"><i data-lucide="route" style="width:16px;height:16px;"></i></button>
+                    <button id="toggleTrafficBtn" class="map-tool-btn" type="button" title="طبقة الازدحام المروري"><i data-lucide="car-front" style="width:16px;height:16px;"></i></button>
+                    <div style="height:1px;background:var(--border-soft);margin:2px 0;"></div>
+                    <button id="toggleAllLayersBtn" class="map-tool-btn" type="button" title="إظهار/إخفاء جميع طبقات الخريطة"><i id="allLayersIcon" data-lucide="eye" style="width:16px;height:16px;"></i></button>
                 </div>
+
+                <div id="trafficKeyPrompt" class="hidden" style="position:absolute;top:12px;left:60px;z-index:16;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(16,24,39,.95);border:1px solid rgba(245,166,35,.35);font-size:11px;">
+                    <i data-lucide="key-round" style="width:14px;height:14px;color:var(--warning);flex-shrink:0;"></i>
+                    <span style="color:var(--warning);">أدخل مفتاح TomTom Traffic API لعرض الازدحام:</span>
+                    <input type="text" id="trafficApiKeyInput" placeholder="مفتاح API..." style="background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:6px;color:var(--text-primary);font-size:11px;padding:4px 8px;width:160px;">
+                </div>
+
+                <div id="zonesPanel" class="hidden" style="position:absolute;top:12px;right:12px;width:280px;max-height:calc(100% - 24px);overflow-y:auto;z-index:22;background:rgba(16,24,39,.97);border:1px solid var(--border-soft);border-radius:14px;padding:14px;box-shadow:var(--shadow-md);">
+                    <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px;">إدارة المناطق الأمنية</span>
+                    <button id="startPickZoneBtn" type="button" style="width:100%;padding:8px;border-radius:9px;font-size:11px;font-weight:700;margin-bottom:10px;cursor:pointer;border:1px dashed var(--accent);background:var(--accent-soft);color:var(--accent);">+ إضافة منطقة جديدة (بالنقر على الخريطة)</button>
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+                        <span style="font-size:10px;color:var(--text-secondary);">نصف قطر المنطقة الجديدة (م):</span>
+                        <input type="number" id="newZoneRadiusInput" value="3000" style="width:70px;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:6px;color:var(--text-primary);font-size:11px;padding:3px 6px;">
+                    </div>
+                    <div id="zonesList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                </div>
+
 
                 <div id="weatherWidget" class="hidden" style="position:absolute;top:12px;left:60px;z-index:15;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;background:rgba(16,24,39,.92);border:1px solid var(--border-soft);font-size:12px;">
                     <i id="weatherIcon" data-lucide="cloud" style="width:16px;height:16px;color:var(--accent);"></i>
@@ -279,6 +300,13 @@
 
                     <div id="detailGeofenceNotice" class="hidden" style="margin-top:10px;padding:8px 10px;border-radius:10px;font-size:11px;display:flex;align-items:center;gap:8px;background:var(--warning-soft);color:var(--warning);">
                         <i data-lucide="map-pin-off" style="width:14px;height:14px;flex-shrink:0;"></i><span>الموظف حالياً خارج نطاق المناطق التشغيلية المصرح بها</span>
+                    </div>
+
+                    <div style="margin-top:10px;padding:9px 10px;border-radius:10px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
+                        <span style="display:block;font-size:10px;color:var(--text-muted);margin-bottom:5px;">المنطقة الأمنية المخصصة لهذا الموظف</span>
+                        <select id="detailZoneSelect" style="width:100%;background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:8px;color:var(--text-primary);font-size:11.5px;padding:6px 8px;">
+                            <option value="">أي منطقة معرّفة (افتراضي)</option>
+                        </select>
                     </div>
 
                     <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-soft);">
@@ -378,10 +406,14 @@ const SOS_RESOLVE_GRACE_MS = 120000;
 const SNAPSHOT_LIMIT = 24;
 const SEARCH_DEBOUNCE_MS = 250;
 
-const GEOFENCES = [
-  { name: 'المنطقة التشغيلية الرئيسية', lat: 24.7136, lng: 46.6753, radius: 9000 },
-  { name: 'نقطة الدعم الشمالية', lat: 24.79, lng: 46.70, radius: 4500 }
+const DEFAULT_ZONES = [
+  { id: 'z1', name: 'المنطقة التشغيلية الرئيسية', lat: 24.7136, lng: 46.6753, radius: 9000 },
+  { id: 'z2', name: 'نقطة الدعم الشمالية', lat: 24.79, lng: 46.70, radius: 4500 }
 ];
+function loadZones() { try { const s = localStorage.getItem('opsroom_zones'); return s ? JSON.parse(s) : DEFAULT_ZONES.slice(); } catch (e) { return DEFAULT_ZONES.slice(); } }
+function saveZones(zones) { localStorage.setItem('opsroom_zones', JSON.stringify(zones)); }
+function loadZoneAssignments() { try { const s = localStorage.getItem('opsroom_zone_assignments'); return s ? JSON.parse(s) : {}; } catch (e) { return {}; } }
+function saveZoneAssignments(assignments) { localStorage.setItem('opsroom_zone_assignments', JSON.stringify(assignments)); }
 const STATUS_COLORS = {
   NORMAL: { label: 'طبيعي', dot: '#22D488', bg: 'rgba(34,212,136,0.12)', fg: '#22D488' },
   WARNING: { label: 'تحذير', dot: '#F5A623', bg: 'rgba(245,166,35,0.14)', fg: '#F5A623' },
@@ -435,10 +467,12 @@ let state = {
   activityLog: [], incidentsToday: 0, resolvedSuppression: {}, snapshots: [],
   weather: null, showGeofence: true, showWeather: true, showHeat: true, showTrails: true,
   trails: {}, incidentPoints: [], connectionError: false, lastUpdate: null,
-  selectedCommand: 'ALERT', audioContext: null, sirenIntervalId: null, fetchController: null, searchDebounceId: null
+  selectedCommand: 'ALERT', audioContext: null, sirenIntervalId: null, fetchController: null, searchDebounceId: null,
+  zones: loadZones(), zoneAssignments: loadZoneAssignments(), showZonesPanel: false, zonePickMode: false, newZoneRadius: 3000,
+  showTraffic: false, trafficApiKey: localStorage.getItem('opsroom_traffic_key') || ''
 };
 
-let map = null, clusterGroup = null, sosLayerGroup = null, geofenceLayer = null, routeLayer = null, heatLayer = null, trailLayer = null;
+let map = null, clusterGroup = null, sosLayerGroup = null, geofenceLayer = null, routeLayer = null, heatLayer = null, trailLayer = null, trafficLayer = null;
 const markers = {};
 let refreshTimeoutId = null;
 
@@ -486,11 +520,127 @@ function initMap() {
   trailLayer = L.layerGroup().addTo(map);
   heatLayer = L.heatLayer([], { radius: 32, blur: 24, maxZoom: 17, gradient: { 0.2: '#33C7F4', 0.5: '#F5A623', 0.8: '#FF3B4E' } }).addTo(map);
 
-  GEOFENCES.forEach(z => {
+  drawZones();
+  updateTrafficLayer();
+  renderZonesPanel();
+
+  map.on('click', e => {
+    if (state.zonePickMode) addZoneAt(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function drawZones() {
+  geofenceLayer.clearLayers();
+  state.zones.forEach(z => {
     L.circle([z.lat, z.lng], { radius: z.radius, color: '#33C7F4', weight: 1.5, dashArray: '6,6', fillOpacity: 0.04, interactive: false })
       .bindTooltip(z.name, { permanent: false }).addTo(geofenceLayer);
   });
 }
+function addZoneAt(lat, lng) {
+  const id = 'z' + Date.now();
+  state.zones.push({ id, name: `منطقة جديدة ${state.zones.length + 1}`, lat, lng, radius: state.newZoneRadius });
+  saveZones(state.zones);
+  drawZones();
+  renderZonesPanel();
+  state.zonePickMode = false;
+  document.getElementById('startPickZoneBtn').innerText = '+ إضافة منطقة جديدة (بالنقر على الخريطة)';
+}
+function deleteZone(id) {
+  state.zones = state.zones.filter(z => z.id !== id);
+  Object.keys(state.zoneAssignments).forEach(k => { if (state.zoneAssignments[k] === id) delete state.zoneAssignments[k]; });
+  saveZones(state.zones); saveZoneAssignments(state.zoneAssignments);
+  drawZones(); renderZonesPanel(); filterEmployees();
+  if (state.selectedEmployeeId) { const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId); if (emp) showEmployeeDetails(emp); }
+}
+function renameZone(id, name) {
+  const z = state.zones.find(z => z.id === id);
+  if (z) { z.name = name; saveZones(state.zones); drawZones(); }
+}
+function resizeZone(id, radius) {
+  const z = state.zones.find(z => z.id === id);
+  if (z) { z.radius = Math.max(200, radius); saveZones(state.zones); drawZones(); filterEmployees(); }
+}
+function assignZone(empId, zoneId) {
+  if (zoneId) state.zoneAssignments[empId] = zoneId; else delete state.zoneAssignments[empId];
+  saveZoneAssignments(state.zoneAssignments);
+  filterEmployees();
+}
+function updateTrafficLayer() {
+  if (!map) return;
+  const want = state.showTraffic && state.trafficApiKey;
+  if (want && !trafficLayer) {
+    trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${state.trafficApiKey}`, { maxZoom: 20, opacity: 0.8 });
+    trafficLayer.addTo(map);
+  } else if (want && trafficLayer) {
+    if (!map.hasLayer(trafficLayer)) trafficLayer.addTo(map);
+  } else if (!want && trafficLayer && map.hasLayer(trafficLayer)) {
+    map.removeLayer(trafficLayer);
+  }
+  document.getElementById('trafficKeyPrompt').classList.toggle('hidden', !(state.showTraffic && !state.trafficApiKey));
+}
+function setTrafficKey(key) {
+  state.trafficApiKey = key;
+  localStorage.setItem('opsroom_traffic_key', key);
+  if (trafficLayer) { map.removeLayer(trafficLayer); trafficLayer = null; }
+  updateTrafficLayer();
+}
+function allLayersVisible() {
+  return state.showGeofence && state.showWeather && state.showHeat && state.showTrails && (state.showTraffic || !state.trafficApiKey);
+}
+function toggleAllLayers() {
+  const show = !allLayersVisible();
+  state.showGeofence = show; state.showWeather = show; state.showHeat = show; state.showTrails = show;
+  state.showTraffic = show && !!state.trafficApiKey;
+  document.getElementById('toggleGeofenceBtn').classList.toggle('on', state.showGeofence);
+  document.getElementById('toggleWeatherBtn').classList.toggle('on', state.showWeather);
+  document.getElementById('toggleHeatBtn').classList.toggle('heat-on', state.showHeat);
+  document.getElementById('toggleTrailsBtn').classList.toggle('on', state.showTrails);
+  document.getElementById('toggleTrafficBtn').classList.toggle('on', state.showTraffic);
+  if (state.showGeofence) geofenceLayer.addTo(map); else map.removeLayer(geofenceLayer);
+  if (state.showHeat) heatLayer.addTo(map); else map.removeLayer(heatLayer);
+  updateTrafficLayer();
+  renderWeatherWidget();
+  updateRouteAndTrail();
+  document.getElementById('allLayersIcon').setAttribute('data-lucide', allLayersVisible() ? 'eye' : 'eye-off');
+  lucide.createIcons();
+}
+function insideAnyGeofence(emp) {
+  const assignedId = state.zoneAssignments[emp.emp_id];
+  if (assignedId) {
+    const z = state.zones.find(zz => zz.id === assignedId);
+    if (z) return haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius;
+  }
+  return state.zones.some(z => haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius);
+}
+function assignedZoneName(emp) {
+  const assignedId = state.zoneAssignments[emp.emp_id];
+  const z = assignedId ? state.zones.find(zz => zz.id === assignedId) : null;
+  return z ? z.name : 'أي منطقة معرّفة';
+}
+function renderZonesPanel() {
+  const list = document.getElementById('zonesList');
+  if (state.zones.length === 0) { list.innerHTML = `<span style="font-size:11px;color:var(--text-muted);">لا توجد مناطق معرّفة بعد.</span>`; return; }
+  list.innerHTML = state.zones.map(z => `
+    <div class="zone-item" data-id="${z.id}" style="padding:8px 9px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <input type="text" class="zone-name-input" value="${escapeHTML(z.name)}" style="flex:1;background:transparent;border:none;border-bottom:1px solid var(--border-soft);color:var(--text-primary);font-size:11.5px;font-weight:700;padding:2px 0;outline:none;">
+        <button class="zone-delete-btn" type="button" style="border:none;background:transparent;color:var(--sos);cursor:pointer;display:flex;padding:2px;"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;color:var(--text-muted);">نصف القطر:</span>
+        <input type="number" class="zone-radius-input" value="${z.radius}" style="width:70px;background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:6px;color:var(--text-primary);font-size:11px;padding:3px 6px;">
+        <span style="font-size:10px;color:var(--text-muted);">م</span>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('.zone-item').forEach(item => {
+    const id = item.getAttribute('data-id');
+    item.querySelector('.zone-name-input').addEventListener('change', e => renameZone(id, e.target.value));
+    item.querySelector('.zone-radius-input').addEventListener('change', e => resizeZone(id, parseInt(e.target.value) || 200));
+    item.querySelector('.zone-delete-btn').addEventListener('click', () => deleteZone(id));
+  });
+  lucide.createIcons();
+}
+
 
 function initEventListeners() {
   document.getElementById('searchInput').addEventListener('input', e => {
@@ -562,6 +712,30 @@ function initEventListeners() {
     state.showTrails = !state.showTrails;
     document.getElementById('toggleTrailsBtn').classList.toggle('on', state.showTrails);
     updateRouteAndTrail();
+  });
+  document.getElementById('toggleZonesBtn').addEventListener('click', () => {
+    state.showZonesPanel = !state.showZonesPanel;
+    state.zonePickMode = false;
+    document.getElementById('toggleZonesBtn').classList.toggle('on', state.showZonesPanel);
+    document.getElementById('zonesPanel').classList.toggle('hidden', !state.showZonesPanel);
+    if (state.showZonesPanel) renderZonesPanel();
+  });
+  document.getElementById('startPickZoneBtn').addEventListener('click', e => {
+    state.zonePickMode = !state.zonePickMode;
+    e.currentTarget.innerText = state.zonePickMode ? 'انقر على الخريطة لتحديد مركز المنطقة الجديدة...' : '+ إضافة منطقة جديدة (بالنقر على الخريطة)';
+  });
+  document.getElementById('newZoneRadiusInput').addEventListener('change', e => {
+    state.newZoneRadius = parseInt(e.target.value) || 3000;
+  });
+  document.getElementById('toggleTrafficBtn').addEventListener('click', () => {
+    state.showTraffic = !state.showTraffic;
+    document.getElementById('toggleTrafficBtn').classList.toggle('on', state.showTraffic);
+    updateTrafficLayer();
+  });
+  document.getElementById('trafficApiKeyInput').addEventListener('change', e => setTrafficKey(e.target.value.trim()));
+  document.getElementById('toggleAllLayersBtn').addEventListener('click', toggleAllLayers);
+  document.getElementById('detailZoneSelect').addEventListener('change', e => {
+    if (state.selectedEmployeeId) assignZone(state.selectedEmployeeId, e.target.value);
   });
 
   document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
@@ -637,7 +811,6 @@ function detectAnomaly(emp) {
   if (Math.abs(z) >= 2 && Math.abs(emp.heart_rate - mean) >= 12) return { z: z.toFixed(1), dir: z > 0 ? 'ارتفاع' : 'انخفاض', mean: Math.round(mean) };
   return null;
 }
-function insideAnyGeofence(emp) { return GEOFENCES.some(z => haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius); }
 function findNearestResponder(sosEmp, all) {
   let nearest = null, min = Infinity;
   all.forEach(o => { if (o.emp_id === sosEmp.emp_id || o.status === 'SOS') return; const d = haversine(sosEmp.lat, sosEmp.lng, o.lat, o.lng); if (d < min) { min = d; nearest = o; } });
@@ -866,7 +1039,7 @@ function updateHeaderPulseAndInsight() {
 
   document.getElementById('headerPulse').classList.toggle('sos', statSos > 0);
 
-  const icon = document.querySelector('#insightBar i');
+  const icon = document.getElementById('insightIcon');
   const textEl = document.getElementById('insightText');
   const chip = document.getElementById('systemChip');
   let text, iconName, color, chipLabel, chipBg, chipFg;
@@ -986,6 +1159,12 @@ function showEmployeeDetails(emp) {
   document.getElementById('resolvingNotice').classList.toggle('hidden', status !== 'RESOLVING');
   document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
   document.getElementById('detailGeofenceNotice').classList.toggle('hidden', !!emp.insideGeofence);
+
+  const zoneSelect = document.getElementById('detailZoneSelect');
+  const assignedId = state.zoneAssignments[emp.emp_id] || '';
+  zoneSelect.innerHTML = '<option value="">أي منطقة معرّفة (افتراضي)</option>' +
+    state.zones.map(z => `<option value="${z.id}" ${z.id === assignedId ? 'selected' : ''}>${escapeHTML(z.name)}</option>`).join('');
+  zoneSelect.value = assignedId;
 
   const hasToken = !!emp.fcm_token;
   document.getElementById('noTokenNotice').classList.toggle('hidden', hasToken);
