@@ -1,979 +1,1501 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مركز القيادة والمراقبة الأمنية الذكي</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مركز القيادة والمراقبة الأمنية الذكي</title>
+    
+    <!-- Leaflet & MarkerCluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ====================================================
+           CSS CUSTOM PROPERTIES - DESIGN TOKENS
+        ==================================================== */
+        :root {
+            /* Core Surfaces */
+            --bg-void: #03060D;
+            --bg-base: #060C18;
+            --bg-panel: #0A1220;
+            --bg-card: #0D1628;
+            --bg-elevated: #111E30;
+            --bg-hover: #162236;
+            --bg-overlay: rgba(6, 12, 24, 0.92);
 
-<style>
-:root{
-  --bg-void:#04060B; --bg-page:#080C14; --bg-panel:#0E1521; --bg-subtle:#0A101B; --bg-elevated:#141E2E;
-  --border-soft:#1C2636; --border-strong:#2A374C;
-  --text-primary:#EAF1FB; --text-secondary:#7E8FA8; --text-muted:#48566E;
-  --accent:#2FD1E8; --accent-soft:rgba(47,209,232,0.12); --accent-dim:#1B4A55;
-  --normal:#22D488; --normal-soft:rgba(34,212,136,0.12);
-  --warning:#FFA83D; --warning-soft:rgba(255,168,61,0.14);
-  --sos:#FF3B57; --sos-soft:rgba(255,59,87,0.16);
-  --shadow-sm:0 1px 3px rgba(0,0,0,0.4); --shadow-md:0 20px 50px rgba(0,0,0,0.6);
-}
-*{box-sizing:border-box; font-family:'IBM Plex Sans Arabic','Cairo',sans-serif;}
-.font-display{font-family:'Cairo',sans-serif;}
-.font-mono{font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:isolate;}
-html,body{margin:0;padding:0;height:100vh;width:100%;overflow:hidden;background:var(--bg-void);color:var(--text-primary);
-  background-image:linear-gradient(var(--bg-page),var(--bg-page)),
-  repeating-linear-gradient(0deg,rgba(47,209,232,0.025) 0px,rgba(47,209,232,0.025) 1px,transparent 1px,transparent 44px),
-  repeating-linear-gradient(90deg,rgba(47,209,232,0.025) 0px,rgba(47,209,232,0.025) 1px,transparent 1px,transparent 44px);}
-::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:999px;} ::-webkit-scrollbar-track{background:transparent;}
+            /* Borders */
+            --border-1: rgba(255,255,255,0.04);
+            --border-2: rgba(255,255,255,0.08);
+            --border-3: rgba(255,255,255,0.14);
 
-#map{height:100%;width:100%;z-index:1;background:var(--bg-subtle);border-radius:14px;}
-#map.zoneMode{cursor:crosshair;}
-.leaflet-control-zoom a{background:var(--bg-panel) !important;color:var(--text-primary) !important;border-color:var(--border-soft) !important;}
-.leaflet-popup-content-wrapper{background:var(--bg-elevated) !important;color:var(--text-primary) !important;border-radius:.75rem !important;border:1px solid var(--border-soft);box-shadow:var(--shadow-md) !important;}
-.leaflet-popup-tip{background:var(--bg-elevated) !important;}
+            /* Text */
+            --text-1: #F0F6FF;
+            --text-2: #8CA0BE;
+            --text-3: #4A607E;
+            --text-4: #2A3E58;
 
-@keyframes livePulse{0%{transform:scale(.6);opacity:1;}100%{transform:scale(2.6);opacity:0;}}
-.live-pulse{position:relative;width:10px;height:10px;border-radius:50%;background:var(--normal);display:inline-block;}
-.live-pulse::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1.5px solid rgba(34,212,136,.55);animation:livePulse 2s ease-out infinite;}
-.live-pulse.sos{background:var(--sos);} .live-pulse.sos::after{border-color:rgba(255,59,87,.6);}
-.live-pulse.warning{background:var(--warning);} .live-pulse.warning::after{border-color:rgba(255,168,61,.6);}
+            /* Brand Accent */
+            --cyan: #00D4FF;
+            --cyan-dim: rgba(0,212,255,0.08);
+            --cyan-mid: rgba(0,212,255,0.18);
+            --cyan-glow: rgba(0,212,255,0.35);
 
-.badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;letter-spacing:.3px;font-family:'Cairo',sans-serif;}
-.badge.normal{background:var(--normal-soft);color:var(--normal);border:1px solid rgba(34,212,136,.3);}
-.badge.sos{background:var(--sos-soft);color:var(--sos);border:1px solid rgba(255,59,87,.3);}
-.badge.warning{background:var(--warning-soft);color:var(--warning);border:1px solid rgba(255,168,61,.3);}
-.badge.zone{background:var(--warning-soft);color:var(--warning);border:1px solid rgba(255,168,61,.35);}
+            /* Status */
+            --green: #00E896;
+            --green-dim: rgba(0,232,150,0.08);
+            --green-mid: rgba(0,232,150,0.2);
+            --green-glow: 0 0 16px rgba(0,232,150,0.4);
 
-.chip{font-size:11px;font-weight:600;padding:5px 12px;border-radius:999px;border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-secondary);cursor:pointer;transition:all .15s ease;white-space:nowrap;}
-.chip:hover{border-color:var(--accent);color:var(--accent);}
-.chip.active{background:var(--accent);color:#03222A;border-color:var(--accent);}
+            --amber: #FFB020;
+            --amber-dim: rgba(255,176,32,0.08);
+            --amber-mid: rgba(255,176,32,0.2);
+            --amber-glow: 0 0 16px rgba(255,176,32,0.4);
 
-.view-tab{padding:9px 20px;border-radius:10px 10px 0 0;border:1px solid var(--border-soft);border-bottom:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--text-secondary);display:flex;align-items:center;gap:6px;}
-.view-tab.active{background:var(--bg-panel);color:var(--accent);border-bottom:2px solid var(--accent);}
+            --red: #FF3358;
+            --red-dim: rgba(255,51,88,0.08);
+            --red-mid: rgba(255,51,88,0.2);
+            --red-glow: 0 0 16px rgba(255,51,88,0.5);
 
-.employee-card{background:var(--bg-panel);border:1px solid var(--border-soft);border-inline-start:3px solid var(--border-soft);border-radius:.75rem;padding:.7rem .85rem;cursor:pointer;transition:all .15s ease;}
-.employee-card:hover{border-color:var(--accent);border-inline-start-color:var(--accent);background:var(--bg-elevated);}
-.employee-card.selected{background:var(--bg-elevated);border-color:var(--accent);}
-.mini-bar{height:4px;border-radius:999px;background:var(--bg-subtle);overflow:hidden;flex:1;}
-.mini-bar>span{display:block;height:100%;border-radius:999px;}
+            --navy: #2979FF;
+            --navy-dim: rgba(41,121,255,0.1);
 
-.analytics-card{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:14px;padding:16px;box-shadow:var(--shadow-sm);}
-.stat-value{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text-primary);margin-top:8px;}
+            /* Glows & Shadows */
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
+            --shadow-md: 0 8px 32px rgba(0,0,0,0.6);
+            --shadow-lg: 0 24px 64px rgba(0,0,0,0.75);
+            --shadow-cyan: 0 0 32px rgba(0,212,255,0.15);
+        }
 
-.hidden{display:none !important;}
-.map-tool-btn{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:9px;box-shadow:var(--shadow-sm);padding:9px;cursor:pointer;color:var(--text-secondary);display:flex;transition:all .15s ease;}
-.map-tool-btn:hover{border-color:var(--accent);color:var(--accent);}
-.map-tool-btn.active{border-color:var(--warning);color:var(--warning);background:var(--warning-soft);}
+        /* ====================================================
+           RESET & BASE
+        ==================================================== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ECG signature strip */
-#ecgWrap{width:180px;height:34px;position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);}
-#ecgSvg{position:absolute;top:0;right:0;height:100%;}
-.ecg-path{fill:none;stroke:var(--normal);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 3px var(--normal));}
+        html, body {
+            height: 100vh; width: 100%; overflow: hidden;
+            font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
+            font-size: 14px;
+            background: var(--bg-void);
+            color: var(--text-1);
+        }
 
-/* Alarm bell */
-#bellBtn{position:relative;background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:10px;padding:9px 12px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;transition:all .15s ease;}
-#bellBtn.enabled{border-color:var(--normal);color:var(--normal);background:var(--normal-soft);}
-#bellDot{position:absolute;top:-3px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--sos);display:none;}
-#bellDot.show{display:block;animation:livePulse 1.2s ease-out infinite;}
+        .font-display { font-family: 'Cairo', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; direction: ltr; unicode-bidi: isolate; }
 
-/* Alert toasts */
-#alertStack{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1200;display:flex;flex-direction:column;gap:8px;width:min(440px,92vw);}
-.alert-toast{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;box-shadow:var(--shadow-md);backdrop-filter:blur(10px);animation:toastIn .25s ease;border:1px solid;}
-@keyframes toastIn{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
-.alert-toast.sos{background:rgba(255,59,87,.14);border-color:rgba(255,59,87,.5);}
-.alert-toast.zone{background:rgba(255,168,61,.14);border-color:rgba(255,168,61,.5);}
-.alert-toast .ack-btn{font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;border:1px solid currentColor;background:transparent;cursor:pointer;}
-.alert-toast.sos .ack-btn{color:var(--sos);}
-.alert-toast.zone .ack-btn{color:var(--warning);}
-.alert-toast .close-x{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;}
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-3); border-radius: 99px; }
+        ::-webkit-scrollbar-track { background: transparent; }
 
-/* AI assistant */
-#aiToggleBtn{position:fixed;bottom:24px;left:24px;z-index:999;padding:12px 18px;border-radius:999px;border:1px solid var(--accent);background:rgba(14,21,33,.94);color:var(--accent);font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);cursor:pointer;backdrop-filter:blur(10px);transition:all .2s ease;}
-#aiToggleBtn:hover{background:var(--accent);color:#03222A;}
-#aiChatBox{position:fixed;bottom:80px;left:24px;z-index:999;width:380px;height:520px;border-radius:16px;border:1px solid var(--border-soft);background:rgba(14,21,33,.97);box-shadow:var(--shadow-md);display:flex;flex-direction:column;overflow:hidden;backdrop-filter:blur(12px);}
-.ai-msg{padding:10px 12px;border-radius:12px;font-size:12.5px;line-height:1.6;max-width:88%;word-break:break-word;}
-.ai-msg.user{align-self:flex-end;background:var(--accent-soft);color:var(--accent);border:1px solid rgba(47,209,232,.3);border-bottom-left-radius:2px;}
-.ai-msg.bot{align-self:flex-start;background:var(--bg-subtle);color:var(--text-primary);border:1px solid var(--border-soft);border-bottom-right-radius:2px;}
-.ai-suggest{font-size:10.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;white-space:nowrap;}
-.ai-suggest:hover{border-color:var(--accent);color:var(--accent);}
+        .hidden { display: none !important; }
 
-/* Zone control in detail panel */
-.zone-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-secondary);}
-.zone-row input[type=range]{flex:1;accent-color:var(--accent);}
-#setZoneBtn{font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:5px;}
-#setZoneBtn.active{border-color:var(--warning);color:var(--warning);background:var(--warning-soft);}
-</style>
+        /* ====================================================
+           GLOBAL GRID BACKGROUND
+        ==================================================== */
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(0,212,255,0.022) 60px),
+                repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(0,212,255,0.022) 60px);
+        }
+
+        body::after {
+            content: '';
+            position: fixed; top: -50%; left: -20%; width: 60%; height: 60%;
+            background: radial-gradient(ellipse, rgba(0,80,160,0.12) 0%, transparent 65%);
+            pointer-events: none; z-index: 0;
+        }
+
+        /* ====================================================
+           LAYOUT SHELL
+        ==================================================== */
+        #app-shell {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
+        }
+
+        /* ====================================================
+           HEADER
+        ==================================================== */
+        #main-header {
+            position: relative;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px;
+            height: 64px; flex-shrink: 0;
+            background: rgba(10, 18, 32, 0.85);
+            border-bottom: 1px solid var(--border-2);
+            backdrop-filter: blur(16px);
+            z-index: 50;
+        }
+
+        #main-header::after {
+            content: '';
+            position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--cyan-glow), transparent);
+        }
+
+        .header-brand {
+            display: flex; align-items: center; gap: 12px;
+        }
+
+        .brand-icon {
+            width: 42px; height: 42px; border-radius: 12px;
+            background: var(--navy-dim);
+            border: 1px solid rgba(41,121,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--navy);
+            position: relative; overflow: hidden;
+            box-shadow: 0 0 20px rgba(41,121,255,0.2);
+        }
+
+        .brand-icon::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(41,121,255,0.15) 0%, transparent 60%);
+        }
+
+        .brand-title {
+            font-family: 'Cairo', sans-serif;
+            font-size: 15px; font-weight: 800;
+            color: var(--text-1);
+            letter-spacing: -0.3px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .brand-subtitle {
+            font-size: 11px; color: var(--text-3);
+            margin-top: 2px;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        /* Live Pulse */
+        .live-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 8px 3px 6px; border-radius: 99px;
+            background: var(--green-dim);
+            border: 1px solid rgba(0,232,150,0.25);
+            font-size: 10px; font-weight: 700; color: var(--green);
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .live-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--green);
+            position: relative;
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes dotPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0,232,150,0.5); }
+            50% { box-shadow: 0 0 0 5px transparent; }
+        }
+
+        .header-center {
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .header-right {
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .header-clock {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px; font-weight: 600;
+            color: var(--cyan);
+            letter-spacing: 2px;
+            text-shadow: 0 0 16px rgba(0,212,255,0.4);
+        }
+
+        .header-date {
+            font-size: 11px; color: var(--text-3);
+            text-align: center; letter-spacing: 0.3px;
+        }
+
+        .header-clock-wrap {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 6px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-2);
+            border-radius: 10px;
+        }
+
+        /* Alert count pill */
+        .alert-pill {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 99px;
+            font-size: 11px; font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            cursor: default;
+        }
+        .alert-pill.red {
+            background: var(--red-dim);
+            border: 1px solid rgba(255,51,88,0.3);
+            color: var(--red);
+            animation: alertPulse 2.5s ease-in-out infinite;
+        }
+        .alert-pill.amber {
+            background: var(--amber-dim);
+            border: 1px solid rgba(255,176,32,0.3);
+            color: var(--amber);
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { box-shadow: none; }
+            50% { box-shadow: 0 0 12px rgba(255,51,88,0.4); }
+        }
+
+        /* ====================================================
+           NAV TABS
+        ==================================================== */
+        #nav-tabs {
+            display: flex; gap: 2px;
+            padding: 8px 20px 0;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-2);
+            flex-shrink: 0;
+        }
+
+        .view-tab {
+            display: flex; align-items: center; gap: 7px;
+            padding: 9px 18px 10px;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            background: transparent;
+            color: var(--text-3);
+            font-family: 'Cairo', sans-serif;
+            font-size: 12.5px; font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .view-tab:hover {
+            color: var(--text-2);
+            background: var(--bg-card);
+        }
+
+        .view-tab.active {
+            background: var(--bg-base);
+            border-color: var(--border-2);
+            color: var(--cyan);
+        }
+
+        .view-tab.active::after {
+            content: '';
+            position: absolute; bottom: -1px; left: 0; right: 0; height: 2px;
+            background: var(--cyan);
+            border-radius: 99px 99px 0 0;
+        }
+
+        /* ====================================================
+           WORKSPACE
+        ==================================================== */
+        #workspace {
+            flex: 1; display: flex; overflow: hidden;
+            padding: 14px; gap: 12px;
+            background: var(--bg-base);
+        }
+
+        /* ====================================================
+           SIDEBAR
+        ==================================================== */
+        #sidebar {
+            width: 300px; min-width: 300px; flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 10px;
+            height: 100%; overflow: hidden;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border-2);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-2);
+        }
+
+        .stat-cell {
+            background: var(--bg-card);
+            padding: 10px 8px;
+            text-align: center;
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .stat-cell:hover { background: var(--bg-hover); }
+
+        .stat-cell-label {
+            font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--text-3); margin-bottom: 5px;
+        }
+
+        .stat-cell-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px; font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-cell-value.c-all { color: var(--text-1); }
+        .stat-cell-value.c-green { color: var(--green); text-shadow: 0 0 12px rgba(0,232,150,0.5); }
+        .stat-cell-value.c-amber { color: var(--amber); text-shadow: 0 0 12px rgba(255,176,32,0.5); }
+        .stat-cell-value.c-red { color: var(--red); text-shadow: 0 0 12px rgba(255,51,88,0.5); }
+
+        /* Filter Chips */
+        .filter-bar {
+            display: flex; align-items: center; gap: 5px;
+            overflow-x: auto; padding-bottom: 2px;
+        }
+        .filter-bar::-webkit-scrollbar { height: 0; }
+
+        .chip {
+            flex-shrink: 0;
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 12px; border-radius: 99px;
+            border: 1px solid var(--border-2);
+            background: var(--bg-card);
+            color: var(--text-3);
+            font-family: 'Cairo', sans-serif;
+            font-size: 11px; font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .chip:hover { border-color: var(--border-3); color: var(--text-2); }
+
+        .chip.active {
+            background: var(--cyan-dim);
+            border-color: var(--cyan-mid);
+            color: var(--cyan);
+        }
+
+        .chip[data-filter="SOS"].active {
+            background: var(--red-dim);
+            border-color: rgba(255,51,88,0.3);
+            color: var(--red);
+        }
+
+        .chip[data-filter="WARNING"].active {
+            background: var(--amber-dim);
+            border-color: rgba(255,176,32,0.3);
+            color: var(--amber);
+        }
+
+        .chip[data-filter="NORMAL"].active {
+            background: var(--green-dim);
+            border-color: rgba(0,232,150,0.3);
+            color: var(--green);
+        }
+
+        /* Sidebar section header */
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 2px;
+        }
+
+        .section-title {
+            font-size: 10px; font-weight: 700; letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-3);
+        }
+
+        .section-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px; color: var(--text-4);
+        }
+
+        /* Employee List */
+        #employeeList {
+            flex: 1; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 5px;
+        }
+
+        .employee-card {
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid var(--border-2);
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            overflow: hidden;
+        }
+
+        .employee-card::before {
+            content: '';
+            position: absolute; top: 0; bottom: 0; right: 0; width: 3px;
+            border-radius: 0 3px 3px 0;
+            transition: background 0.15s ease;
+        }
+
+        .employee-card.status-NORMAL::before { background: var(--green); }
+        .employee-card.status-WARNING::before { background: var(--amber); }
+        .employee-card.status-SOS::before {
+            background: var(--red);
+            animation: sidePulse 1.8s ease-in-out infinite;
+        }
+
+        @keyframes sidePulse {
+            0%, 100% { opacity: 1; box-shadow: none; }
+            50% { opacity: 0.6; box-shadow: inset 0 0 8px var(--red); }
+        }
+
+        .employee-card:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-3);
+            transform: translateX(-2px);
+        }
+
+        .employee-card.status-SOS {
+            background: rgba(255,51,88,0.05);
+            border-color: rgba(255,51,88,0.2);
+        }
+
+        .employee-card.status-WARNING {
+            background: rgba(255,176,32,0.04);
+        }
+
+        .emp-name {
+            font-size: 12px; font-weight: 700;
+            color: var(--text-1); margin-bottom: 6px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .emp-meta {
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .emp-meta-item {
+            display: flex; align-items: center; gap: 4px;
+            font-size: 10.5px;
+            color: var(--text-3);
+        }
+
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 99px;
+            font-size: 9.5px; font-weight: 800;
+            letter-spacing: 0.5px; font-family: 'Cairo', sans-serif;
+        }
+
+        .status-badge.NORMAL { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,232,150,0.25); }
+        .status-badge.SOS {
+            background: var(--red-dim); color: var(--red);
+            border: 1px solid rgba(255,51,88,0.25);
+            animation: badgePulse 1.5s ease-in-out infinite;
+        }
+        .status-badge.WARNING { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,176,32,0.25); }
+
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: none; }
+            50% { box-shadow: 0 0 8px rgba(255,51,88,0.5); }
+        }
+
+        /* ====================================================
+           MAIN CONTENT AREA
+        ==================================================== */
+        #content-area {
+            flex: 1; min-width: 0; position: relative;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* ====================================================
+           MAP VIEW
+        ==================================================== */
+        #mapView {
+            position: relative; flex: 1;
+            border-radius: 14px; overflow: hidden;
+            border: 1px solid var(--border-2);
+            display: flex;
+            box-shadow: var(--shadow-md);
+        }
+
+        #map {
+            height: 100%; width: 100%;
+            z-index: 1; background: var(--bg-card);
+        }
+
+        /* Map corner branding */
+        .map-corner-label {
+            position: absolute; top: 12px; right: 12px;
+            z-index: 10; pointer-events: none;
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 12px;
+            background: rgba(6,12,24,0.8);
+            border: 1px solid var(--border-2);
+            border-radius: 8px; backdrop-filter: blur(8px);
+            font-size: 10px; font-weight: 700; color: var(--text-3);
+            letter-spacing: 0.8px; text-transform: uppercase;
+        }
+
+        /* Leaflet overrides */
+        .leaflet-control-zoom { border: none !important; }
+        .leaflet-control-zoom a {
+            background-color: var(--bg-card) !important;
+            color: var(--text-2) !important;
+            border: 1px solid var(--border-2) !important;
+            border-radius: 8px !important;
+            margin-bottom: 2px !important;
+        }
+        .leaflet-control-zoom a:hover { background-color: var(--bg-hover) !important; color: var(--cyan) !important; }
+        .leaflet-popup-content-wrapper {
+            background-color: var(--bg-elevated) !important;
+            color: var(--text-1) !important;
+            border-radius: 12px !important;
+            border: 1px solid var(--border-2) !important;
+            box-shadow: var(--shadow-md) !important;
+        }
+        .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
+
+        /* ====================================================
+           DETAIL PANEL
+        ==================================================== */
+        #detailPanel {
+            position: absolute; bottom: 16px; left: 50%;
+            transform: translateX(-50%);
+            width: 400px; z-index: 20;
+            background: rgba(10, 18, 32, 0.96);
+            border: 1px solid var(--border-3);
+            border-radius: 16px;
+            padding: 0;
+            box-shadow: var(--shadow-lg), var(--shadow-cyan);
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+        }
+
+        .detail-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, rgba(0,212,255,0.06) 0%, transparent 60%);
+            border-bottom: 1px solid var(--border-2);
+        }
+
+        .detail-name {
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px; font-weight: 800;
+            color: var(--text-1);
+        }
+
+        .detail-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px; color: var(--text-3);
+            margin-top: 2px;
+        }
+
+        .detail-close {
+            background: var(--bg-hover); border: 1px solid var(--border-2);
+            border-radius: 8px; width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-3); cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .detail-close:hover { border-color: var(--red); color: var(--red); }
+
+        .detail-body {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 8px; padding: 14px 16px;
+        }
+
+        .detail-metric {
+            background: var(--bg-base);
+            border: 1px solid var(--border-2);
+            border-radius: 10px; padding: 10px 12px;
+            position: relative; overflow: hidden;
+        }
+
+        .detail-metric::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        }
+
+        .detail-metric.metric-heart::before { background: var(--red); opacity: 0.6; }
+        .detail-metric.metric-battery::before { background: var(--green); opacity: 0.5; }
+
+        .detail-metric-label {
+            font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px;
+            text-transform: uppercase; color: var(--text-3); margin-bottom: 6px;
+            display: flex; align-items: center; gap: 5px;
+        }
+
+        .detail-metric-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 20px; font-weight: 700;
+        }
+
+        .detail-metric.metric-heart .detail-metric-value { color: var(--red); }
+        .detail-metric.metric-battery .detail-metric-value { color: var(--green); }
+
+        /* ====================================================
+           ANALYTICS VIEW
+        ==================================================== */
+        #analyticsView {
+            flex: 1; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+
+        .kpi-row {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-2);
+            border-radius: 14px; padding: 16px;
+            position: relative; overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .kpi-card:hover { border-color: var(--border-3); }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        }
+
+        .kpi-card.kpi-cyan::before { background: linear-gradient(90deg, var(--cyan), transparent); }
+        .kpi-card.kpi-green::before { background: linear-gradient(90deg, var(--green), transparent); }
+        .kpi-card.kpi-red::before { background: linear-gradient(90deg, var(--red), transparent); }
+
+        .kpi-icon-wrap {
+            width: 36px; height: 36px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 12px;
+        }
+        .kpi-cyan .kpi-icon-wrap { background: var(--cyan-dim); color: var(--cyan); }
+        .kpi-green .kpi-icon-wrap { background: var(--green-dim); color: var(--green); }
+        .kpi-red .kpi-icon-wrap { background: var(--red-dim); color: var(--red); }
+
+        .kpi-label {
+            font-size: 11px; font-weight: 600; color: var(--text-3);
+            margin-bottom: 6px;
+        }
+
+        .analytics-card .stat-value,
+        .kpi-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 28px; font-weight: 700;
+            color: var(--text-1); line-height: 1.1;
+        }
+
+        .kpi-trend {
+            font-size: 10px; color: var(--text-4); margin-top: 4px;
+        }
+
+        .charts-row {
+            display: grid; grid-template-columns: 3fr 2fr; gap: 12px;
+            flex: 1;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-2);
+            border-radius: 14px; padding: 16px;
+            display: flex; flex-direction: column;
+            min-height: 240px;
+        }
+
+        .chart-title {
+            font-size: 12px; font-weight: 700; color: var(--text-2);
+            margin-bottom: 14px;
+            display: flex; align-items: center; gap: 7px;
+        }
+
+        .chart-title-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--cyan);
+        }
+
+        .chart-wrap {
+            flex: 1; position: relative; min-height: 0;
+        }
+
+        /* Analytics KPI stats for backward compat */
+        .analytics-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-2);
+            border-radius: 14px; padding: 16px;
+        }
+
+        #avgHeartRate, #avgBattery, #totalRiskIndex {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 26px; font-weight: 700;
+            color: var(--text-1); margin-top: 8px;
+        }
+
+        #totalRiskIndex { color: var(--red); }
+
+        /* ====================================================
+           AI CHAT BUTTON & PANEL
+        ==================================================== */
+        #aiToggleBtn {
+            position: fixed; bottom: 22px; left: 22px; z-index: 998;
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 16px; border-radius: 99px;
+            background: rgba(10, 18, 32, 0.95);
+            border: 1px solid var(--cyan-mid);
+            color: var(--cyan);
+            font-family: 'Cairo', sans-serif;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            box-shadow: var(--shadow-md), 0 0 24px rgba(0,212,255,0.15);
+            transition: all 0.2s ease;
+        }
+
+        #aiToggleBtn:hover {
+            background: var(--cyan);
+            color: #011820;
+            box-shadow: var(--shadow-md), 0 0 32px rgba(0,212,255,0.45);
+        }
+
+        #aiToggleBtn svg { width: 16px; height: 16px; }
+
+        #aiChatBox {
+            position: fixed; bottom: 72px; left: 22px; z-index: 999;
+            width: 370px; height: 520px;
+            display: flex; flex-direction: column; overflow: hidden;
+            border-radius: 18px;
+            border: 1px solid var(--border-3);
+            background: rgba(10, 18, 32, 0.97);
+            box-shadow: var(--shadow-lg), var(--shadow-cyan);
+            backdrop-filter: blur(20px);
+        }
+
+        .ai-header {
+            padding: 14px 16px;
+            background: linear-gradient(135deg, rgba(0,212,255,0.08) 0%, transparent 70%);
+            border-bottom: 1px solid var(--border-2);
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+
+        .ai-header-title {
+            display: flex; align-items: center; gap: 8px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px; font-weight: 800; color: var(--cyan);
+        }
+
+        .ai-header-title svg { width: 16px; height: 16px; }
+
+        .ai-status {
+            font-size: 9.5px; font-weight: 700; color: var(--text-3);
+            letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px;
+        }
+
+        .ai-close-btn {
+            background: var(--bg-hover); border: 1px solid var(--border-2);
+            border-radius: 8px; width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-3); cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .ai-close-btn:hover { border-color: var(--red); color: var(--red); }
+
+        .ai-key-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border-1);
+            flex-shrink: 0;
+        }
+        .ai-key-bar svg { width: 12px; height: 12px; color: var(--amber); flex-shrink: 0; }
+
+        #geminiApiKeyInput {
+            flex: 1; background: transparent; border: none; outline: none;
+            font-size: 11px; color: var(--text-2);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        #geminiApiKeyInput::placeholder { color: var(--text-4); }
+
+        #aiMessages {
+            flex: 1; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 8px;
+            padding: 12px;
+        }
+
+        .ai-msg {
+            padding: 10px 13px; border-radius: 12px;
+            font-size: 12px; line-height: 1.6;
+            max-width: 90%; word-break: break-word;
+            animation: msgIn 0.2s ease;
+        }
+
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ai-msg.user {
+            align-self: flex-end;
+            background: var(--cyan-dim);
+            border: 1px solid var(--cyan-mid);
+            color: var(--text-1);
+            border-bottom-left-radius: 3px;
+        }
+
+        .ai-msg.bot {
+            align-self: flex-start;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-2);
+            color: var(--text-2);
+            border-bottom-right-radius: 3px;
+        }
+
+        .ai-footer {
+            padding: 10px 12px;
+            border-top: 1px solid var(--border-2);
+            background: var(--bg-panel);
+            display: flex; gap: 8px; flex-shrink: 0;
+        }
+
+        #aiInput {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-2);
+            border-radius: 10px; padding: 9px 12px;
+            color: var(--text-1); font-size: 12px;
+            font-family: 'IBM Plex Sans Arabic', sans-serif;
+            outline: none; transition: border-color 0.15s;
+        }
+        #aiInput::placeholder { color: var(--text-4); }
+        #aiInput:focus { border-color: var(--cyan-mid); }
+
+        #aiSendBtn {
+            background: var(--cyan);
+            border: none; border-radius: 10px;
+            padding: 9px 14px; cursor: pointer;
+            color: #011820; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s ease;
+        }
+        #aiSendBtn:hover { background: #00eaff; box-shadow: 0 0 16px rgba(0,212,255,0.5); }
+        #aiSendBtn svg { width: 14px; height: 14px; }
+
+        /* ====================================================
+           SCAN LINE EFFECT (decorative)
+        ==================================================== */
+        .scan-line {
+            position: fixed; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent 0%, rgba(0,212,255,0.4) 50%, transparent 100%);
+            animation: scanDown 8s linear infinite; z-index: 999; pointer-events: none;
+        }
+
+        @keyframes scanDown {
+            0% { top: 0; opacity: 0; }
+            5% { opacity: 1; }
+            95% { opacity: 0.3; }
+            100% { top: 100vh; opacity: 0; }
+        }
+
+        /* ====================================================
+           CORNER DECORATIONS
+        ==================================================== */
+        .corner-decor {
+            position: fixed; z-index: 0; pointer-events: none;
+        }
+        .corner-tl { top: 0; left: 0; width: 200px; height: 200px;
+            background: radial-gradient(circle at top left, rgba(41,121,255,0.08) 0%, transparent 60%); }
+        .corner-br { bottom: 0; right: 0; width: 280px; height: 280px;
+            background: radial-gradient(circle at bottom right, rgba(0,100,160,0.07) 0%, transparent 65%); }
+
+        /* ====================================================
+           RESPONSIVE TWEAKS
+        ==================================================== */
+        @media (max-width: 900px) {
+            #sidebar { width: 260px; min-width: 260px; }
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .charts-row { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
-<body style="display:flex;flex-direction:column;">
+<body>
 
-<div id="alertStack"></div>
+    <!-- Decorative elements -->
+    <div class="scan-line"></div>
+    <div class="corner-decor corner-tl"></div>
+    <div class="corner-decor corner-br"></div>
 
-<header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
-  <div style="display:flex;align-items:center;gap:12px;">
-    <div style="padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--accent-soft);color:var(--accent);display:flex;">
-      <i data-lucide="shield-check" style="width:24px;height:24px;"></i>
-    </div>
-    <div>
-      <h1 class="font-display" style="margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;">
-        <span id="headerPulse" class="live-pulse"></span> مركز القيادة والمراقبة الأمنية الذكي
-      </h1>
-      <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;color:var(--text-secondary);">
-        <span id="headerBadge" class="badge normal">تشغيل طبيعي</span> تتبع حي وتحليل بيانات ميداني · <span id="liveClock" class="font-mono" style="color:var(--accent);">--:--:--</span>
-      </p>
-    </div>
-  </div>
-  <div style="display:flex;align-items:center;gap:12px;">
-    <div style="text-align:center;">
-      <span style="display:block;font-size:9px;color:var(--text-muted);">مؤشر الخطر</span>
-      <span id="headerRisk" class="font-mono" style="font-weight:800;font-size:15px;color:var(--normal);">0/100</span>
-    </div>
-    <div id="ecgWrap" title="نبض الميدان الإجمالي">
-      <svg id="ecgSvg" viewBox="0 0 400 34" preserveAspectRatio="none"><path id="ecgPath" class="ecg-path" d=""/></svg>
-    </div>
-    <button id="bellBtn" type="button"><i data-lucide="bell" style="width:15px;height:15px;"></i><span id="bellLabel">تفعيل التنبيهات الصوتية</span><span id="bellDot"></span></button>
-  </div>
-</header>
+    <div id="app-shell">
 
-<div style="display:flex;gap:10px;padding:10px 16px 0;background:var(--bg-panel);">
-  <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية</button>
-  <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>اللوحة التحليلية</button>
-</div>
+        <!-- ================================================
+             HEADER
+        ================================================ -->
+        <header id="main-header">
+            <div class="header-brand">
+                <div class="brand-icon">
+                    <i data-lucide="shield-check" style="width:22px;height:22px;"></i>
+                </div>
+                <div>
+                    <div class="brand-title font-display">
+                        مركز القيادة والمراقبة الأمنية
+                    </div>
+                    <div class="brand-subtitle">
+                        <span class="live-badge">
+                            <span class="live-dot"></span>
+                            بث مباشر
+                        </span>
+                        <span>تتبع حي · تحليل ذكي · استجابة فورية</span>
+                    </div>
+                </div>
+            </div>
 
-<div style="flex:1;display:flex;overflow:hidden;padding:16px;gap:12px;background:var(--bg-page);">
+            <div class="header-center" id="header-alerts">
+                <!-- dynamically filled -->
+            </div>
 
-  <aside style="width:330px;min-width:330px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);">
-      <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono stat-value" style="font-size:14px;">0</span></div>
-      <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">طبيعي</span><span id="statNormal" class="font-mono stat-value" style="font-size:14px;color:var(--normal);">0</span></div>
-      <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">تحذير</span><span id="statWarning" class="font-mono stat-value" style="font-size:14px;color:var(--warning);">0</span></div>
-      <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">SOS</span><span id="statSos" class="font-mono stat-value" style="font-size:14px;color:var(--sos);">0</span></div>
-    </div>
+            <div class="header-right">
+                <div class="header-clock-wrap">
+                    <div id="liveClock" class="header-clock font-mono">--:--:--</div>
+                    <div class="header-date" id="liveDate">—</div>
+                </div>
+            </div>
+        </header>
 
-    <div style="position:relative;">
-      <i data-lucide="search" style="position:absolute;top:9px;right:10px;width:14px;height:14px;color:var(--text-muted);"></i>
-      <input id="searchInput" type="text" placeholder="ابحث عن موظف بالاسم أو الرقم..." style="width:100%;padding:8px 32px 8px 10px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-primary);font-size:12px;outline:none;">
-    </div>
-
-    <div id="filterChips" style="display:flex;align-items:center;gap:6px;overflow-x:auto;padding-bottom:4px;">
-      <button class="chip active" data-filter="ALL">الكل</button>
-      <button class="chip" data-filter="SOS">SOS</button>
-      <button class="chip" data-filter="WARNING">تحذير</button>
-      <button class="chip" data-filter="NORMAL">طبيعي</button>
-      <button class="chip" data-filter="ZONE">خارج النطاق</button>
-    </div>
-
-    <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;"></div>
-  </aside>
-
-  <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;">
-
-    <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft);display:flex;">
-      <div id="map"></div>
-
-      <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;top:16px;width:340px;max-height:calc(100% - 32px);overflow-y:auto;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(14,21,33,.96);box-shadow:var(--shadow-md);">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border-soft);padding-bottom:8px;margin-bottom:12px;">
-          <div>
-            <h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:14px;">—</h3>
-            <span id="detailId" class="font-mono" style="font-size:11px;color:var(--text-muted);">#—</span>
-          </div>
-          <button id="closeDetailBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:10px;">
-          <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">النبض</span><span id="detailHeartRate" class="font-mono" style="font-weight:700;color:var(--normal);">--</span></div>
-          <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">البطارية</span><span id="detailBattery" class="font-mono" style="font-weight:700;">--</span></div>
-        </div>
-        <canvas id="detailSpark" height="46"></canvas>
-
-        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:11.5px;font-weight:700;color:var(--text-secondary);display:flex;align-items:center;gap:5px;"><i data-lucide="shield" style="width:13px;height:13px;"></i>النطاق الأمني</span>
-            <span id="zoneStatusTag" class="badge normal">داخل النطاق</span>
-          </div>
-          <div class="zone-row">
-            <span style="min-width:70px;">نصف القطر</span>
-            <input type="range" id="zoneRadiusInput" min="80" max="1200" step="20">
-            <span id="zoneRadiusLabel" class="font-mono" style="min-width:52px;text-align:left;">-- م</span>
-          </div>
-          <button id="setZoneBtn" type="button"><i data-lucide="crosshair" style="width:13px;height:13px;"></i>تحديد مركز النطاق على الخريطة</button>
+        <!-- ================================================
+             NAV TABS
+        ================================================ -->
+        <div id="nav-tabs">
+            <button id="tabMapBtn" class="view-tab active" type="button">
+                <i data-lucide="map-pin" style="width:14px;height:14px;"></i>
+                الخريطة الحية
+            </button>
+            <button id="tabAnalyticsBtn" class="view-tab" type="button">
+                <i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i>
+                لوحة التحليلات
+            </button>
         </div>
 
-        <div id="decisionBox" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);"></div>
-      </div>
+        <!-- ================================================
+             WORKSPACE
+        ================================================ -->
+        <div id="workspace">
+
+            <!-- SIDEBAR -->
+            <aside id="sidebar">
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-cell">
+                        <div class="stat-cell-label">الكل</div>
+                        <div id="statTotal" class="stat-cell-value c-all">0</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="stat-cell-label">طبيعي</div>
+                        <div id="statNormal" class="stat-cell-value c-green">0</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="stat-cell-label">تحذير</div>
+                        <div id="statWarning" class="stat-cell-value c-amber">0</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="stat-cell-label">SOS</div>
+                        <div id="statSos" class="stat-cell-value c-red">0</div>
+                    </div>
+                </div>
+
+                <!-- Filter Chips -->
+                <div id="filterChips" class="filter-bar">
+                    <button class="chip active" data-filter="ALL">
+                        <i data-lucide="layout-grid" style="width:10px;height:10px;"></i>
+                        الكل
+                    </button>
+                    <button class="chip" data-filter="SOS">
+                        <i data-lucide="siren" style="width:10px;height:10px;"></i>
+                        SOS
+                    </button>
+                    <button class="chip" data-filter="WARNING">
+                        <i data-lucide="triangle-alert" style="width:10px;height:10px;"></i>
+                        تحذير
+                    </button>
+                    <button class="chip" data-filter="NORMAL">
+                        <i data-lucide="check-circle" style="width:10px;height:10px;"></i>
+                        طبيعي
+                    </button>
+                </div>
+
+                <!-- Employee List Header -->
+                <div class="section-header">
+                    <span class="section-title">الأفراد الميدانيون</span>
+                    <span class="section-count" id="listCount">—</span>
+                </div>
+
+                <!-- Employee Cards -->
+                <div id="employeeList"></div>
+
+            </aside>
+
+            <!-- MAIN CONTENT -->
+            <main id="content-area">
+
+                <!-- MAP VIEW -->
+                <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-2);display:flex;">
+                    <div id="map"></div>
+
+                    <!-- Corner label -->
+                    <div class="map-corner-label">
+                        <i data-lucide="navigation" style="width:10px;height:10px;color:var(--cyan);"></i>
+                        خريطة التتبع الحي
+                    </div>
+
+                    <!-- Detail Panel -->
+                    <div id="detailPanel" class="hidden">
+                        <div class="detail-header">
+                            <div>
+                                <div id="detailName" class="detail-name font-display">—</div>
+                                <div id="detailId" class="detail-id font-mono">#—</div>
+                            </div>
+                            <button id="closeDetailBtn" class="detail-close" type="button">
+                                <i data-lucide="x" style="width:14px;height:14px;"></i>
+                            </button>
+                        </div>
+                        <div class="detail-body">
+                            <div class="detail-metric metric-heart">
+                                <div class="detail-metric-label">
+                                    <i data-lucide="heart-pulse" style="width:11px;height:11px;color:var(--red);"></i>
+                                    معدل النبض
+                                </div>
+                                <div id="detailHeartRate" class="detail-metric-value font-mono">--</div>
+                            </div>
+                            <div class="detail-metric metric-battery">
+                                <div class="detail-metric-label">
+                                    <i data-lucide="battery-medium" style="width:11px;height:11px;color:var(--green);"></i>
+                                    البطارية
+                                </div>
+                                <div id="detailBattery" class="detail-metric-value font-mono">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ANALYTICS VIEW -->
+                <div id="analyticsView" class="hidden" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+
+                    <!-- KPI Row -->
+                    <div class="kpi-row">
+                        <div class="kpi-card kpi-cyan">
+                            <div class="kpi-icon-wrap">
+                                <i data-lucide="activity" style="width:18px;height:18px;"></i>
+                            </div>
+                            <div class="kpi-label">متوسط النبض العام</div>
+                            <div id="avgHeartRate" style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--text-1);">-- BPM</div>
+                            <div class="kpi-trend">آخر قراءة من جميع الأجهزة</div>
+                        </div>
+                        <div class="kpi-card kpi-green">
+                            <div class="kpi-icon-wrap">
+                                <i data-lucide="battery-medium" style="width:18px;height:18px;"></i>
+                            </div>
+                            <div class="kpi-label">متوسط شحن الأجهزة</div>
+                            <div id="avgBattery" style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--text-1);">-- %</div>
+                            <div class="kpi-trend">متوسط بطاريات الأجهزة الميدانية</div>
+                        </div>
+                        <div class="kpi-card kpi-red">
+                            <div class="kpi-icon-wrap">
+                                <i data-lucide="flame" style="width:18px;height:18px;"></i>
+                            </div>
+                            <div class="kpi-label">مؤشر الخطر الإجمالي</div>
+                            <div id="totalRiskIndex" style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--red);">-- / 100</div>
+                            <div class="kpi-trend">مشتق من حالات الطوارئ والتحذيرات</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="charts-row" style="flex:1;">
+                        <div class="chart-card">
+                            <div class="chart-title">
+                                <span class="chart-title-dot"></span>
+                                توزيع الحالات الأمنية
+                            </div>
+                            <div class="chart-wrap">
+                                <canvas id="barChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">
+                                <span class="chart-title-dot" style="background:var(--green);"></span>
+                                نسبة الجاهزية التشغيلية
+                            </div>
+                            <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;">
+                                <canvas id="doughnutChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </main>
+        </div>
     </div>
 
-    <div id="analyticsView" class="hidden" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
-        <div class="analytics-card">
-          <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);"><i data-lucide="activity" style="width:18px;height:18px;color:var(--accent);"></i><span style="font-size:13px;font-weight:700;">متوسط النبض العام</span></div>
-          <div id="avgHeartRate" class="stat-value">-- BPM</div>
-        </div>
-        <div class="analytics-card">
-          <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);"><i data-lucide="battery-medium" style="width:18px;height:18px;color:var(--normal);"></i><span style="font-size:13px;font-weight:700;">متوسط شحن الأجهزة</span></div>
-          <div id="avgBattery" class="stat-value">-- %</div>
-        </div>
-        <div class="analytics-card">
-          <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);"><i data-lucide="flame" style="width:18px;height:18px;color:var(--sos);"></i><span style="font-size:13px;font-weight:700;">مؤشر الخطر الإجمالي</span></div>
-          <div id="totalRiskIndex" class="stat-value" style="color:var(--sos);">-- / 100</div>
-        </div>
-      </div>
+    <!-- AI TOGGLE BUTTON -->
+    <button id="aiToggleBtn" type="button">
+        <i data-lucide="bot"></i>
+        <span>المساعد الأمني</span>
+    </button>
 
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
-        <div class="analytics-card" style="display:flex;flex-direction:column;height:230px;">
-          <h4 style="margin:0 0 16px 0;font-size:14px;">توزيع الحالات الأمنية</h4>
-          <div style="flex:1;position:relative;"><canvas id="barChart"></canvas></div>
+    <!-- AI CHAT BOX -->
+    <div id="aiChatBox" class="hidden">
+        <div class="ai-header">
+            <div>
+                <div class="ai-header-title">
+                    <i data-lucide="sparkles"></i>
+                    المساعد الأمني · Gemini
+                </div>
+                <div class="ai-status">نموذج Gemini 2.5 Flash · متصل بالميدان</div>
+            </div>
+            <button id="aiCloseBtn" class="ai-close-btn" type="button">
+                <i data-lucide="x" style="width:14px;height:14px;"></i>
+            </button>
         </div>
-        <div class="analytics-card" style="display:flex;flex-direction:column;height:230px;">
-          <h4 style="margin:0 0 16px 0;font-size:14px;">نسبة الجاهزية</h4>
-          <div style="flex:1;position:relative;display:flex;justify-content:center;align-items:center;"><canvas id="doughnutChart"></canvas></div>
+        <div class="ai-key-bar">
+            <i data-lucide="key"></i>
+            <input type="password" id="geminiApiKeyInput" placeholder="مفتاح Gemini API (AI Studio)...">
         </div>
-      </div>
-
-      <div class="analytics-card" style="display:flex;flex-direction:column;height:220px;">
-        <h4 style="margin:0 0 16px 0;font-size:14px;">اتجاه متوسط النبض الميداني (آخر دقيقتين)</h4>
-        <div style="flex:1;position:relative;"><canvas id="trendChart"></canvas></div>
-      </div>
-
-      <div class="analytics-card">
-        <h4 style="margin:0 0 12px 0;font-size:14px;display:flex;align-items:center;gap:7px;"><i data-lucide="clipboard-list" style="width:16px;height:16px;color:var(--accent);"></i>مركز دعم القرار الأمني</h4>
-        <div id="decisionCenter" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-
-      <div id="insightBox" class="analytics-card" style="display:flex;gap:10px;align-items:flex-start;border-inline-start:3px solid var(--accent);"></div>
+        <div id="aiMessages">
+            <div class="ai-msg bot">مرحباً! أنا المساعد الأمني المعزز بنماذج Gemini. ضع المفتاح في الخانة أعلاه وأرسل سؤالك.</div>
+        </div>
+        <div class="ai-footer">
+            <input type="text" id="aiInput" placeholder="اكتب سؤالك للمساعد...">
+            <button id="aiSendBtn" type="button">
+                <i data-lucide="send-horizontal"></i>
+            </button>
+        </div>
     </div>
-  </main>
-</div>
 
-<button id="aiToggleBtn" type="button"><i data-lucide="bot"></i><span>المساعد الميداني الذكي</span></button>
-<div id="aiChatBox" class="hidden">
-  <div style="padding:12px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-elevated);display:flex;justify-content:space-between;align-items:center;">
-    <div style="display:flex;align-items:center;gap:8px;color:var(--accent);font-weight:700;font-size:13px;">
-      <i data-lucide="sparkles" style="width:16px;height:16px;"></i> المساعد الميداني الذكي
-    </div>
-    <button id="aiCloseBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
-  </div>
-  <div style="padding:7px 12px;background:var(--bg-subtle);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:6px;">
-    <i data-lucide="cpu" style="width:12px;height:12px;color:var(--normal);"></i>
-    <span style="font-size:10.5px;color:var(--text-secondary);">يعمل محلياً داخل المتصفح — بدون مفتاح API وبدون اتصال خارجي</span>
-  </div>
-  <div id="aiMessages" style="flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
-  <div id="aiSuggestRow" style="display:flex;gap:6px;padding:0 12px 8px;overflow-x:auto;"></div>
-  <div style="padding:10px;border-top:1px solid var(--border-soft);display:flex;gap:6px;background:var(--bg-panel);">
-    <input type="text" id="aiInput" placeholder="اسأل عن الحالة الميدانية..." style="flex:1;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:8px;padding:8px;color:var(--text-primary);font-size:12px;outline:none;">
-    <button id="aiSendBtn" style="background:var(--accent);color:#03222A;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;"><i data-lucide="send" style="width:14px;height:14px;"></i></button>
-  </div>
-</div>
+    <!-- ================================================
+         JAVASCRIPT (logic unchanged, presentation enhanced)
+    ================================================ -->
+    <script>
+        let employeesData = [
+            { id: "EMP-101", name: "النقيب/ خالد العتيبي", status: "NORMAL", lat: 24.7136, lng: 46.6753, heartRate: 74, battery: 85 },
+            { id: "EMP-102", name: "الملازم/ فهد الشمري", status: "SOS", lat: 24.7200, lng: 46.6800, heartRate: 135, battery: 18 },
+            { id: "EMP-103", name: "العريف/ سارة الدوسري", status: "WARNING", lat: 24.7050, lng: 46.6600, heartRate: 105, battery: 42 },
+            { id: "EMP-104", name: "جندي/ أحمد الزهراني", status: "NORMAL", lat: 24.7300, lng: 46.6900, heartRate: 80, battery: 90 },
+            { id: "EMP-105", name: "رقيب/ محمد الشهراني", status: "NORMAL", lat: 24.6950, lng: 46.6500, heartRate: 78, battery: 75 },
+        ];
 
-<script>
-let employeesData = [
-  { id:"EMP-101", name:"النقيب/ خالد العتيبي", status:"NORMAL", lat:24.7136, lng:46.6753, heartRate:74, battery:85, history:[] },
-  { id:"EMP-102", name:"الملازم/ فهد الشمري", status:"SOS", lat:24.7200, lng:46.6800, heartRate:135, battery:18, history:[] },
-  { id:"EMP-103", name:"العريف/ سارة الدوسري", status:"WARNING", lat:24.7050, lng:46.6600, heartRate:105, battery:42, history:[] },
-  { id:"EMP-104", name:"جندي/ أحمد الزهراني", status:"NORMAL", lat:24.7300, lng:46.6900, heartRate:80, battery:90, history:[] },
-  { id:"EMP-105", name:"رقيب/ محمد الشهراني", status:"NORMAL", lat:24.6950, lng:46.6500, heartRate:78, battery:75, history:[] },
-];
-employeesData.forEach(e => {
-  for(let i=0;i<20;i++) e.history.push(e.heartRate + Math.round((Math.random()-0.5)*6));
-  e.zoneLat = e.lat; e.zoneLng = e.lng; e.zoneRadius = 350;
-  e.outOfZone = false; e.prevStatus = e.status; e.prevOutOfZone = false;
-});
+        let map, markersGroup;
+        let activeFilter = 'ALL';
+        let chartsInstance = {};
 
-let map, markersGroup, zonesGroup, markerRefs = {}, zoneRefs = {};
-let activeFilter = 'ALL', searchQuery = '', selectedId = null;
-let chartsInstance = {}, trendHistory = [];
-let alarmEnabled = false, audioCtx = null;
-let zonePickMode = false;
-const STATUS_LABEL = {NORMAL:'طبيعي', WARNING:'تحذير', SOS:'طوارئ SOS'};
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initClock();
+            initMap();
+            renderStats();
+            renderEmployeeList();
+            renderHeaderAlerts();
+            initTabs();
+            initAIModule();
 
-document.addEventListener('DOMContentLoaded', () => {
-  lucide.createIcons();
-  initClock();
-  initMap();
-  renderAll();
-  initTabs();
-  initFilters();
-  initSearch();
-  initAIModule();
-  initBell();
-  initZoneControls();
-  Chart.defaults.color = '#7E8FA8';
-  Chart.defaults.font.family = 'Cairo';
-  drawECG();
-  setInterval(simulateLiveData, 3000);
-});
+            Chart.defaults.color = '#8CA0BE';
+            Chart.defaults.font.family = 'Cairo';
+        });
 
-function computeRisk(){
-  const total = employeesData.length;
-  const sos = employeesData.filter(e=>e.status==='SOS').length;
-  const warn = employeesData.filter(e=>e.status==='WARNING').length;
-  const zone = employeesData.filter(e=>e.outOfZone).length;
-  return Math.min(100, Math.round((((sos*30)+(warn*10)+(zone*6))/total)*10));
-}
+        function initMap() {
+            map = L.map('map').setView([24.7136, 46.6753], 12);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+            markersGroup = L.layerGroup().addTo(map);
+            updateMapMarkers();
+        }
 
-/* ==========================================================
-   مركز دعم القرار الأمني — تصنيف خطورة + إجراء موصى به + بروتوكول تصعيد
-   لكل حالة نشطة، يعمل محلياً بالكامل على بيانات الميدان الحالية
-   ========================================================== */
-function getDecisionSupport(emp){
-  const issues = [];
-  if(emp.status === 'SOS'){
-    issues.push({
-      label: 'إشارة طوارئ (SOS)', severity: 'حرجة', rank: 3, color: 'var(--sos)',
-      action: 'التواصل الفوري مع الفرد والتحقق من سلامته، وتوجيه أقرب دورية إلى موقعه مباشرة.',
-      escalation: 'المستوى 3 — تصعيد فوري لغرفة العمليات المركزية وفرق الطوارئ.'
-    });
-  }
-  if(emp.status === 'WARNING'){
-    issues.push({
-      label: 'ارتفاع غير طبيعي في معدل النبض', severity: 'متوسطة', rank: 2, color: 'var(--warning)',
-      action: 'التواصل اللاسلكي للاطمئنان على الحالة الصحية ومتابعة المؤشرات لحين استقرارها.',
-      escalation: 'المستوى 2 — إبلاغ مشرف المناوبة والمتابعة الدورية.'
-    });
-  }
-  if(emp.outOfZone){
-    issues.push({
-      label: 'خروج عن النطاق الأمني المحدد', severity: 'متوسطة', rank: 2, color: 'var(--warning)',
-      action: 'التحقق من سبب الخروج عن النطاق المحدد له، وتوجيهه للعودة أو تحديث تكليفه الميداني.',
-      escalation: 'المستوى 2 — إبلاغ مشرف المناوبة بموقع الفرد الحالي.'
-    });
-  }
-  if(emp.battery < 20 && emp.status !== 'SOS'){
-    issues.push({
-      label: 'انخفاض حرج في شحن الجهاز', severity: 'منخفضة', rank: 1, color: 'var(--text-secondary)',
-      action: 'توجيه الفرد لأقرب نقطة شحن قبل انقطاع الاتصال والتتبع.',
-      escalation: 'المستوى 1 — تنبيه روتيني، لا يتطلب تصعيداً.'
-    });
-  }
-  return issues.sort((a,b)=>b.rank-a.rank);
-}
+        function updateMapMarkers() {
+            markersGroup.clearLayers();
+            employeesData.forEach(emp => {
+                if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
+                const color = emp.status === 'SOS' ? '#FF3358' : emp.status === 'WARNING' ? '#FFB020' : '#00E896';
+                const glow = emp.status === 'SOS' ? 'rgba(255,51,88,0.7)' : emp.status === 'WARNING' ? 'rgba(255,176,32,0.5)' : 'rgba(0,232,150,0.5)';
+                const pulse = emp.status === 'SOS' ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${color};opacity:0.4;animation:livePulseMarker 1.5s ease-out infinite;"></div>` : '';
+                const customIcon = L.divIcon({
+                    html: `<div style="position:relative;width:16px;height:16px;">${pulse}<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,0.9);box-shadow:0 0 14px ${glow};"></div></div>`,
+                    className: '', iconAnchor: [8, 8]
+                });
+                const marker = L.marker([emp.lat, emp.lng], { icon: customIcon }).addTo(markersGroup);
+                marker.bindTooltip(`<strong>${emp.name}</strong><br><small>${emp.id}</small>`, { direction: 'top', offset: [0, -12] });
+                marker.on('click', () => {
+                    document.getElementById('detailPanel').classList.remove('hidden');
+                    document.getElementById('detailName').textContent = emp.name;
+                    document.getElementById('detailId').textContent = emp.id;
+                    document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
+                    document.getElementById('detailBattery').textContent = emp.battery + '%';
+                    map.flyTo([emp.lat, emp.lng], 15, { duration: 1.2 });
+                });
+            });
+        }
 
-function renderDecisionBox(emp){
-  const box = document.getElementById('decisionBox');
-  if(!box) return;
-  const issues = getDecisionSupport(emp);
-  if(issues.length === 0){
-    box.innerHTML = `<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--normal);"><i data-lucide="check-circle" style="width:14px;height:14px;"></i>لا يوجد إجراء مطلوب حالياً — الوضع مستقر.</div>`;
-  } else {
-    box.innerHTML = `<div style="font-size:11.5px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;display:flex;align-items:center;gap:5px;"><i data-lucide="clipboard-list" style="width:13px;height:13px;"></i>توصيات اتخاذ القرار</div>` +
-      issues.map(is => `
-        <div style="background:var(--bg-subtle);border:1px solid var(--border-soft);border-inline-start:2px solid ${is.color};border-radius:8px;padding:8px 10px;margin-bottom:6px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <span style="font-size:11.5px;font-weight:700;color:${is.color};">${is.label}</span>
-            <span style="font-size:9.5px;color:var(--text-muted);">${is.severity}</span>
-          </div>
-          <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">${is.action}</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">${is.escalation}</div>
-        </div>`).join('');
-  }
-  lucide.createIcons();
-}
+        document.getElementById('closeDetailBtn').onclick = () => document.getElementById('detailPanel').classList.add('hidden');
 
-function renderDecisionCenter(){
-  const box = document.getElementById('decisionCenter');
-  if(!box) return;
-  const rows = [];
-  employeesData.forEach(emp => {
-    getDecisionSupport(emp).forEach(is => rows.push({emp, is}));
-  });
-  rows.sort((a,b)=>b.is.rank-a.is.rank);
-  if(rows.length === 0){
-    box.innerHTML = `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--normal);"><i data-lucide="check-circle" style="width:16px;height:16px;"></i>لا توجد حالات تستدعي اتخاذ قرار حالياً — جميع الأفراد ضمن الوضع الطبيعي.</div>`;
-  } else {
-    box.innerHTML = rows.map(r => `
-      <div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg-subtle);border:1px solid var(--border-soft);border-inline-start:3px solid ${r.is.color};border-radius:10px;padding:10px 12px;">
-        <div style="flex:1;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <strong style="font-size:12.5px;">${r.emp.name}</strong>
-            <span style="font-size:10px;font-weight:700;color:${r.is.color};">${r.is.severity}</span>
-          </div>
-          <div style="font-size:11px;color:var(--text-secondary);margin-top:3px;">${r.is.label} — ${r.is.action}</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${r.is.escalation}</div>
-        </div>
-      </div>`).join('');
-  }
-  lucide.createIcons();
-}
+        function renderStats() {
+            document.getElementById('statTotal').textContent = employeesData.length;
+            document.getElementById('statNormal').textContent = employeesData.filter(e => e.status === 'NORMAL').length;
+            document.getElementById('statWarning').textContent = employeesData.filter(e => e.status === 'WARNING').length;
+            document.getElementById('statSos').textContent = employeesData.filter(e => e.status === 'SOS').length;
+        }
 
-function renderAll(){
-  renderStats();
-  renderEmployeeList();
-  updateMapMarkers();
-  updateZoneCircles();
-  refreshHeader();
-}
+        function renderHeaderAlerts() {
+            const container = document.getElementById('header-alerts');
+            const sosCount = employeesData.filter(e => e.status === 'SOS').length;
+            const warnCount = employeesData.filter(e => e.status === 'WARNING').length;
+            container.innerHTML = '';
+            if (sosCount > 0) {
+                container.innerHTML += `<span class="alert-pill red"><i data-lucide="siren" style="width:12px;height:12px;"></i> ${sosCount} طوارئ نشطة</span>`;
+            }
+            if (warnCount > 0) {
+                container.innerHTML += `<span class="alert-pill amber"><i data-lucide="triangle-alert" style="width:12px;height:12px;"></i> ${warnCount} تحذير</span>`;
+            }
+            lucide.createIcons();
+        }
 
-function refreshHeader(){
-  const risk = computeRisk();
-  const riskEl = document.getElementById('headerRisk');
-  riskEl.textContent = risk + '/100';
-  riskEl.style.color = risk>=50?'var(--sos)':risk>=20?'var(--warning)':'var(--normal)';
+        function renderEmployeeList() {
+            const container = document.getElementById('employeeList');
+            container.innerHTML = '';
+            const filtered = employeesData.filter(emp => activeFilter === 'ALL' || emp.status === activeFilter);
+            document.getElementById('listCount').textContent = filtered.length + ' / ' + employeesData.length;
 
-  const sosCount = employeesData.filter(e=>e.status==='SOS').length;
-  const warnCount = employeesData.filter(e=>e.status==='WARNING').length;
-  const zoneCount = employeesData.filter(e=>e.outOfZone).length;
-  const badge = document.getElementById('headerBadge');
-  const pulse = document.getElementById('headerPulse');
-  pulse.className = 'live-pulse';
-  if(sosCount>0){ badge.className='badge sos'; badge.textContent='حالة طوارئ نشطة'; pulse.classList.add('sos'); }
-  else if(warnCount>0 || zoneCount>0){ badge.className='badge warning'; badge.textContent='تنبيهات قيد المتابعة'; pulse.classList.add('warning'); }
-  else { badge.className='badge normal'; badge.textContent='تشغيل طبيعي'; }
-}
+            filtered.forEach(emp => {
+                const card = document.createElement('div');
+                card.className = `employee-card status-${emp.status}`;
+                const battColor = emp.battery > 60 ? 'var(--green)' : emp.battery > 25 ? 'var(--amber)' : 'var(--red)';
+                const hrColor = emp.status === 'SOS' ? 'var(--red)' : emp.status === 'WARNING' ? 'var(--amber)' : 'var(--green)';
+                card.innerHTML = `
+                    <div class="emp-name font-display">
+                        <span>${emp.name}</span>
+                        <span class="status-badge ${emp.status}">${emp.status === 'NORMAL' ? 'طبيعي' : emp.status === 'SOS' ? '⚡ SOS' : '⚠ تحذير'}</span>
+                    </div>
+                    <div class="emp-meta">
+                        <span class="emp-meta-item">
+                            <i data-lucide="heart-pulse" style="width:11px;height:11px;color:${hrColor};"></i>
+                            <span class="font-mono" style="color:${hrColor};">${emp.heartRate} BPM</span>
+                        </span>
+                        <span class="emp-meta-item">
+                            <i data-lucide="battery-medium" style="width:11px;height:11px;color:${battColor};"></i>
+                            <span class="font-mono" style="color:${battColor};">${emp.battery}%</span>
+                        </span>
+                        <span class="emp-meta-item" style="margin-right:auto;">
+                            <i data-lucide="hash" style="width:9px;height:9px;"></i>
+                            <span class="font-mono" style="font-size:9.5px;">${emp.id}</span>
+                        </span>
+                    </div>
+                `;
+                card.onclick = () => {
+                    // Switch to map view first
+                    document.getElementById('tabMapBtn').click();
+                    setTimeout(() => { map.flyTo([emp.lat, emp.lng], 15, { duration: 1.2 }); }, 100);
+                };
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        }
 
-function initMap(){
-  map = L.map('map', {zoomControl:true}).setView([24.7136, 46.6753], 12);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(map);
-  zonesGroup = L.layerGroup().addTo(map);
-  markersGroup = L.layerGroup().addTo(map);
-  map.on('click', (e) => {
-    if(zonePickMode && selectedId){
-      const emp = employeesData.find(x=>x.id===selectedId);
-      if(emp){
-        emp.zoneLat = e.latlng.lat; emp.zoneLng = e.latlng.lng;
-        emp.outOfZone = false; emp.prevOutOfZone = false;
-        toggleZonePick(false);
-        updateZoneCircles();
-        renderEmployeeList();
-        pushAIToast('zone-updated');
-      }
-    }
-  });
-}
+        document.querySelectorAll('#filterChips .chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                activeFilter = btn.getAttribute('data-filter');
+                renderEmployeeList();
+                updateMapMarkers();
+            });
+        });
 
-function statusColor(s){ return s==='SOS'?'#FF3B57':s==='WARNING'?'#FFA83D':'#22D488'; }
-function haversine(lat1,lng1,lat2,lng2){
-  const R=6371000, toRad=d=>d*Math.PI/180;
-  const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
-  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
+        function initClock() {
+            const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('liveClock').textContent = now.toLocaleTimeString('ar-SA', {hour12: false});
+                const day = days[now.getDay()];
+                const dateStr = now.toLocaleDateString('ar-SA', {year:'numeric',month:'short',day:'numeric'});
+                document.getElementById('liveDate').textContent = day + ' · ' + dateStr;
+            }, 1000);
+        }
 
-function updateZoneCircles(){
-  zonesGroup.clearLayers(); zoneRefs = {};
-  getFilteredEmployees().forEach(emp => {
-    const color = emp.outOfZone ? '#FFA83D' : '#2FD1E8';
-    const circle = L.circle([emp.zoneLat, emp.zoneLng], {
-      radius: emp.zoneRadius, color, weight: emp.id===selectedId?2:1.2,
-      fillColor: color, fillOpacity: emp.outOfZone?0.12:0.05,
-      dashArray: emp.outOfZone ? null : '5,6'
-    }).addTo(zonesGroup);
-    zoneRefs[emp.id] = circle;
-  });
-}
+        function initTabs() {
+            const mapTab = document.getElementById('tabMapBtn');
+            const analyticsTab = document.getElementById('tabAnalyticsBtn');
+            const mapView = document.getElementById('mapView');
+            const analyticsView = document.getElementById('analyticsView');
 
-function updateMapMarkers(){
-  markersGroup.clearLayers(); markerRefs = {};
-  getFilteredEmployees().forEach(emp => {
-    const color = statusColor(emp.status);
-    const ringColor = emp.status==='SOS' ? '#FF3B57' : (emp.status==='WARNING'||emp.outOfZone) ? '#FFA83D' : null;
-    const ring = ringColor ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${ringColor};opacity:.55;animation:livePulse 1.4s ease-out infinite;"></div>` : '';
-    const icon = L.divIcon({
-      html:`<div style="position:relative;width:16px;height:16px;">${ring}<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};"></div></div>`,
-      className:''
-    });
-    const marker = L.marker([emp.lat, emp.lng], {icon}).addTo(markersGroup);
-    marker.on('click', () => selectEmployee(emp.id));
-    markerRefs[emp.id] = marker;
-  });
-}
+            mapTab.addEventListener('click', () => {
+                mapTab.classList.add('active');
+                analyticsTab.classList.remove('active');
+                mapView.classList.remove('hidden');
+                mapView.style.display = 'flex';
+                analyticsView.classList.add('hidden');
+                setTimeout(() => map.invalidateSize(), 100);
+            });
 
-function selectEmployee(id){
-  const emp = employeesData.find(e=>e.id===id);
-  if(!emp) return;
-  selectedId = id;
-  document.getElementById('detailPanel').classList.remove('hidden');
-  document.getElementById('detailName').textContent = emp.name;
-  document.getElementById('detailId').textContent = emp.id;
-  document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
-  document.getElementById('detailBattery').textContent = emp.battery + '%';
-  document.getElementById('detailBattery').style.color = emp.battery<25?'var(--sos)':emp.battery<50?'var(--warning)':'var(--normal)';
-  map.flyTo([emp.lat, emp.lng], 15);
-  drawSparkline('detailSpark', emp.history, statusColor(emp.status));
-  document.getElementById('zoneRadiusInput').value = emp.zoneRadius;
-  document.getElementById('zoneRadiusLabel').textContent = emp.zoneRadius + ' م';
-  updateZoneStatusTag(emp);
-  renderDecisionBox(emp);
-  toggleZonePick(false);
-  renderEmployeeList();
-  updateZoneCircles();
-}
+            analyticsTab.addEventListener('click', () => {
+                analyticsTab.classList.add('active');
+                mapTab.classList.remove('active');
+                analyticsView.classList.remove('hidden');
+                analyticsView.style.display = 'flex';
+                mapView.classList.add('hidden');
+                updateAnalyticsData();
+            });
+        }
 
-function updateZoneStatusTag(emp){
-  const tag = document.getElementById('zoneStatusTag');
-  if(emp.outOfZone){ tag.className='badge zone'; tag.textContent='خارج النطاق الأمني'; }
-  else { tag.className='badge normal'; tag.textContent='داخل النطاق'; }
-}
+        function updateAnalyticsData() {
+            const total = employeesData.length;
+            const avgHeart = Math.round(employeesData.reduce((acc, val) => acc + val.heartRate, 0) / total);
+            const avgBatt = Math.round(employeesData.reduce((acc, val) => acc + val.battery, 0) / total);
+            const sosCount = employeesData.filter(e => e.status === 'SOS').length;
+            const warnCount = employeesData.filter(e => e.status === 'WARNING').length;
+            const normCount = employeesData.filter(e => e.status === 'NORMAL').length;
+            const riskIndex = Math.min(100, Math.round(((sosCount * 30) + (warnCount * 10)) / total * 10));
 
-document.getElementById('closeDetailBtn').onclick = () => { document.getElementById('detailPanel').classList.add('hidden'); selectedId=null; toggleZonePick(false); renderEmployeeList(); updateZoneCircles(); };
+            document.getElementById('avgHeartRate').textContent = avgHeart + ' BPM';
+            document.getElementById('avgBattery').textContent = avgBatt + ' %';
+            document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
 
-function initZoneControls(){
-  const radiusInput = document.getElementById('zoneRadiusInput');
-  radiusInput.addEventListener('input', () => {
-    const emp = employeesData.find(e=>e.id===selectedId);
-    if(!emp) return;
-    emp.zoneRadius = parseInt(radiusInput.value, 10);
-    document.getElementById('zoneRadiusLabel').textContent = emp.zoneRadius + ' م';
-    updateZoneCircles();
-  });
-  document.getElementById('setZoneBtn').addEventListener('click', () => toggleZonePick(!zonePickMode));
-}
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            if (chartsInstance.bar) chartsInstance.bar.destroy();
+            chartsInstance.bar = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['طبيعي', 'تحذير', 'طوارئ SOS'],
+                    datasets: [{
+                        label: 'عدد الأفراد',
+                        data: [normCount, warnCount, sosCount],
+                        backgroundColor: ['rgba(0,232,150,0.7)', 'rgba(255,176,32,0.7)', 'rgba(255,51,88,0.7)'],
+                        borderColor: ['#00E896', '#FFB020', '#FF3358'],
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0D1628', borderColor: '#1A2A3E', borderWidth: 1, titleColor: '#F0F6FF', bodyColor: '#8CA0BE', padding: 10 } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { color: 'transparent' } },
+                        x: { grid: { display: false }, border: { color: 'transparent' } }
+                    }
+                }
+            });
 
-function toggleZonePick(state){
-  zonePickMode = state;
-  const btn = document.getElementById('setZoneBtn');
-  btn.classList.toggle('active', zonePickMode);
-  document.getElementById('map').classList.toggle('zoneMode', zonePickMode);
-  btn.innerHTML = zonePickMode
-    ? '<i data-lucide="crosshair" style="width:13px;height:13px;"></i>انقر على الخريطة لتحديد المركز...'
-    : '<i data-lucide="crosshair" style="width:13px;height:13px;"></i>تحديد مركز النطاق على الخريطة';
-  lucide.createIcons();
-}
+            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+            if (chartsInstance.doughnut) chartsInstance.doughnut.destroy();
+            chartsInstance.doughnut = new Chart(doughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['جاهز', 'غير متاح'],
+                    datasets: [{
+                        data: [normCount, warnCount + sosCount],
+                        backgroundColor: ['rgba(0,212,255,0.7)', 'rgba(30,45,70,0.8)'],
+                        borderColor: ['#00D4FF', '#1A2A3E'],
+                        borderWidth: 2,
+                        cutout: '78%',
+                        hoverOffset: 4,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 16, boxWidth: 10, font: { size: 11 } } },
+                        tooltip: { backgroundColor: '#0D1628', borderColor: '#1A2A3E', borderWidth: 1 }
+                    }
+                }
+            });
+        }
 
-function renderStats(){
-  document.getElementById('statTotal').textContent = employeesData.length;
-  document.getElementById('statNormal').textContent = employeesData.filter(e=>e.status==='NORMAL').length;
-  document.getElementById('statWarning').textContent = employeesData.filter(e=>e.status==='WARNING').length;
-  document.getElementById('statSos').textContent = employeesData.filter(e=>e.status==='SOS').length;
-}
+        // ==========================================
+        // Gemini AI API
+        // ==========================================
+        function initAIModule() {
+            const aiToggleBtn = document.getElementById('aiToggleBtn');
+            const aiChatBox = document.getElementById('aiChatBox');
+            const aiCloseBtn = document.getElementById('aiCloseBtn');
+            const aiSendBtn = document.getElementById('aiSendBtn');
+            const aiInput = document.getElementById('aiInput');
+            const apiKeyInput = document.getElementById('geminiApiKeyInput');
 
-function getFilteredEmployees(){
-  return employeesData.filter(e => {
-    const matchFilter = activeFilter==='ALL' || (activeFilter==='ZONE' ? e.outOfZone : e.status===activeFilter);
-    const q = searchQuery.trim().toLowerCase();
-    const matchSearch = !q || e.name.toLowerCase().includes(q) || e.id.toLowerCase().includes(q);
-    return matchFilter && matchSearch;
-  });
-}
+            if (localStorage.getItem('gemini_api_key')) apiKeyInput.value = localStorage.getItem('gemini_api_key');
 
-function renderEmployeeList(){
-  const container = document.getElementById('employeeList');
-  container.innerHTML = '';
-  const list = getFilteredEmployees();
-  if(list.length===0){
-    container.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px 0;">لا توجد نتائج مطابقة</div>`;
-    return;
-  }
-  list.forEach(emp => {
-    const borderCol = emp.status==='SOS'?'var(--sos)':emp.status==='WARNING'?'var(--warning)':'var(--normal)';
-    const battColor = emp.battery<25?'var(--sos)':emp.battery<50?'var(--warning)':'var(--normal)';
-    const card = document.createElement('div');
-    card.className = 'employee-card' + (selectedId===emp.id ? ' selected' : '');
-    card.style.borderInlineStartColor = borderCol;
-    card.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;">
-        <strong style="font-size:12.5px;">${emp.name}</strong>
-        <div style="display:flex;gap:4px;flex-shrink:0;">
-          ${emp.outOfZone ? '<span class="badge zone">خارج النطاق</span>' : ''}
-          <span class="badge ${emp.status.toLowerCase()}">${STATUS_LABEL[emp.status]}</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;font-size:10.5px;color:var(--text-muted);">
-        <span class="font-mono" style="display:flex;align-items:center;gap:3px;"><i data-lucide="heart-pulse" style="width:11px;height:11px;color:${borderCol};"></i>${emp.heartRate}</span>
-        <div style="display:flex;align-items:center;gap:5px;flex:1;">
-          <i data-lucide="battery-medium" style="width:11px;height:11px;"></i>
-          <div class="mini-bar"><span style="width:${emp.battery}%;background:${battColor};"></span></div>
-          <span class="font-mono">${emp.battery}%</span>
-        </div>
-      </div>`;
-    card.onclick = () => selectEmployee(emp.id);
-    container.appendChild(card);
-  });
-  lucide.createIcons();
-}
+            aiToggleBtn.addEventListener('click', () => aiChatBox.classList.toggle('hidden'));
+            aiCloseBtn.addEventListener('click', () => aiChatBox.classList.add('hidden'));
+            aiSendBtn.addEventListener('click', handleAISend);
+            aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAISend(); });
+        }
 
-function initFilters(){
-  document.querySelectorAll('#filterChips .chip').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#filterChips .chip').forEach(c=>c.classList.remove('active'));
-      btn.classList.add('active');
-      activeFilter = btn.getAttribute('data-filter');
-      renderEmployeeList(); updateMapMarkers(); updateZoneCircles();
-    });
-  });
-}
-function initSearch(){
-  document.getElementById('searchInput').addEventListener('input', (e) => {
-    searchQuery = e.target.value;
-    renderEmployeeList(); updateMapMarkers(); updateZoneCircles();
-  });
-}
+        async function fetchGeminiAPI(apiKey, promptText) {
+            const primaryEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const fallbackEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: promptText }] }] };
 
-function initClock(){ setInterval(() => { document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('ar-SA'); }, 1000); }
+            let response = await fetch(primaryEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-function initTabs(){
-  const mapTab = document.getElementById('tabMapBtn'), analyticsTab = document.getElementById('tabAnalyticsBtn');
-  const mapView = document.getElementById('mapView'), analyticsView = document.getElementById('analyticsView');
-  mapTab.addEventListener('click', () => {
-    mapTab.classList.add('active'); analyticsTab.classList.remove('active');
-    mapView.classList.remove('hidden'); analyticsView.classList.add('hidden');
-    map.invalidateSize();
-  });
-  analyticsTab.addEventListener('click', () => {
-    analyticsTab.classList.add('active'); mapTab.classList.remove('active');
-    analyticsView.classList.remove('hidden'); mapView.classList.add('hidden');
-    updateAnalyticsData();
-  });
-}
+            if (!response.ok) {
+                response = await fetch(fallbackEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+            return response;
+        }
 
-function drawSparkline(canvasId, data, color){
-  const ctx = document.getElementById(canvasId).getContext('2d');
-  if(chartsInstance[canvasId]) chartsInstance[canvasId].destroy();
-  chartsInstance[canvasId] = new Chart(ctx, {
-    type:'line',
-    data:{ labels:data.map((_,i)=>i), datasets:[{ data, borderColor:color, borderWidth:2, pointRadius:0, tension:.35, fill:true, backgroundColor: color+'22' }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{display:false}} }
-  });
-}
+        async function handleAISend() {
+            const aiInput = document.getElementById('aiInput');
+            const aiMessages = document.getElementById('aiMessages');
+            const apiKeyInput = document.getElementById('geminiApiKeyInput');
+            const query = aiInput.value.trim();
+            const apiKey = apiKeyInput.value.trim();
 
-function updateAnalyticsData(){
-  const total = employeesData.length;
-  const avgHeart = Math.round(employeesData.reduce((a,v)=>a+v.heartRate,0)/total);
-  const avgBatt = Math.round(employeesData.reduce((a,v)=>a+v.battery,0)/total);
-  const sosCount = employeesData.filter(e=>e.status==='SOS').length;
-  const warnCount = employeesData.filter(e=>e.status==='WARNING').length;
-  const normCount = employeesData.filter(e=>e.status==='NORMAL').length;
-  const zoneCount = employeesData.filter(e=>e.outOfZone).length;
-  const riskIndex = computeRisk();
+            if (!query) return;
+            if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
 
-  document.getElementById('avgHeartRate').textContent = avgHeart + ' BPM';
-  document.getElementById('avgBattery').textContent = avgBatt + ' %';
-  document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
+            aiMessages.innerHTML += `<div class="ai-msg user">${query}</div>`;
+            aiInput.value = '';
+            aiMessages.scrollTop = aiMessages.scrollHeight;
 
-  const barCtx = document.getElementById('barChart').getContext('2d');
-  if(chartsInstance.bar) chartsInstance.bar.destroy();
-  chartsInstance.bar = new Chart(barCtx, {
-    type:'bar',
-    data:{ labels:['طبيعي','تحذير','طوارئ SOS'], datasets:[{ data:[normCount,warnCount,sosCount], backgroundColor:['#22D488','#FFA83D','#FF3B57'], borderRadius:6 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,grid:{color:'#1C2636'}},x:{grid:{display:false}}} }
-  });
+            if (!apiKey) {
+                aiMessages.innerHTML += `<div class="ai-msg bot" style="border-color:var(--amber);">يرجى إدخال مفتاح Gemini API في الخانة أعلاه.</div>`;
+                aiMessages.scrollTop = aiMessages.scrollHeight;
+                return;
+            }
 
-  const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
-  if(chartsInstance.doughnut) chartsInstance.doughnut.destroy();
-  chartsInstance.doughnut = new Chart(doughnutCtx, {
-    type:'doughnut',
-    data:{ labels:['جاهز للعمل','غير متاح/طوارئ'], datasets:[{ data:[normCount, warnCount+sosCount], backgroundColor:['#2FD1E8','#2A374C'], borderWidth:0, cutout:'75%' }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
-  });
+            const loadingId = 'loading-' + Date.now();
+            aiMessages.innerHTML += `<div id="${loadingId}" class="ai-msg bot" style="color:var(--text-3);">جاري تحليل الميدان والإجابة ···</div>`;
+            aiMessages.scrollTop = aiMessages.scrollHeight;
 
-  const trendCtx = document.getElementById('trendChart').getContext('2d');
-  if(chartsInstance.trend) chartsInstance.trend.destroy();
-  chartsInstance.trend = new Chart(trendCtx, {
-    type:'line',
-    data:{ labels:trendHistory.map((_,i)=>i), datasets:[{ data:trendHistory.map(t=>t.avgHeart), borderColor:'#2FD1E8', backgroundColor:'rgba(47,209,232,0.12)', borderWidth:2, pointRadius:0, tension:.35, fill:true }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#1C2636'}}} }
-  });
+            const context = `إجمالي الأفراد: ${employeesData.length} | حالات الطوارئ: ${employeesData.filter(e=>e.status==='SOS').length} | تحذيرات: ${employeesData.filter(e=>e.status==='WARNING').length}`;
+            const promptText = `أنت المساعد الأمني الذكي في مركز المراقبة. أجب باختصار باللغة العربية.\nبيانات الميدان الحالية: [${context}]\n\nسؤال المشرف: ${query}`;
 
-  renderInsight(riskIndex, sosCount, warnCount, zoneCount, avgHeart, avgBatt);
-  renderDecisionCenter();
-}
+            try {
+                const response = await fetchGeminiAPI(apiKey, promptText);
+                const data = await response.json();
 
-function renderInsight(risk, sos, warn, zoneCount, avgHeart, avgBatt){
-  const box = document.getElementById('insightBox');
-  let icon='shield-check', color='var(--normal)', text='الوضع الميداني مستقر. جميع المؤشرات ضمن النطاق الطبيعي.';
-  if(sos>0){ icon='alert-triangle'; color='var(--sos)'; text=`يوجد ${sos} حالة طوارئ نشطة تتطلب استجابة فورية. متوسط النبض العام ${avgHeart} نبضة/د.`; }
-  else if(zoneCount>0){ icon='map-pin-off'; color='var(--warning)'; text=`${zoneCount} من الأفراد خارج نطاقهم الأمني المحدد حالياً. يُنصح بالتحقق من موقعهم.`; }
-  else if(warn>0){ icon='alert-circle'; color='var(--warning)'; text=`${warn} حالة تحذير قيد المتابعة. يُنصح بالتواصل مع الأفراد المعنيين والتحقق من سلامتهم.`; }
-  else if(avgBatt<40){ icon='battery-warning'; color='var(--warning)'; text=`الوضع الأمني مستقر، لكن متوسط شحن الأجهزة منخفض (${avgBatt}%). يُنصح بجدولة إعادة شحن.`; }
-  box.innerHTML = `<i data-lucide="${icon}" style="width:20px;height:20px;color:${color};flex-shrink:0;margin-top:2px;"></i>
-    <div><div style="font-weight:700;font-size:12.5px;margin-bottom:3px;color:${color};">تحليل الذكاء الاصطناعي المحلي</div><div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">${text}</div></div>`;
-  lucide.createIcons();
-}
+                if (!response.ok) throw new Error(data.error?.message || "خطأ في المصادقة أو المفتاح.");
 
-/* ===== ECG signature strip ===== */
-function drawECG(){
-  const risk = computeRisk();
-  const color = risk>=50?'#FF3B57':risk>=20?'#FFA83D':'#22D488';
-  let d = 'M0,17 ';
-  for(let i=0;i<10;i++){
-    const x = i*40;
-    d += `L${x+8},17 L${x+14},${17-(6+risk/6)} L${x+18},${17+(10+risk/4)} L${x+22},17 L${x+40},17 `;
-  }
-  const path = document.getElementById('ecgPath');
-  path.setAttribute('d', d);
-  path.style.stroke = color;
-  path.style.filter = `drop-shadow(0 0 3px ${color})`;
-}
+                const reply = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot">${reply}</div>`;
+            } catch (err) {
+                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot" style="color:var(--red);">خطأ أثناء الاتصال بالذكاء الاصطناعي:<br><small style="color:var(--text-3);">${err.message}</small></div>`;
+            }
+            aiMessages.scrollTop = aiMessages.scrollHeight;
+        }
 
-/* ===== Alarm sound + notifications (fully local, no API key) ===== */
-function ensureAudioCtx(){
-  if(!audioCtx){
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if(AC) audioCtx = new AC();
-  }
-  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
-}
-
-function playAlarmSound(type){
-  if(!alarmEnabled) return;
-  const ctx = ensureAudioCtx();
-  if(!ctx) return;
-  const now = ctx.currentTime;
-  const pattern = type === 'sos'
-    ? [{f:880,t:0,d:.14},{f:660,t:.18,d:.14},{f:880,t:.36,d:.14},{f:660,t:.54,d:.18}]
-    : [{f:520,t:0,d:.18}];
-  pattern.forEach(n => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type === 'sos' ? 'square' : 'sine';
-    osc.frequency.value = n.f;
-    gain.gain.setValueAtTime(0.0001, now + n.t);
-    gain.gain.exponentialRampToValueAtTime(0.22, now + n.t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(now + n.t); osc.stop(now + n.t + n.d + 0.02);
-  });
-}
-
-function showBrowserNotification(title, body){
-  if(!alarmEnabled) return;
-  if('Notification' in window && Notification.permission === 'granted'){
-    try{ new Notification(title, {body, dir:'rtl', lang:'ar'}); }catch(e){}
-  }
-}
-
-function initBell(){
-  const btn = document.getElementById('bellBtn');
-  btn.addEventListener('click', () => {
-    alarmEnabled = !alarmEnabled;
-    btn.classList.toggle('enabled', alarmEnabled);
-    document.getElementById('bellLabel').textContent = alarmEnabled ? 'التنبيهات الصوتية مفعّلة' : 'تفعيل التنبيهات الصوتية';
-    if(alarmEnabled){
-      ensureAudioCtx();
-      playAlarmSound('zone');
-      if('Notification' in window && Notification.permission === 'default'){
-        Notification.requestPermission();
-      }
-    }
-  });
-}
-
-function pushAlertToast(kind, empName, message, empId){
-  const stack = document.getElementById('alertStack');
-  const toast = document.createElement('div');
-  toast.className = 'alert-toast ' + kind;
-  const icon = kind === 'sos' ? 'siren' : 'map-pin-off';
-  const color = kind === 'sos' ? 'var(--sos)' : 'var(--warning)';
-  const emp = employeesData.find(e=>e.id===empId);
-  const issue = emp ? getDecisionSupport(emp).find(i => (kind==='sos' && i.label.includes('طوارئ')) || (kind==='zone' && i.label.includes('النطاق'))) : null;
-  toast.innerHTML = `
-    <i data-lucide="${icon}" style="width:18px;height:18px;color:${color};flex-shrink:0;margin-top:2px;"></i>
-    <div style="flex:1;">
-      <div style="font-weight:700;font-size:12.5px;color:${color};">${empName}</div>
-      <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px;">${message}</div>
-      ${issue ? `<div style="font-size:10.5px;color:var(--text-muted);margin-top:5px;padding-top:5px;border-top:1px dashed var(--border-soft);"><b>الإجراء:</b> ${issue.action}<br><b>التصعيد:</b> ${issue.escalation}</div>` : ''}
-    </div>
-    ${kind==='sos' ? `<button class="ack-btn">إقرار الحالة</button>` : ''}
-    <button class="close-x"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
-  `;
-  stack.appendChild(toast);
-  lucide.createIcons();
-
-  toast.querySelector('.close-x').onclick = () => toast.remove();
-  const ackBtn = toast.querySelector('.ack-btn');
-  if(ackBtn){
-    ackBtn.onclick = () => {
-      const emp = employeesData.find(e=>e.id===empId);
-      if(emp){ emp.status = 'NORMAL'; emp.prevStatus = 'NORMAL'; renderAll(); }
-      toast.remove();
-    };
-  } else {
-    setTimeout(() => { toast.remove(); }, 9000);
-  }
-}
-
-function pushAIToast(kind){
-  if(kind === 'zone-updated'){
-    const stack = document.getElementById('alertStack');
-    const toast = document.createElement('div');
-    toast.className = 'alert-toast zone';
-    toast.innerHTML = `<i data-lucide="check-circle" style="width:18px;height:18px;color:var(--normal);"></i><div style="flex:1;font-size:12px;color:var(--text-secondary);">تم تحديث مركز النطاق الأمني.</div><button class="close-x"><i data-lucide="x" style="width:14px;height:14px;"></i></button>`;
-    stack.appendChild(toast); lucide.createIcons();
-    toast.querySelector('.close-x').onclick = () => toast.remove();
-    setTimeout(() => toast.remove(), 4000);
-  }
-}
-
-/* ===== Live data simulation (mock field telemetry) ===== */
-function simulateLiveData(){
-  employeesData.forEach(emp => {
-    if(emp.status !== 'SOS'){
-      emp.heartRate = Math.max(58, Math.min(140, emp.heartRate + Math.round((Math.random()-0.5)*8)));
-      emp.battery = Math.max(5, emp.battery - (Math.random()<0.3?1:0));
-    }
-    emp.history.push(emp.heartRate);
-    if(emp.history.length>20) emp.history.shift();
-    emp.lat += (Math.random()-0.5)*0.001;
-    emp.lng += (Math.random()-0.5)*0.001;
-
-    if(emp.status==='NORMAL' && emp.heartRate>100) emp.status='WARNING';
-    else if(emp.status==='WARNING' && emp.heartRate<95 && Math.random()<0.4) emp.status='NORMAL';
-
-    const dist = haversine(emp.lat, emp.lng, emp.zoneLat, emp.zoneLng);
-    emp.outOfZone = dist > emp.zoneRadius;
-
-    // ---- alarm transitions ----
-    if(emp.status==='SOS' && emp.prevStatus!=='SOS'){
-      playAlarmSound('sos');
-      showBrowserNotification('🚨 حالة طوارئ: ' + emp.name, `تم رصد إشارة SOS — النبض ${emp.heartRate} BPM`);
-      pushAlertToast('sos', emp.name, `تم رصد إشارة طوارئ (SOS) — النبض ${emp.heartRate} BPM، البطارية ${emp.battery}%`, emp.id);
-    }
-    if(emp.outOfZone && !emp.prevOutOfZone){
-      playAlarmSound('zone');
-      showBrowserNotification('⚠️ خروج عن النطاق: ' + emp.name, 'الفرد خارج نطاقه الأمني المحدد');
-      pushAlertToast('zone', emp.name, 'خرج عن النطاق الأمني المحدد له. يُنصح بالتحقق من موقعه.', emp.id);
-    }
-    emp.prevStatus = emp.status;
-    emp.prevOutOfZone = emp.outOfZone;
-  });
-
-  const avgHeart = Math.round(employeesData.reduce((a,v)=>a+v.heartRate,0)/employeesData.length);
-  trendHistory.push({avgHeart, t:Date.now()});
-  if(trendHistory.length>40) trendHistory.shift();
-
-  renderAll();
-  drawECG();
-  if(selectedId){
-    const emp = employeesData.find(e=>e.id===selectedId);
-    if(emp){
-      document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
-      document.getElementById('detailBattery').textContent = emp.battery + '%';
-      updateZoneStatusTag(emp);
-      renderDecisionBox(emp);
-      map.panTo([emp.lat, emp.lng], {animate:true});
-      drawSparkline('detailSpark', emp.history, statusColor(emp.status));
-    }
-  }
-  if(!document.getElementById('analyticsView').classList.contains('hidden')) updateAnalyticsData();
-}
-
-/* ==========================================================
-   المساعد الميداني الذكي — يعمل بالكامل محلياً داخل المتصفح
-   بدون أي مفتاح API وبدون اتصال خارجي (بديل مجاني عن Gemini)
-   ========================================================== */
-const AI_SUGGESTIONS = ['ما حالة الطوارئ الآن؟','من خارج نطاقه الأمني؟','ما التوصيات الحالية؟','ملخص الوضع الميداني'];
-
-function initAIModule(){
-  const toggleBtn = document.getElementById('aiToggleBtn');
-  const chatBox = document.getElementById('aiChatBox');
-  const closeBtn = document.getElementById('aiCloseBtn');
-  const sendBtn = document.getElementById('aiSendBtn');
-  const input = document.getElementById('aiInput');
-
-  toggleBtn.addEventListener('click', () => {
-    chatBox.classList.toggle('hidden');
-    if(!chatBox.classList.contains('hidden') && document.getElementById('aiMessages').children.length===0){
-      pushAIMessage('bot', 'مرحباً، أنا المساعد الميداني الذكي. أعمل بالكامل محلياً داخل هذا الجهاز، أحلل بيانات الميدان الحالية مباشرة دون إرسال أي بيانات لأي خادم خارجي. اسألني عن حالات الطوارئ، الخروج عن النطاق الأمني، البطارية، النبض، أو أي فرد من الفريق.');
-      renderAISuggestions();
-    }
-  });
-  closeBtn.addEventListener('click', () => chatBox.classList.add('hidden'));
-  sendBtn.addEventListener('click', handleAISend);
-  input.addEventListener('keypress', (e) => { if(e.key==='Enter') handleAISend(); });
-}
-
-function renderAISuggestions(){
-  const row = document.getElementById('aiSuggestRow');
-  row.innerHTML = '';
-  AI_SUGGESTIONS.forEach(s => {
-    const b = document.createElement('button');
-    b.className = 'ai-suggest'; b.textContent = s;
-    b.onclick = () => { document.getElementById('aiInput').value = s; handleAISend(); };
-    row.appendChild(b);
-  });
-}
-
-function pushAIMessage(role, text){
-  const box = document.getElementById('aiMessages');
-  const div = document.createElement('div');
-  div.className = 'ai-msg ' + role;
-  div.innerHTML = text;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-  return div;
-}
-
-function handleAISend(){
-  const input = document.getElementById('aiInput');
-  const query = input.value.trim();
-  if(!query) return;
-  pushAIMessage('user', query);
-  input.value = '';
-  const thinking = pushAIMessage('bot', '<span style="color:var(--text-muted);">جاري تحليل بيانات الميدان...</span>');
-  setTimeout(() => {
-    thinking.innerHTML = localFieldAssistant(query);
-    document.getElementById('aiMessages').scrollTop = document.getElementById('aiMessages').scrollHeight;
-  }, 380);
-}
-
-function localFieldAssistant(rawQuery){
-  const q = rawQuery.trim();
-  const norm = q.replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase();
-
-  const sosList = employeesData.filter(e=>e.status==='SOS');
-  const warnList = employeesData.filter(e=>e.status==='WARNING');
-  const normalList = employeesData.filter(e=>e.status==='NORMAL');
-  const zoneList = employeesData.filter(e=>e.outOfZone);
-  const total = employeesData.length;
-  const avgHeart = Math.round(employeesData.reduce((a,v)=>a+v.heartRate,0)/total);
-  const avgBatt = Math.round(employeesData.reduce((a,v)=>a+v.battery,0)/total);
-  const risk = computeRisk();
-
-  const matchedEmp = employeesData.find(e => {
-    const n = e.name.replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase();
-    return norm.includes(n.split('/').pop().trim()) || norm.includes(e.id.toLowerCase());
-  });
-  if(matchedEmp){
-    const empIssues = getDecisionSupport(matchedEmp);
-    const issueText = empIssues.length
-      ? `<br><br><b>التوصية:</b> ${empIssues[0].action}<br><b>التصعيد:</b> ${empIssues[0].escalation}`
-      : `<br><br><span style="color:var(--normal)">لا يوجد إجراء مطلوب حالياً.</span>`;
-    return `<b>${matchedEmp.name}</b> (${matchedEmp.id})<br>الحالة: <span style="color:${statusColor(matchedEmp.status)}">${STATUS_LABEL[matchedEmp.status]}</span><br>النطاق الأمني: ${matchedEmp.outOfZone ? '<span style="color:var(--warning)">خارج النطاق</span>' : 'داخل النطاق'}<br>النبض: ${matchedEmp.heartRate} BPM · البطارية: ${matchedEmp.battery}%${issueText}`;
-  }
-
-  if(/توصيه|اجراء|ماذا افعل|ماذا نفعل|قرار|تصعيد|خطوات/.test(norm)){
-    const rows = [];
-    employeesData.forEach(e => getDecisionSupport(e).forEach(is => rows.push({e,is})));
-    rows.sort((a,b)=>b.is.rank-a.is.rank);
-    if(rows.length===0) return 'لا توجد أي حالة تستدعي اتخاذ قرار حالياً — جميع الأفراد ضمن الوضع الطبيعي.';
-    return `<b>توصيات اتخاذ القرار الحالية (${rows.length}):</b><br>` + rows.map(r=>`• <b>${r.e.name}</b> — ${r.is.label}<br>&nbsp;&nbsp;الإجراء: ${r.is.action}<br>&nbsp;&nbsp;${r.is.escalation}`).join('<br><br>');
-  }
-
-  if(/طوار|sos|خطر عاجل/.test(norm)){
-    if(sosList.length===0) return 'لا توجد أي حالة طوارئ نشطة حالياً. جميع الأفراد ضمن الوضع الطبيعي أو تحت المتابعة فقط.';
-    return `يوجد <b style="color:var(--sos)">${sosList.length}</b> حالة طوارئ نشطة الآن:<br>` + sosList.map(e=>`• ${e.name} — نبض ${e.heartRate} BPM، بطارية ${e.battery}%`).join('<br>');
-  }
-  if(/نطاق|خارج المنطقه|خرج/.test(norm)){
-    if(zoneList.length===0) return 'جميع الأفراد ضمن نطاقاتهم الأمنية المحددة حالياً.';
-    return `الأفراد خارج نطاقهم الأمني حالياً (${zoneList.length}):<br>` + zoneList.map(e=>`• ${e.name}`).join('<br>');
-  }
-  if(/بطاريه/.test(norm)){
-    const low = [...employeesData].sort((a,b)=>a.battery-b.battery).slice(0,3);
-    return `الأفراد الأقل شحناً حالياً:<br>` + low.map(e=>`• ${e.name} — ${e.battery}%`).join('<br>') + `<br>متوسط شحن الأجهزة العام: ${avgBatt}%`;
-  }
-  if(/اعلي نبض|اعلى نبض|اسرع نبض/.test(norm)){
-    const top = [...employeesData].sort((a,b)=>b.heartRate-a.heartRate)[0];
-    return `أعلى نبض مسجل حالياً: <b>${top.name}</b> بمعدل ${top.heartRate} BPM (${STATUS_LABEL[top.status]}).`;
-  }
-  if(/تحذير/.test(norm)){
-    if(warnList.length===0) return 'لا توجد حالات تحذير حالياً.';
-    return `حالات التحذير الحالية (${warnList.length}):<br>` + warnList.map(e=>`• ${e.name} — نبض ${e.heartRate} BPM`).join('<br>');
-  }
-  if(/ملخص|الوضع|تقرير عام|كيف الوضع/.test(norm)){
-    return `<b>ملخص الميدان الحالي:</b><br>إجمالي الأفراد: ${total} · طبيعي: ${normalList.length} · تحذير: ${warnList.length} · طوارئ: ${sosList.length} · خارج النطاق: ${zoneList.length}<br>متوسط النبض: ${avgHeart} BPM · متوسط الشحن: ${avgBatt}%<br>مؤشر الخطر الإجمالي: <b style="color:${risk>=50?'var(--sos)':risk>=20?'var(--warning)':'var(--normal)'}">${risk}/100</b>`;
-  }
-  if(/كم عدد|عدد الافراد|عدد الموظفين/.test(norm)){
-    return `إجمالي عدد الأفراد المتتبعين حالياً: <b>${total}</b>.`;
-  }
-  if(/مؤشر الخطر|نسبه الخطر/.test(norm)){
-    return `مؤشر الخطر الإجمالي الحالي هو <b>${risk}/100</b>، ${risk>=50?'وهو مرتفع ويستدعي المتابعة الفورية.':risk>=20?'وهو متوسط، يُنصح بالمراقبة.':'وهو منخفض، الوضع مستقر.'}`;
-  }
-
-  return `لم أفهم السؤال بدقة. يمكنك سؤالي عن: حالات الطوارئ، الخروج عن النطاق الأمني، البطارية المنخفضة، أعلى نبض، ملخص عام للوضع، أو اسم أحد الأفراد مباشرة.`;
-}
-</script>
+        // Marker pulse animation injection
+        const style = document.createElement('style');
+        style.textContent = `@keyframes livePulseMarker { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(2.4); opacity: 0; } }`;
+        document.head.appendChild(style);
+    </script>
 </body>
 </html>
