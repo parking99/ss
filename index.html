@@ -1,484 +1,664 @@
-index.html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مركز القيادة والمراقبة الأمنية الذكي - النسخة الشاملة</title>
-    
-    <!-- Leaflet & MarkerCluster CSS/JS -->
+    <title>منظومة القيادة الاستراتيجية C4ISR | أمن، سلامة، وذكاء تنبؤي</title>
+
+    <!-- External Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    
-    <!-- Chart.js للوحة التحليلية -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         :root {
-            --bg-void: #060911; --bg-page: #0A0F19; --bg-panel: #101827; --bg-subtle: #0B121E;
-            --bg-elevated: #16202F; --border-soft: #202C40; --border-strong: #2E3D56;
-            --text-primary: #EAF0FB; --text-secondary: #8291A8; --text-muted: #4F5E76;
-            --navy: #3E8EDE; --navy-soft: rgba(62,142,222,0.12);
-            --accent: #33C7F4; --accent-soft: rgba(51,199,244,0.12);
-            --normal: #22D488; --normal-soft: rgba(34,212,136,0.12);
-            --warning: #F5A623; --warning-soft: rgba(245,166,35,0.14);
-            --sos: #FF3B4E; --sos-soft: rgba(255,59,78,0.16);
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.35); --shadow-md: 0 16px 40px rgba(0,0,0,0.55);
+            --bg-void: #020617; --bg-page: #0F172A; --bg-panel: #1E293B; --bg-subtle: #334155;
+            --border-soft: #334155; --border-strong: #475569;
+            --text-primary: #F8FAFC; --text-secondary: #94A3B8; --text-muted: #64748B;
+            --navy: #38BDF8; --navy-soft: rgba(56,189,248,0.15);
+            --normal: #10B981; --normal-soft: rgba(16,185,129,0.15);
+            --warning: #F59E0B; --warning-soft: rgba(245,158,11,0.15);
+            --sos: #EF4444; --sos-soft: rgba(239,68,68,0.25);
+            --security: #8B5CF6; --security-soft: rgba(139,92,246,0.25);
+            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
         }
-
         * { box-sizing: border-box; font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
         .font-display { font-family: 'Cairo', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; direction: ltr; unicode-bidi: isolate; }
 
-        html, body {
-            margin: 0; padding: 0; height: 100vh; width: 100%; overflow: hidden;
-            background-color: var(--bg-void); color: var(--text-primary);
-            background-image: linear-gradient(var(--bg-page), var(--bg-page)), 
-                              repeating-linear-gradient(0deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px), 
-                              repeating-linear-gradient(90deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px);
-        }
-
+        html, body { margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-void); color: var(--text-primary); }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
-        ::-webkit-scrollbar-track { background: transparent; }
 
-        #map { height: 100%; width: 100%; z-index: 1; background: var(--bg-subtle); border-radius: 14px; }
-        .leaflet-control-zoom a { background-color: var(--bg-panel) !important; color: var(--text-primary) !important; border-color: var(--border-soft) !important; }
-        .leaflet-popup-content-wrapper { background-color: var(--bg-elevated) !important; color: var(--text-primary) !important; border-radius: 0.75rem !important; border: 1px solid var(--border-soft); box-shadow: var(--shadow-md) !important; }
-        .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
+        /* Map Controls */
+        #map { height: 100%; width: 100%; z-index: 1; background: var(--bg-subtle); border-radius: 12px; }
+        .leaflet-control-layers { background: var(--bg-panel) !important; color: var(--text-primary) !important; border: 1px solid var(--border-strong) !important; border-radius: 10px !important; }
+        .leaflet-control-layers-list { font-size: 12px; font-weight: 600; padding: 8px; }
 
-        @keyframes livePulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
-        .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); display:inline-block;}
-        .live-pulse::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid rgba(34,212,136,0.55); animation: livePulse 2s ease-out infinite; }
+        /* Badges */
+        .badge { font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; }
+        .badge.normal { background: var(--normal-soft); color: var(--normal); border: 1px solid rgba(16,185,129,0.3); }
+        .badge.sos { background: var(--sos-soft); color: var(--sos); border: 1px solid rgba(239,68,68,0.5); animation: pulse-red 1.2s infinite; }
+        .badge.breach { background: var(--warning-soft); color: var(--warning); border: 1px solid rgba(245,158,11,0.4); }
+        .badge.security { background: var(--security-soft); color: var(--security); border: 1px solid rgba(139,92,246,0.5); animation: pulse-purple 1.5s infinite; }
 
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-        .badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: .3px; font-family: 'Cairo', sans-serif; }
-        .badge.normal { background: var(--normal-soft); color: var(--normal); border: 1px solid rgba(34,212,136,0.3); }
-        .badge.sos { background: var(--sos-soft); color: var(--sos); border: 1px solid rgba(255,59,78,0.3); }
-        .badge.warning { background: var(--warning-soft); color: var(--warning); border: 1px solid rgba(245,166,35,0.3); }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        @keyframes pulse-purple { 0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.8); } 70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); } }
 
-        .chip { font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-soft); background: var(--bg-panel); color: var(--text-secondary); cursor: pointer; transition: all .15s ease; white-space: nowrap; }
-        .chip:hover { border-color: var(--accent); color: var(--accent); }
-        .chip.active { background: var(--accent); color: #04222c; border-color: var(--accent); }
+        .view-tab { padding: 10px 20px; border-radius: 12px 12px 0 0; border: 1px solid var(--border-soft); border-bottom: none; font-size: 13px; font-weight: 700; cursor: pointer; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .view-tab.active { background: var(--bg-panel); color: var(--navy); border-color: var(--border-strong); border-bottom: 2px solid var(--navy); }
 
-        .view-tab { padding: 9px 20px; border-radius: 10px 10px 0 0; border: 1px solid var(--border-soft); border-bottom: none; font-size: 13px; font-weight: 700; cursor: pointer; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
-        .view-tab.active { background: var(--bg-panel); color: var(--accent); border-bottom: 2px solid var(--accent); }
+        .employee-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-inline-start: 4px solid var(--border-strong); border-radius: 12px; padding: 14px; cursor: pointer; transition: all .2s ease; position: relative; }
+        .employee-card:hover, .employee-card.active-focus { border-color: var(--navy); border-inline-start-color: var(--navy); background: rgba(56,189,248,0.05); transform: translateY(-2px); }
 
-        .employee-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-inline-start: 3px solid var(--border-soft); border-radius: .7rem; padding: .8rem .9rem; cursor: pointer; transition: all .15s ease; }
-        .employee-card:hover { border-color: var(--accent); border-inline-start-color: var(--accent); background: var(--bg-elevated); }
+        .filter-chip { font-size: 11.5px; padding: 6px 14px; border-radius: 8px; background: var(--bg-panel); border: 1px solid var(--border-soft); color: var(--text-secondary); cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .filter-chip.active { background: var(--navy-soft); color: var(--navy); border-color: var(--navy); }
 
-        .map-tool-btn { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 9px; box-shadow: var(--shadow-sm); padding: 9px; cursor: pointer; color: var(--text-secondary); display: flex; transition: all .15s ease; }
-        .map-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+        /* Weather & Environment Widget */
+        .weather-widget { position: absolute; top: 16px; left: 16px; z-index: 1000; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid var(--border-strong); border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); pointer-events: none; }
+        .weather-item { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; color: var(--text-primary); }
+        .weather-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--warning); }
+
+        /* Modals */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .modal-card { width: 100%; max-width: 720px; background: var(--bg-page); border: 1px solid var(--border-strong); border-radius: 18px; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; }
+        .modal-header { padding: 20px 24px; background: var(--bg-panel); border-bottom: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center; }
 
         .hidden { display: none !important; }
-
-        .analytics-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 14px; padding: 16px; box-shadow: var(--shadow-sm); }
-        .stat-value { font-size: 24px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--text-primary); margin-top: 8px;}
-
-        #aiToggleBtn { position: fixed; bottom: 24px; left: 24px; z-index: 999; padding: 12px 18px; border-radius: 999px; border: 1px solid var(--accent); background: rgba(16, 24, 39, 0.92); color: var(--accent); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); cursor: pointer; backdrop-filter: blur(10px); transition: all 0.2s ease; }
-        #aiToggleBtn:hover { background: var(--accent); color: #04222c; }
-        #aiChatBox { position: fixed; bottom: 80px; left: 24px; z-index: 999; width: 380px; height: 520px; border-radius: 16px; border: 1px solid var(--border-soft); background: rgba(16, 24, 39, 0.96); box-shadow: var(--shadow-md); display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(12px); }
-        .ai-msg { padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.5; max-width: 88%; word-break: break-word; }
-        .ai-msg.user { align-self: flex-end; background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(51,199,244,0.3); border-bottom-left-radius: 2px; }
-        .ai-msg.bot { align-self: flex-start; background: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-soft); border-bottom-right-radius: 2px; }
+        
+        /* Map Center Pulse */
+        .geofence-center { background: var(--navy); border-radius: 50%; border: 2px solid #FFF; box-shadow: 0 0 10px var(--navy); }
     </style>
 </head>
-<body style="display:flex;flex-direction:column;">
+<body>
 
-    <!-- الهيدر -->
-    <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
-        <div style="display:flex;align-items:center;gap:12px;">
-            <div style="padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--navy-soft);color:var(--navy);display:flex;">
-                <i data-lucide="shield-check" style="width:24px;height:24px;"></i>
+    <!-- Header -->
+    <header style="display:flex;justify-content:space-between;align-items:center;padding:12px 24px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
+        <div style="display:flex;align-items:center;gap:14px;">
+            <div style="padding:10px;border-radius:12px;background:var(--navy-soft);color:var(--navy);border:1px solid rgba(56,189,248,0.2);">
+                <i data-lucide="radar" style="width:24px;height:24px;"></i>
             </div>
             <div>
-                <h1 class="font-display" style="margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
-                    <span class="live-pulse"></span> مركز القيادة والمراقبة الأمنية الذكي
+                <h1 class="font-display" style="margin:0;font-size:18px;font-weight:900;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+                    C4ISR قيادة العمليات والأمن التكتيكي
                 </h1>
-                <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;color:var(--text-secondary);">
-                    <span class="badge normal">تشغيل طبيعي</span> تتبع حي وتحليل بيانات · <span id="liveClock" class="font-mono" style="color:var(--accent);">--:--:--</span>
-                </p>
+                <p style="margin:2px 0 0;font-size:12px;color:var(--text-secondary);">ذكاء اصطناعي، طقس حي، تصاريح أمنية، ومراقبة جغرافية دقيقة</p>
             </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="padding:8px 12px;border-radius:8px;background:var(--bg-subtle);border:1px solid var(--border-soft);font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;">
+                <i data-lucide="shield-alert" style="width:16px;height:16px;color:var(--security);"></i>
+                <span>التشخيص الأمني نشط</span>
+            </div>
+            <button id="manualRefreshBtn" type="button" style="padding:8px 14px;border-radius:8px;border:1px solid var(--navy);background:var(--navy-soft);color:var(--navy);cursor:pointer;font-weight:800;display:flex;align-items:center;gap:6px;font-size:12px;">
+                <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i> تحديث فوري
+            </button>
         </div>
     </header>
 
-    <!-- التبويبات -->
-    <div style="display:flex;gap:10px;padding:10px 16px 0;background:var(--bg-panel);">
-        <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية</button>
-        <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>اللوحة التحليلية</button>
+    <!-- Navigation -->
+    <div style="display:flex;gap:12px;padding:12px 24px 0;background:var(--bg-void);">
+        <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map" style="width:16px;height:16px;"></i> مسرح العمليات (الخريطة)</button>
+        <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="brain-circuit" style="width:16px;height:16px;"></i> الذكاء التنبؤي والتحليلات</button>
     </div>
 
-    <!-- مساحة العمل الرئيسية -->
-    <div style="flex:1;display:flex;overflow:hidden;padding:16px;gap:12px;background:var(--bg-page);">
+    <!-- Main Content -->
+    <div style="flex:1;display:flex;overflow:hidden;padding:0 24px 20px;gap:20px;background:var(--bg-void);">
         
-        <!-- القائمة الجانبية -->
-        <aside style="width:320px;min-width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;">
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);">
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono stat-value" style="font-size:14px;">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">طبيعي</span><span id="statNormal" class="font-mono stat-value" style="font-size:14px;color:var(--normal);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">تحذير</span><span id="statWarning" class="font-mono stat-value" style="font-size:14px;color:var(--warning);">0</span></div>
-                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">SOS</span><span id="statSos" class="font-mono stat-value" style="font-size:14px;color:var(--sos);">0</span></div>
+        <!-- Sidebar -->
+        <aside style="width:380px;min-width:380px;display:flex;flex-direction:column;gap:12px;padding-top:12px;">
+            <!-- Stats -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;border-radius:14px;border:1px solid var(--border-soft);background:var(--bg-panel);text-align:center;">
+                <div><span style="font-size:10.5px;color:var(--text-muted);">إجمالي</span><div id="statTotal" class="font-mono" style="font-weight:900;font-size:16px;color:var(--text-primary);">0</div></div>
+                <div><span style="font-size:10.5px;color:var(--text-muted);">نطاق/أمن</span><div id="statSecurity" class="font-mono" style="font-weight:900;font-size:16px;color:var(--security);">0</div></div>
+                <div><span style="font-size:10.5px;color:var(--text-muted);">تجاوز</span><div id="statBreach" class="font-mono" style="font-weight:900;font-size:16px;color:var(--warning);">0</div></div>
+                <div><span style="font-size:10.5px;color:var(--text-muted);">استغاثة</span><div id="statSos" class="font-mono" style="font-weight:900;font-size:16px;color:var(--sos);">0</div></div>
             </div>
 
-            <div id="filterChips" style="display:flex;align-items:center;gap:6px;overflow-x:auto;padding-bottom:4px;">
-                <button class="chip active" data-filter="ALL">الكل</button>
-                <button class="chip" data-filter="SOS">SOS</button>
-                <button class="chip" data-filter="WARNING">تحذير</button>
-                <button class="chip" data-filter="NORMAL">طبيعي</button>
+            <!-- Filters -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="filter-chip active" onclick="setFilter('ALL', this)">الكل</button>
+                <button class="filter-chip" onclick="setFilter('SOS', this)">طوارئ SOS</button>
+                <button class="filter-chip" style="color:var(--security);border-color:var(--security-soft);" onclick="setFilter('SECURITY', this)">اختراق أمني</button>
+                <button class="filter-chip" onclick="setFilter('BREACH', this)">خروج نطاق</button>
             </div>
 
-            <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
-                <!-- بطاقات الموظفين -->
+            <!-- List -->
+            <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;">
+                <div style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">تهيئة مستشعرات الميدان...</div>
             </div>
         </aside>
 
-        <!-- العرض المتغير -->
-        <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;">
+        <!-- Dynamic Panel -->
+        <main style="flex:1;position:relative;display:flex;flex-direction:column;padding-top:12px;overflow:hidden;">
             
-            <!-- عرض الخريطة (MapView) -->
-            <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft); display:flex;">
+            <!-- Map View -->
+            <div id="mapView" style="position:relative;flex:1;border-radius:16px;overflow:hidden;border:1px solid var(--border-strong);">
                 <div id="map"></div>
                 
-                <!-- تفاصيل الموظف -->
-                <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:340px;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,.95);box-shadow:var(--shadow-md);">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border-soft);padding-bottom:8px;margin-bottom:12px;">
-                        <div>
-                            <h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:14px;color:var(--text-primary);">—</h3>
-                            <span id="detailId" class="font-mono" style="font-size:11px;color:var(--text-muted);">#—</span>
-                        </div>
-                        <button id="closeDetailBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+                <!-- Tactical Weather Overlay -->
+                <div class="weather-widget">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">محرك الطقس التكتيكي</div>
+                    <div class="weather-item">
+                        <i data-lucide="thermometer-sun" style="width:16px;height:16px;color:var(--sos);"></i>
+                        <span>الحرارة: <span class="weather-val">42°C</span> (خطر إجهاد حراري)</span>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-                        <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">النبض</span><span id="detailHeartRate" class="font-mono" style="font-weight:700;color:var(--normal);">--</span></div>
-                        <div style="background:var(--bg-subtle);padding:8px;border-radius:8px;border:1px solid var(--border-soft);"><span style="color:var(--text-muted);font-size:10px;display:block;">البطارية</span><span id="detailBattery" class="font-mono" style="font-weight:700;color:var(--text-primary);">--</span></div>
+                    <div class="weather-item">
+                        <i data-lucide="wind" style="width:16px;height:16px;color:var(--navy);"></i>
+                        <span>سرعة الرياح: <span class="weather-val" style="color:var(--text-primary);">14 km/h</span></span>
+                    </div>
+                    <div class="weather-item">
+                        <i data-lucide="cloud-fog" style="width:16px;height:16px;color:var(--warning);"></i>
+                        <span>جودة الهواء: <span class="weather-val">110 AQI</span></span>
                     </div>
                 </div>
             </div>
 
-            <!-- اللوحة التحليلية (AnalyticsView) -->
-            <div id="analyticsView" class="hidden" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
-                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;">
-                    <div class="analytics-card">
-                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
-                            <i data-lucide="activity" style="width:18px;height:18px;color:var(--accent);"></i>
-                            <span style="font-size:13px;font-weight:700;">متوسط النبض العام</span>
-                        </div>
-                        <div id="avgHeartRate" class="stat-value">-- BPM</div>
-                    </div>
-                    <div class="analytics-card">
-                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
-                            <i data-lucide="battery-medium" style="width:18px;height:18px;color:var(--normal);"></i>
-                            <span style="font-size:13px;font-weight:700;">متوسط شحن الأجهزة</span>
-                        </div>
-                        <div id="avgBattery" class="stat-value">-- %</div>
-                    </div>
-                    <div class="analytics-card">
-                        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">
-                            <i data-lucide="flame" style="width:18px;height:18px;color:var(--sos);"></i>
-                            <span style="font-size:13px;font-weight:700;">مؤشر الخطر الإجمالي</span>
-                        </div>
-                        <div id="totalRiskIndex" class="stat-value" style="color:var(--sos);">-- / 100</div>
-                    </div>
+            <!-- Analytics View -->
+            <div id="analyticsView" class="hidden" style="flex:1;overflow-y:auto;padding:24px;background:var(--bg-panel);border-radius:16px;border:1px solid var(--border-strong);display:flex;flex-direction:column;gap:24px;">
+                <div>
+                    <h2 class="font-display" style="font-size:22px;margin:0 0 6px 0;color:var(--text-primary);display:flex;align-items:center;gap:10px;">
+                        <i data-lucide="brain-circuit" style="color:var(--navy);"></i> محرك التنبؤ والتحليل المتقدم
+                    </h2>
+                    <p style="font-size:13px;margin:0;color:var(--text-secondary);">دمج مؤشرات الحيوية، الانضباط الجغرافي، المخالفات الأمنية، والإجهاد الحراري في نموذج واحد.</p>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:16px; flex:1;">
-                    <div class="analytics-card" style="display:flex;flex-direction:column;">
-                        <h4 style="margin:0 0 16px 0; font-size:14px; color:var(--text-primary);">توزيع الحالات الأمنية</h4>
-                        <div style="flex:1; position:relative;">
-                            <canvas id="barChart"></canvas>
-                        </div>
+                <div style="display:grid;grid-template-columns: 1fr 1.5fr; gap:20px; min-height:360px;">
+                    <!-- Radar Chart: Multi-dimensional Risk -->
+                    <div style="background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;">
+                        <h4 style="margin:0 0 16px 0;font-size:14px;color:var(--text-primary);width:100%;">مصفوفة الخطر متعددة الأبعاد (Radar)</h4>
+                        <div style="flex:1;position:relative;width:100%;max-width:300px;"><canvas id="radarChart"></canvas></div>
                     </div>
-                    <div class="analytics-card" style="display:flex;flex-direction:column;">
-                        <h4 style="margin:0 0 16px 0; font-size:14px; color:var(--text-primary);">نسبة الجاهزية</h4>
-                        <div style="flex:1; position:relative; display:flex; justify-content:center; align-items:center;">
-                            <canvas id="doughnutChart"></canvas>
-                        </div>
+
+                    <!-- Line Chart: Predictive Fatigue -->
+                    <div style="background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:14px;padding:20px;display:flex;flex-direction:column;">
+                        <h4 style="margin:0 0 16px 0;font-size:14px;color:var(--text-primary);display:flex;justify-content:space-between;">
+                            مؤشر الإرهاق التنبؤي (حسب الطقس والجهد)
+                            <span style="font-size:11px;color:var(--sos);background:var(--sos-soft);padding:4px 8px;border-radius:6px;">تأثير الحرارة: +15%</span>
+                        </h4>
+                        <div style="flex:1;position:relative;"><canvas id="fatigueChart"></canvas></div>
                     </div>
                 </div>
             </div>
+
         </main>
     </div>
 
-    <!-- نافذة المساعد الذكي -->
-    <button id="aiToggleBtn" type="button"><i data-lucide="bot"></i><span>مساعد الذكاء الاصطناعي</span></button>
-    <div id="aiChatBox" class="hidden">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-elevated);display:flex;justify-content:space-between;align-items:center;">
-            <div style="display:flex;align-items:center;gap:8px;color:var(--accent);font-weight:700;font-size:13px;">
-                <i data-lucide="sparkles" style="width:16px;height:16px;"></i> المساعد الأمني Gemini
+    <!-- Employee Detail Modal -->
+    <div id="employeeModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <div style="width:48px;height:48px;border-radius:14px;background:var(--navy-soft);border:1px solid var(--navy);display:flex;align-items:center;justify-content:center;color:var(--navy);font-weight:900;font-size:18px;" id="modalAvatar">EMP</div>
+                    <div>
+                        <h3 id="modalName" style="margin:0;font-size:18px;color:var(--text-primary);">اسم الموظف</h3>
+                        <div style="display:flex;gap:10px;margin-top:4px;">
+                            <span id="modalId" class="font-mono" style="font-size:12px;color:var(--text-secondary);">ID: ----</span>
+                            <span id="modalClearance" style="font-size:11px;background:var(--bg-subtle);padding:2px 8px;border-radius:4px;border:1px solid var(--border-strong);color:var(--text-primary);">تصريح: A</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeEmployeeModal()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:24px;height:24px;"></i></button>
             </div>
-            <button id="aiCloseBtn" style="background:none;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
-        </div>
-        <div style="padding:8px 12px;background:var(--bg-subtle);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:6px;">
-            <i data-lucide="key" style="width:13px;height:13px;color:var(--warning);"></i>
-            <input type="password" id="geminiApiKeyInput" placeholder="أدخل مفتاح AI Studio هنا..." style="flex:1;background:transparent;border:none;outline:none;font-size:11px;color:var(--text-primary);">
-        </div>
-        <div id="aiMessages" style="flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
-            <div class="ai-msg bot">مرحباً! أنا المساعد الأمني المعزز بنماذج Gemini. ضع المفتاح في الخانة أعلاه وأرسل سؤالك.</div>
-        </div>
-        <div style="padding:10px;border-top:1px solid var(--border-soft);display:flex;gap:6px;background:var(--bg-panel);">
-            <input type="text" id="aiInput" placeholder="اكتب سؤالك..." style="flex:1;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:8px;padding:8px;color:var(--text-primary);font-size:12px;outline:none;">
-            <button id="aiSendBtn" style="background:var(--accent);color:#04222c;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;"><i data-lucide="send" style="width:14px;height:14px;"></i></button>
+
+            <div style="padding:24px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;">
+                <!-- Security & AI Risk -->
+                <div style="background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:14px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-size:13px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="brain" style="width:18px;height:18px;color:var(--navy);"></i> مؤشر التقييم الشامل (AI & Security)
+                        </span>
+                        <span id="modalRiskScoreText" class="font-mono" style="font-size:16px;font-weight:900;">0%</span>
+                    </div>
+                    <div style="width:100%;height:10px;background:var(--bg-subtle);border-radius:999px;overflow:hidden;">
+                        <div id="modalRiskScoreBar" style="width:0%;height:100%;background:var(--normal);transition:all 0.5s ease;"></div>
+                    </div>
+                    <p id="modalRiskAnalysis" style="margin:12px 0 0 0;font-size:12.5px;color:var(--text-secondary);line-height:1.6;"></p>
+                </div>
+
+                <!-- Geofence Breakdown -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div style="background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:14px;padding:16px;">
+                        <h4 style="margin:0 0 12px 0;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="crosshair" style="color:var(--warning);width:16px;height:16px;"></i> النطاق الجغرافي
+                        </h4>
+                        <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--text-secondary);">
+                            <div style="display:flex;justify-content:space-between;">المسافة الحالية: <b id="modalDistance" class="font-mono" style="color:var(--text-primary);">-- m</b></div>
+                            <div style="display:flex;justify-content:space-between;">نصف قطر الأمان: <b id="modalRadius" class="font-mono" style="color:var(--text-primary);">-- m</b></div>
+                            <div style="display:flex;justify-content:space-between;">حالة التواجد: <b id="modalGeofenceStatus">--</b></div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:14px;padding:16px;">
+                        <h4 style="margin:0 0 12px 0;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="shield-alert" style="color:var(--security);width:16px;height:16px;"></i> الحالة الأمنية
+                        </h4>
+                        <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--text-secondary);">
+                            <div style="display:flex;justify-content:space-between;">منطقة حمراء: <b id="modalRedZone" style="color:var(--text-primary);">--</b></div>
+                            <div style="display:flex;justify-content:space-between;">الكاميرا الأقرب: <b style="color:var(--navy);text-decoration:underline;cursor:pointer;">CAM-04 (عرض)</b></div>
+                            <div style="display:flex;justify-content:space-between;">المصادقة: <b style="color:var(--normal);">تم التحقق بصمة</b></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex;gap:12px;margin-top:8px;">
+                    <button style="flex:1;padding:12px;border-radius:10px;background:var(--security);color:#FFF;border:none;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                        <i data-lucide="radio-receiver" style="width:18px;height:18px;"></i> اتصال لاسلكي آمن
+                    </button>
+                    <button style="flex:1;padding:12px;border-radius:10px;background:var(--sos);color:#FFF;border:none;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                        <i data-lucide="siren" style="width:18px;height:18px;"></i> تفعيل بروتوكول الإخلاء
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- المنطق البرمجي (JavaScript) -->
     <script>
-        let employeesData = [
-            { id: "EMP-101", name: "النقيب/ خالد العتيبي", status: "NORMAL", lat: 24.7136, lng: 46.6753, heartRate: 74, battery: 85 },
-            { id: "EMP-102", name: "الملازم/ فهد الشمري", status: "SOS", lat: 24.7200, lng: 46.6800, heartRate: 135, battery: 18 },
-            { id: "EMP-103", name: "العريف/ سارة الدوسري", status: "WARNING", lat: 24.7050, lng: 46.6600, heartRate: 105, battery: 42 },
-            { id: "EMP-104", name: "جندي/ أحمد الزهراني", status: "NORMAL", lat: 24.7300, lng: 46.6900, heartRate: 80, battery: 90 },
-            { id: "EMP-105", name: "رقيب/ محمد الشهراني", status: "NORMAL", lat: 24.6950, lng: 46.6500, heartRate: 78, battery: 75 },
-        ];
+        let state = {
+            employees: [],
+            selectedEmployeeId: null,
+            activeFilter: 'ALL',
+            map: null,
+            markers: {},
+            geofenceLayers: {},
+            radarChart: null,
+            fatigueChart: null,
+            // Simulated Red Zone
+            restrictedZone: null
+        };
 
-        let map, markersGroup;
-        let activeFilter = 'ALL';
-        let chartsInstance = {};
-
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            initClock();
-            initMap();
-            renderStats();
-            renderEmployeeList();
-            initTabs();
-            initAIModule();
-            
-            Chart.defaults.color = '#8291A8';
-            Chart.defaults.font.family = 'Cairo';
-        });
+        const WEATHER = { temp: 42, aqi: 110 }; // Simulated harsh weather
 
         function initMap() {
-            map = L.map('map').setView([24.7136, 46.6753], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
-            markersGroup = L.layerGroup().addTo(map);
-            updateMapMarkers();
+            // Setup Multiple Map Layers
+            const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 });
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+            const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+
+            state.map = L.map('map', { 
+                zoomControl: true, 
+                layers: [darkLayer] // Default layer
+            }).setView([24.715, 46.680], 15);
+
+            // Add Layer Control
+            const baseMaps = {
+                "الوضع الليلي التكتيكي": darkLayer,
+                "القمر الصناعي عالي الدقة": satelliteLayer,
+                "الخريطة الطبوغرافية": streetLayer
+            };
+            L.control.layers(baseMaps, null, { position: 'bottomright' }).addTo(state.map);
+
+            // Define a Security Restricted Zone (Red Polygon)
+            state.restrictedZone = L.polygon([
+                [24.717, 46.678],
+                [24.719, 46.678],
+                [24.719, 46.682],
+                [24.717, 46.682]
+            ], {
+                color: '#8B5CF6',
+                fillColor: '#8B5CF6',
+                fillOpacity: 0.15,
+                weight: 2,
+                dashArray: '5, 10'
+            }).addTo(state.map);
+            state.restrictedZone.bindPopup("<b style='color:#8B5CF6'>منطقة أمنية محظورة (مستوى التصريح السري)</b>");
         }
 
-        function updateMapMarkers() {
-            markersGroup.clearLayers();
-            employeesData.forEach(emp => {
-                if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
-                const color = emp.status === 'SOS' ? '#FF3B4E' : emp.status === 'WARNING' ? '#F5A623' : '#22D488';
-                const customIcon = L.divIcon({ html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};"></div>`, className: '' });
-                const marker = L.marker([emp.lat, emp.lng], { icon: customIcon }).addTo(markersGroup);
-                marker.on('click', () => {
-                    document.getElementById('detailPanel').classList.remove('hidden');
-                    document.getElementById('detailName').textContent = emp.name;
-                    document.getElementById('detailId').textContent = emp.id;
-                    document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
-                    document.getElementById('detailBattery').textContent = emp.battery + '%';
-                    map.flyTo([emp.lat, emp.lng], 15);
-                });
-            });
+        function getDistanceMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
 
-        document.getElementById('closeDetailBtn').onclick = () => document.getElementById('detailPanel').classList.add('hidden');
-
-        function renderStats() {
-            document.getElementById('statTotal').textContent = employeesData.length;
-            document.getElementById('statNormal').textContent = employeesData.filter(e => e.status === 'NORMAL').length;
-            document.getElementById('statWarning').textContent = employeesData.filter(e => e.status === 'WARNING').length;
-            document.getElementById('statSos').textContent = employeesData.filter(e => e.status === 'SOS').length;
-        }
-
-        function renderEmployeeList() {
-            const container = document.getElementById('employeeList');
-            container.innerHTML = '';
-            employeesData.forEach(emp => {
-                if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
-                const borderCol = emp.status === 'SOS' ? 'var(--sos)' : emp.status === 'WARNING' ? 'var(--warning)' : 'var(--normal)';
-                const card = document.createElement('div');
-                card.className = 'employee-card';
-                card.style.borderInlineStartColor = borderCol;
-                card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><strong style="font-size:12.5px;color:var(--text-primary);">${emp.name}</strong><span class="badge ${emp.status.toLowerCase()}">${emp.status}</span></div>`;
-                card.onclick = () => { map.flyTo([emp.lat, emp.lng], 15); };
-                container.appendChild(card);
-            });
-        }
-
-        document.querySelectorAll('#filterChips .chip').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-                activeFilter = btn.getAttribute('data-filter');
-                renderEmployeeList();
-                updateMapMarkers();
-            });
-        });
-
-        function initClock() { setInterval(() => { document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('ar-SA'); }, 1000); }
-
-        function initTabs() {
-            const mapTab = document.getElementById('tabMapBtn');
-            const analyticsTab = document.getElementById('tabAnalyticsBtn');
-            const mapView = document.getElementById('mapView');
-            const analyticsView = document.getElementById('analyticsView');
-
-            mapTab.addEventListener('click', () => {
-                mapTab.classList.add('active');
-                analyticsTab.classList.remove('active');
-                mapView.classList.remove('hidden');
-                analyticsView.classList.add('hidden');
-                map.invalidateSize();
-            });
-
-            analyticsTab.addEventListener('click', () => {
-                analyticsTab.classList.add('active');
-                mapTab.classList.remove('active');
-                analyticsView.classList.remove('hidden');
-                mapView.classList.add('hidden');
-                updateAnalyticsData();
-            });
-        }
-
-        function updateAnalyticsData() {
-            const total = employeesData.length;
-            const avgHeart = Math.round(employeesData.reduce((acc, val) => acc + val.heartRate, 0) / total);
-            const avgBatt = Math.round(employeesData.reduce((acc, val) => acc + val.battery, 0) / total);
-            const sosCount = employeesData.filter(e => e.status === 'SOS').length;
-            const warnCount = employeesData.filter(e => e.status === 'WARNING').length;
-            const normCount = employeesData.filter(e => e.status === 'NORMAL').length;
+        // Advanced AI Risk + Weather + Security Engine
+        function calculateRiskFactors(emp) {
+            let factors = { vitals: 0, geo: 0, security: 0, env: 0, total: 0 };
             
-            const riskIndex = Math.min(100, Math.round(((sosCount * 30) + (warnCount * 10)) / total * 10));
+            // 1. Vitals (HR & SpO2)
+            if (emp.hr > 110) factors.vitals += 25;
+            if (emp.spo2 < 93) factors.vitals += 30;
 
-            document.getElementById('avgHeartRate').textContent = avgHeart + ' BPM';
-            document.getElementById('avgBattery').textContent = avgBatt + ' %';
-            document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
+            // 2. Geo (Geofence Breach)
+            if (emp.isBreached) factors.geo += 25;
 
-            const barCtx = document.getElementById('barChart').getContext('2d');
-            if(chartsInstance.bar) chartsInstance.bar.destroy();
-            chartsInstance.bar = new Chart(barCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['طبيعي', 'تحذير', 'طوارئ SOS'],
-                    datasets: [{
-                        label: 'عدد الموظفين',
-                        data: [normCount, warnCount, sosCount],
-                        backgroundColor: ['#22D488', '#F5A623', '#FF3B4E'],
-                        borderRadius: 6
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#202C40' } }, x: { grid: { display: false } } } }
+            // 3. Security (In restricted zone without Level A)
+            if (emp.inRedZone && emp.clearance !== 'A') {
+                factors.security += 40;
+                emp.status = 'SECURITY_BREACH';
+            }
+
+            // 4. Environment (Weather impact on outdoor workers)
+            if (WEATHER.temp > 40) factors.env += 15;
+            if (WEATHER.aqi > 100) factors.env += 10;
+
+            // SOS Override
+            if (emp.status === 'SOS') factors.total = 100;
+            else factors.total = Math.min(100, factors.vitals + factors.geo + factors.security + factors.env);
+
+            return { ...emp, riskFactors: factors, riskScore: factors.total };
+        }
+
+        function isPointInPolygon(lat, lng, poly) {
+            // Simple bounding box check for the mock polygon
+            const bounds = poly.getBounds();
+            return bounds.contains([lat, lng]);
+        }
+
+        // Generate realistic mock data for C4ISR demonstration
+        function generateMockData() {
+            const baseLat = 24.715;
+            const baseLng = 46.680;
+            const emps = [];
+            
+            for(let i=1; i<=12; i++) {
+                // Random position near base
+                const lat = baseLat + (Math.random() - 0.5) * 0.01;
+                const lng = baseLng + (Math.random() - 0.5) * 0.01;
+                
+                // Safe center is slightly offset from current pos
+                const centerLat = lat - (Math.random() - 0.5) * 0.003;
+                const centerLng = lng - (Math.random() - 0.5) * 0.003;
+                const radius = Math.floor(Math.random() * 200) + 150; // 150-350m
+                
+                const distance = getDistanceMeters(lat, lng, centerLat, centerLng);
+                const isBreached = distance > radius;
+                
+                let rawStatus = isBreached ? 'BREACH' : 'NORMAL';
+                if(i===3) rawStatus = 'SOS'; // Force one SOS
+                
+                const inRedZone = isPointInPolygon(lat, lng, state.restrictedZone);
+                const clearance = (i % 4 === 0) ? 'A' : 'B'; // Some have access, most don't
+
+                let emp = {
+                    id: `C4-0${i}`,
+                    name: `كادر ميداني ${i}`,
+                    lat, lng, centerLat, centerLng, safeRadiusMeters: radius,
+                    distanceFromCenter: Math.round(distance),
+                    isBreached,
+                    inRedZone,
+                    clearance,
+                    hr: Math.floor(Math.random() * 50) + 70, // 70-120
+                    spo2: Math.floor(Math.random() * 8) + 92, // 92-99
+                    status: rawStatus
+                };
+
+                emps.push(calculateRiskFactors(emp));
+            }
+            return emps;
+        }
+
+        function fetchData() {
+            // Using mock data directly for immediate functionality without external API dependency
+            state.employees = generateMockData();
+            updateUI();
+            if(!document.getElementById('analyticsView').classList.contains('hidden')) {
+                renderAnalytics();
+            }
+        }
+
+        function setFilter(filter, el) {
+            state.activeFilter = filter;
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            updateUI();
+        }
+
+        function updateUI() {
+            const list = document.getElementById('employeeList');
+            list.innerHTML = '';
+            
+            let counts = { total: state.employees.length, normal: 0, breach: 0, sos: 0, security: 0 };
+
+            state.employees.forEach(emp => {
+                // Counts
+                if (emp.status === 'SOS') counts.sos++;
+                else if (emp.status === 'SECURITY_BREACH') counts.security++;
+                else if (emp.status === 'BREACH') counts.breach++;
+                else counts.normal++;
+
+                // Filters
+                if (state.activeFilter === 'SOS' && emp.status !== 'SOS') return;
+                if (state.activeFilter === 'SECURITY' && emp.status !== 'SECURITY_BREACH') return;
+                if (state.activeFilter === 'BREACH' && emp.status !== 'BREACH') return;
+
+                // Build Card
+                const card = document.createElement('div');
+                card.className = `employee-card ${state.selectedEmployeeId === emp.id ? 'active-focus' : ''}`;
+                card.onclick = () => openEmployeeModal(emp.id);
+
+                let badgeHtml = '<span class="badge normal">مستقر</span>';
+                let color = 'var(--normal)';
+                
+                if (emp.status === 'SOS') { badgeHtml = '<span class="badge sos">طوارئ SOS</span>'; color = 'var(--sos)'; }
+                else if (emp.status === 'SECURITY_BREACH') { badgeHtml = '<span class="badge security">اختراق أمني</span>'; color = 'var(--security)'; }
+                else if (emp.status === 'BREACH') { badgeHtml = '<span class="badge breach">خروج نطاق</span>'; color = 'var(--warning)'; }
+
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-weight:800;font-size:13.5px;">${emp.name}</span>
+                        ${badgeHtml}
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;font-size:11.5px;color:var(--text-secondary);">
+                        <div>التصريح الأمني: <b style="color:var(--text-primary)">الفئة ${emp.clearance}</b></div>
+                        <div>الخطر الشامل: <b style="color:${color}">${emp.riskScore}%</b></div>
+                    </div>
+                `;
+                list.appendChild(card);
+
+                // Update Map
+                updateMapGeofenceAndMarker(emp, color);
             });
 
-            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
-            if(chartsInstance.doughnut) chartsInstance.doughnut.destroy();
-            chartsInstance.doughnut = new Chart(doughnutCtx, {
-                type: 'doughnut',
+            document.getElementById('statTotal').innerText = counts.total;
+            document.getElementById('statSecurity').innerText = counts.security;
+            document.getElementById('statBreach').innerText = counts.breach;
+            document.getElementById('statSos').innerText = counts.sos;
+        }
+
+        function updateMapGeofenceAndMarker(emp, color) {
+            // 1. Employee Marker (Current Location)
+            if (state.markers[emp.id]) {
+                state.markers[emp.id].setLatLng([emp.lat, emp.lng]);
+                state.markers[emp.id].getElement().querySelector('div').style.background = color;
+                state.markers[emp.id].getElement().querySelector('div').style.boxShadow = `0 0 10px ${color}`;
+            } else {
+                const icon = L.divIcon({
+                    className: 'custom-pin',
+                    html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};transition:all 0.3s;"></div>`
+                });
+                const marker = L.marker([emp.lat, emp.lng], { icon }).addTo(state.map);
+                marker.on('click', () => openEmployeeModal(emp.id));
+                state.markers[emp.id] = marker;
+            }
+
+            // 2. Geofence Rendering (Center point + Radius Circle + Connection Line)
+            if (state.geofenceLayers[emp.id]) {
+                state.geofenceLayers[emp.id].circle.setLatLng([emp.centerLat, emp.centerLng]);
+                state.geofenceLayers[emp.id].line.setLatLngs([[emp.centerLat, emp.centerLng], [emp.lat, emp.lng]]);
+                state.geofenceLayers[emp.id].line.setStyle({ color: emp.isBreached ? '#EF4444' : '#334155' });
+            } else {
+                // The Safe Zone Boundary (Dashed)
+                const circle = L.circle([emp.centerLat, emp.centerLng], {
+                    color: '#38BDF8', fillColor: '#38BDF8', fillOpacity: 0.05, weight: 1.5, dashArray: '5, 8', radius: emp.safeRadiusMeters
+                }).addTo(state.map);
+                
+                // The Center Anchor Point
+                const centerAnchor = L.marker([emp.centerLat, emp.centerLng], {
+                    icon: L.divIcon({ className: 'geofence-center', iconSize: [8,8] })
+                }).addTo(state.map);
+
+                // Line connecting anchor to current position
+                const line = L.polyline([[emp.centerLat, emp.centerLng], [emp.lat, emp.lng]], {
+                    color: emp.isBreached ? '#EF4444' : '#334155', weight: 1.5, dashArray: '4, 4'
+                }).addTo(state.map);
+
+                state.geofenceLayers[emp.id] = { circle, centerAnchor, line };
+            }
+        }
+
+        function openEmployeeModal(id) {
+            const emp = state.employees.find(e => e.id === id);
+            if (!emp) return;
+            state.selectedEmployeeId = id;
+            
+            document.getElementById('modalAvatar').innerText = emp.name.substring(0, 3);
+            document.getElementById('modalName').innerText = emp.name;
+            document.getElementById('modalId').innerText = `ID: ${emp.id}`;
+            document.getElementById('modalClearance').innerText = `تصريح: ${emp.clearance}`;
+            
+            document.getElementById('modalRiskScoreText').innerText = `${emp.riskScore}%`;
+            document.getElementById('modalRiskScoreBar').style.width = `${emp.riskScore}%`;
+
+            let color = 'var(--normal)';
+            let analysis = "مستقر أمنياً وحيوياً. يقع ضمن النطاق الجغرافي المحدد.";
+            
+            if(emp.status === 'SOS') { color = 'var(--sos)'; analysis = "🚨 تم إطلاق إشارة استغاثة! يتطلب تدخلاً فورياً."; }
+            else if(emp.status === 'SECURITY_BREACH') { color = 'var(--security)'; analysis = "⚠️ اختراق أمني: يتواجد الموظف في منطقة محظورة بدون تصريح أمني مناسب (يحتاج فئة A)."; }
+            else if(emp.status === 'BREACH') { color = 'var(--warning)'; analysis = "تجاوز النطاق الجغرافي المسموح به. تم توجيه تنبيه آلي للعودة للقطاع."; }
+
+            document.getElementById('modalRiskScoreBar').style.background = color;
+            document.getElementById('modalRiskScoreText').style.color = color;
+            document.getElementById('modalRiskAnalysis').innerText = analysis;
+
+            document.getElementById('modalDistance').innerText = `${emp.distanceFromCenter} m`;
+            document.getElementById('modalRadius').innerText = `${emp.safeRadiusMeters} m`;
+            document.getElementById('modalGeofenceStatus').innerHTML = emp.isBreached 
+                ? `<span style="color:var(--warning)">خارج النطاق</span>` 
+                : `<span style="color:var(--normal)">داخل النطاق</span>`;
+
+            document.getElementById('modalRedZone').innerHTML = emp.inRedZone
+                ? `<span style="color:var(--security);font-weight:800;">نعم (داخل المنطقة)</span>`
+                : `لا`;
+
+            document.getElementById('employeeModal').classList.remove('hidden');
+            lucide.createIcons();
+            updateUI(); // refresh active card state
+        }
+
+        function closeEmployeeModal() {
+            document.getElementById('employeeModal').classList.add('hidden');
+            state.selectedEmployeeId = null;
+            updateUI();
+        }
+
+        function renderAnalytics() {
+            if(!state.employees.length) return;
+            
+            // Average Risk Factors across all employees
+            let avgFactors = { vitals: 0, geo: 0, security: 0, env: 0 };
+            state.employees.forEach(e => {
+                avgFactors.vitals += e.riskFactors.vitals;
+                avgFactors.geo += e.riskFactors.geo;
+                avgFactors.security += e.riskFactors.security;
+                avgFactors.env += e.riskFactors.env;
+            });
+            const len = state.employees.length;
+
+            Chart.defaults.color = '#94A3B8';
+            Chart.defaults.font.family = "'IBM Plex Sans Arabic', sans-serif";
+
+            // 1. Radar Chart (Multi-dimensional Risk)
+            const ctxRadar = document.getElementById('radarChart').getContext('2d');
+            if(state.radarChart) state.radarChart.destroy();
+            state.radarChart = new Chart(ctxRadar, {
+                type: 'radar',
                 data: {
-                    labels: ['جاهز للعمل', 'غير متاح/طوارئ'],
+                    labels: ['العلامات الحيوية', 'الانضباط الجغرافي', 'الأمن والتصاريح', 'البيئة والطقس'],
                     datasets: [{
-                        data: [normCount, warnCount + sosCount],
-                        backgroundColor: ['#33C7F4', '#2E3D56'],
-                        borderWidth: 0,
-                        cutout: '75%'
+                        label: 'متوسط أبعاد الخطر للميدان',
+                        data: [avgFactors.vitals/len, avgFactors.geo/len, avgFactors.security/len, avgFactors.env/len],
+                        backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                        borderColor: '#38BDF8',
+                        pointBackgroundColor: '#38BDF8',
+                        borderWidth: 2
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: {
+                    scales: { r: { angleLines: { color: '#334155' }, grid: { color: '#334155' }, pointLabels: { font: { size: 12 } }, ticks: { display: false, max: 40 } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // 2. Line Chart (Predictive Fatigue based on HR and Temp)
+            const ctxLine = document.getElementById('fatigueChart').getContext('2d');
+            if(state.fatigueChart) state.fatigueChart.destroy();
+            
+            // Mocking a time series for fatigue progression
+            const timeLabels = ['08:00', '10:00', '12:00', '14:00 (ذروة الحر)', '16:00', 'الآن'];
+            const fatigueData = [10, 25, 45, 80, 75, 65]; // Base curve + heat impact
+
+            state.fatigueChart = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'معدل الإرهاق التراكمي (%)',
+                        data: fatigueData,
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { grid: { color: '#334155' }, max: 100 },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
             });
         }
 
-        // ==========================================
-        // Gemini AI API (المصلح والمحدث للاتصال بـ v1beta)
-        // ==========================================
-        function initAIModule() {
-            const aiToggleBtn = document.getElementById('aiToggleBtn');
-            const aiChatBox = document.getElementById('aiChatBox');
-            const aiCloseBtn = document.getElementById('aiCloseBtn');
-            const aiSendBtn = document.getElementById('aiSendBtn');
-            const aiInput = document.getElementById('aiInput');
-            const apiKeyInput = document.getElementById('geminiApiKeyInput');
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            lucide.createIcons();
 
-            if (localStorage.getItem('gemini_api_key')) apiKeyInput.value = localStorage.getItem('gemini_api_key');
+            document.getElementById('manualRefreshBtn').onclick = fetchData;
 
-            aiToggleBtn.addEventListener('click', () => aiChatBox.classList.toggle('hidden'));
-            aiCloseBtn.addEventListener('click', () => aiChatBox.classList.add('hidden'));
-            aiSendBtn.addEventListener('click', handleAISend);
-            aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAISend(); });
-        }
-
-        async function fetchGeminiAPI(apiKey, promptText) {
-            // محاولة أولية باستخدام النموذج السريع المعتمد v1beta
-            const primaryEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const fallbackEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-            const payload = {
-                contents: [{
-                    parts: [{ text: promptText }]
-                }]
+            document.getElementById('tabMapBtn').onclick = () => {
+                document.getElementById('mapView').classList.remove('hidden');
+                document.getElementById('analyticsView').classList.add('hidden');
+                document.getElementById('tabMapBtn').classList.add('active');
+                document.getElementById('tabAnalyticsBtn').classList.remove('active');
+                state.map.invalidateSize();
             };
 
-            let response = await fetch(primaryEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            document.getElementById('tabAnalyticsBtn').onclick = () => {
+                document.getElementById('mapView').classList.add('hidden');
+                document.getElementById('analyticsView').classList.remove('hidden');
+                document.getElementById('tabAnalyticsBtn').classList.add('active');
+                document.getElementById('tabMapBtn').classList.remove('active');
+                renderAnalytics();
+            };
 
-            // إذا فشل النموذج الجديد للطلب الحالي، نستخدم المسار المباشر المضمون
-            if (!response.ok) {
-                response = await fetch(fallbackEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            }
+            fetchData();
+            // Auto refresh simulation every 10 seconds
+            setInterval(fetchData, 10000);
+        });
+    </script>
+</body>
+</html>click = () => {
+                document.getElementById('mapView').classList.add('hidden');
+                document.getElementById('analyticsView').classList.remove('hidden');
+                document.getElementById('tabAnalyticsBtn').classList.add('active');
+                document.getElementById('tabMapBtn').classList.remove('active');
+                renderAnalytics();
+            };
 
-            return response;
-        }
-
-        async function handleAISend() {
-            const aiInput = document.getElementById('aiInput');
-            const aiMessages = document.getElementById('aiMessages');
-            const apiKeyInput = document.getElementById('geminiApiKeyInput');
-            const query = aiInput.value.trim();
-            const apiKey = apiKeyInput.value.trim();
-
-            if (!query) return;
-            if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
-
-            aiMessages.innerHTML += `<div class="ai-msg user">${query}</div>`;
-            aiInput.value = '';
-            aiMessages.scrollTop = aiMessages.scrollHeight;
-
-            if (!apiKey) {
-                aiMessages.innerHTML += `<div class="ai-msg bot" style="border-color:var(--warning);">يرجى أدخال مفتاح Gemini API في الخانة أعلاه.</div>`;
-                aiMessages.scrollTop = aiMessages.scrollHeight; 
-                return;
-            }
-
-            const loadingId = 'loading-' + Date.now();
-            aiMessages.innerHTML += `<div id="${loadingId}" class="ai-msg bot">جاري تحليل الميدان والإجابة...</div>`;
-            aiMessages.scrollTop = aiMessages.scrollHeight;
-
-            const context = `إجمالي الموظفين: ${employeesData.length} | حالات الطوارئ: ${employeesData.filter(e=>e.status==='SOS').length}`;
-            const promptText = `أنت المساعد الأمني الذكي في مركز المراقبة. أجب باختصار باللغة العربية.\nبيانات الميدان الحالية: [${context}]\n\nسؤال المشرف: ${query}`;
-
-            try {
-                const response = await fetchGeminiAPI(apiKey, promptText);
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error?.message || "خطأ في المصادقة أو المفتاح.");
-                }
-
-                const reply = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot">${reply}</div>`;
-            } catch (err) {
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot" style="color:var(--sos);">❌ خطأ أثناء الاتصال بالذكاء الاصطناعي:<br><small>${err.message}</small></div>`;
-            }
-            aiMessages.scrollTop = aiMessages.scrollHeight;
-        }
+            fetchData();
+            // Auto refresh simulation every 10 seconds
+            setInterval(fetchData, 10000);
+        });
     </script>
 </body>
 </html>
