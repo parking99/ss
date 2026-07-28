@@ -3,282 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>غرفة العمليات والمراقبة الأمنية</title>
+    <title>مركز القيادة والمراقبة الأمنية الذكي</title>
 
-    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- Leaflet MarkerCluster -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-
-    <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Icons -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Fonts: Cairo for display/numbers, IBM Plex Sans Arabic for body copy, JetBrains Mono for telemetry -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-void: #060911;
-            --bg-page: #0A0F19;
-            --bg-panel: #101827;
-            --bg-subtle: #0B121E;
-            --bg-elevated: #16202F;
-            --border-soft: #202C40;
-            --border-strong: #2E3D56;
-            --text-primary: #EAF0FB;
-            --text-secondary: #8291A8;
-            --text-muted: #4F5E76;
-            --navy: #3E8EDE;
-            --navy-soft: rgba(62,142,222,0.12);
-            --accent: #33C7F4;
-            --accent-soft: rgba(51,199,244,0.12);
-            --normal: #22D488;
-            --normal-soft: rgba(34,212,136,0.12);
-            --warning: #F5A623;
-            --warning-soft: rgba(245,166,35,0.14);
-            --sos: #FF3B4E;
-            --sos-soft: rgba(255,59,78,0.16);
-            --offline: #64748B;
-            --offline-soft: rgba(100,116,139,0.14);
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
-            --shadow-md: 0 16px 40px rgba(0,0,0,0.55);
+            --bg-void: #060911; --bg-page: #0A0F19; --bg-panel: #101827; --bg-subtle: #0B121E; --bg-elevated: #16202F;
+            --border-soft: #202C40; --border-strong: #2E3D56;
+            --text-primary: #EAF0FB; --text-secondary: #8291A8; --text-muted: #4F5E76;
+            --navy: #3E8EDE; --navy-soft: rgba(62,142,222,0.12);
+            --accent: #33C7F4; --accent-soft: rgba(51,199,244,0.12);
+            --normal: #22D488; --normal-soft: rgba(34,212,136,0.12);
+            --warning: #F5A623; --warning-soft: rgba(245,166,35,0.14);
+            --sos: #FF3B4E; --sos-soft: rgba(255,59,78,0.16);
+            --offline: #64748B; --offline-soft: rgba(100,116,139,0.14);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.35); --shadow-md: 0 16px 40px rgba(0,0,0,0.55);
         }
-
-        * { font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
+        * { box-sizing: border-box; font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
         .font-display { font-family: 'Cairo', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; direction: ltr; unicode-bidi: isolate; }
-
+        html, body { margin: 0; padding: 0; }
         body {
-            background-color: var(--bg-void);
-            color: var(--text-primary);
-            background-image:
-                linear-gradient(var(--bg-page), var(--bg-page)),
+            background-color: var(--bg-void); color: var(--text-primary);
+            background-image: linear-gradient(var(--bg-page), var(--bg-page)),
                 repeating-linear-gradient(0deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px),
                 repeating-linear-gradient(90deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px);
         }
-
-        #map {
-            height: 100%;
-            width: 100%;
-            border-radius: 1rem;
-            z-index: 1;
-            background: var(--bg-subtle) !important;
-        }
-        .leaflet-control-zoom a {
-            background-color: var(--bg-panel) !important;
-            color: var(--text-primary) !important;
-            border-color: var(--border-soft) !important;
-        }
-        .leaflet-control-zoom a:hover { color: var(--accent) !important; }
-        .leaflet-control-layers {
-            background-color: var(--bg-panel) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border-soft) !important;
-            box-shadow: var(--shadow-md) !important;
-        }
-        .leaflet-control-layers-expanded { color: var(--text-primary) !important; }
-        .leaflet-popup-content-wrapper {
-            background-color: var(--bg-elevated) !important;
-            color: var(--text-primary) !important;
-            border-radius: 0.75rem !important;
-            border: 1px solid var(--border-soft);
-            box-shadow: var(--shadow-md) !important;
-        }
-        .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
-        .leaflet-container a.leaflet-popup-close-button { color: var(--text-muted) !important; }
-
-        /* Map marker pins */
-        .gps-pin {
-            width: 24px; height: 24px;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            border: 2.5px solid var(--bg-void);
-            position: relative;
-        }
-        .gps-pin.normal { background-color: var(--normal); box-shadow: 0 0 0 3px rgba(34,212,136,0.25), 0 2px 8px rgba(0,0,0,0.5); }
-        .gps-pin.warning { background-color: var(--warning); box-shadow: 0 0 0 3px rgba(245,166,35,0.28), 0 2px 8px rgba(0,0,0,0.5); }
-        .gps-pin.sos { background-color: var(--sos); box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 2px 8px rgba(0,0,0,0.5); animation: pulse-marker 1s infinite; }
-        .gps-pin.offline { background-color: var(--offline); box-shadow: 0 0 0 3px rgba(100,116,139,0.22), 0 2px 8px rgba(0,0,0,0.5); }
-        .gps-pin.resolving { background-color: var(--accent); box-shadow: 0 0 0 3px rgba(51,199,244,0.3), 0 2px 8px rgba(0,0,0,0.5); }
-        @keyframes pulse-marker {
-            0% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0.55); }
-            70% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 16px rgba(255,59,78,0); }
-            100% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0); }
-        }
-
-        .employee-card {
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border-soft);
-            border-inline-start: 3px solid var(--border-soft);
-            border-radius: 0.7rem;
-            padding: 0.8rem 0.9rem;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-        .employee-card:hover { border-color: var(--accent); border-inline-start-color: var(--accent); background-color: var(--bg-elevated); }
-        .employee-card.active-focus {
-            border-color: var(--accent);
-            border-inline-start-color: var(--accent);
-            background-color: var(--accent-soft);
-            box-shadow: 0 0 0 1px rgba(51,199,244,0.25);
-        }
-        .employee-card.st-sos { border-inline-start-color: var(--sos); }
-        .employee-card.st-warning { border-inline-start-color: var(--warning); }
-        .employee-card.st-normal { border-inline-start-color: var(--normal); }
-        .employee-card.st-offline { border-inline-start-color: var(--offline); opacity: 0.75; }
-        .employee-card.st-resolving { border-inline-start-color: var(--accent); }
-
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-        .status-dot.normal { background-color: var(--normal); box-shadow: 0 0 6px rgba(34,212,136,0.7); }
-        .status-dot.warning { background-color: var(--warning); box-shadow: 0 0 6px rgba(245,166,35,0.7); }
-        .status-dot.sos { background-color: var(--sos); box-shadow: 0 0 6px rgba(255,59,78,0.8); animation: ping-dot 1s infinite; }
-        .status-dot.offline { background-color: var(--offline); }
-        .status-dot.resolving { background-color: var(--accent); box-shadow: 0 0 6px rgba(51,199,244,0.75); }
-        @keyframes ping-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
-
-        .badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: 0.3px; font-family: 'Cairo', sans-serif; }
-        .badge.normal { background: var(--normal-soft); color: var(--normal); }
-        .badge.warning { background: var(--warning-soft); color: var(--warning); }
-        .badge.sos { background: var(--sos); color: #1a0405; }
-        .badge.offline { background: var(--offline-soft); color: var(--offline); }
-        .badge.resolving { background: var(--accent-soft); color: var(--accent); }
-
-        .chip {
-            font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
-            border: 1px solid var(--border-soft); background: var(--bg-panel); color: var(--text-secondary);
-            cursor: pointer; transition: all 0.15s ease; white-space: nowrap;
-        }
-        .chip:hover { border-color: var(--accent); color: var(--accent); }
-        .chip.active { background: var(--accent); color: #04222c; border-color: var(--accent); }
-        .chip:disabled, button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        .stab {
-            flex: 1; text-align: center; font-size: 11px; font-weight: 600; padding: 8px 4px;
-            border-radius: 0.6rem; border: 1px solid transparent; cursor: pointer; transition: all 0.15s ease;
-            color: var(--text-secondary); background: var(--bg-subtle);
-        }
-        .stab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-
-        .refreshing { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        /* Title pulse + tactical scan ring signature */
-        .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); }
-        .live-pulse::after {
-            content: ''; position: absolute; inset: -3px; border-radius: 50%;
-            border: 1.5px solid rgba(34,212,136,0.55);
-            animation: livepulse 2s ease-out infinite;
-        }
-        @keyframes livepulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; } }
-        .live-pulse.sos { background: var(--sos); }
-        .live-pulse.sos::after { border-color: rgba(255,59,78,0.65); animation: livepulse-sos 1s ease-out infinite; }
-        @keyframes livepulse-sos { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
-
-        .scan-ring { position: relative; }
-        .scan-ring::before {
-            content: ''; position: absolute; inset: -6px; border-radius: 50%;
-            background: conic-gradient(from 0deg, transparent 0%, rgba(255,59,78,0.9) 8%, transparent 20%);
-            animation: scan-spin 1.6s linear infinite;
-        }
-        @keyframes scan-spin { to { transform: rotate(360deg); } }
-
-        input:focus-visible, button:focus-visible, .employee-card:focus-visible {
-            outline: 2px solid var(--accent); outline-offset: 2px;
-        }
-
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
         ::-webkit-scrollbar-track { background: transparent; }
 
-        @media (prefers-reduced-motion: reduce) {
-            .live-pulse::after, .gps-pin.sos, .status-dot.sos, .refreshing, .scan-ring::before { animation: none !important; }
-        }
+        #map { height: 100%; width: 100%; z-index: 1; background: var(--bg-subtle); }
+        .leaflet-control-zoom a { background-color: var(--bg-panel) !important; color: var(--text-primary) !important; border-color: var(--border-soft) !important; }
+        .leaflet-control-zoom a:hover { color: var(--accent) !important; }
+        .leaflet-control-layers { background-color: var(--bg-panel) !important; color: var(--text-primary) !important; border: 1px solid var(--border-soft) !important; box-shadow: var(--shadow-md) !important; }
+        .leaflet-control-layers-expanded { color: var(--text-primary) !important; }
+        .leaflet-popup-content-wrapper { background-color: var(--bg-elevated) !important; color: var(--text-primary) !important; border-radius: 0.75rem !important; border: 1px solid var(--border-soft); box-shadow: var(--shadow-md) !important; }
+        .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
+        .leaflet-container a.leaflet-popup-close-button { color: var(--text-muted) !important; }
 
-        /* أدوات الخريطة الإضافية */
-        .map-tool-btn {
-            position: absolute; z-index: 15; background: var(--bg-panel); border: 1px solid var(--border-soft);
-            border-radius: 0.6rem; box-shadow: var(--shadow-sm); padding: 0.55rem; cursor: pointer; color: var(--text-secondary);
-            transition: all .15s ease;
-        }
+        @keyframes pulseMarker { 0% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0.55); } 70% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 16px rgba(255,59,78,0); } 100% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0); } }
+        @keyframes pingDot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes livePulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
+        @keyframes livePulseSos { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(3.2); opacity: 0; } }
+        @keyframes spinCw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .live-pulse { position: relative; width: 11px; height: 11px; border-radius: 50%; background: var(--normal); }
+        .live-pulse::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid rgba(34,212,136,0.55); animation: livePulse 2s ease-out infinite; }
+        .live-pulse.sos { background: var(--sos); }
+        .live-pulse.sos::after { border-color: rgba(255,59,78,0.65); animation: livePulseSos 1s ease-out infinite; }
+
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; letter-spacing: .3px; font-family: 'Cairo', sans-serif; }
+        .chip { font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-soft); background: var(--bg-panel); color: var(--text-secondary); cursor: pointer; transition: all .15s ease; white-space: nowrap; }
+        .chip:hover { border-color: var(--accent); color: var(--accent); }
+        .chip.active { background: var(--accent); color: #04222c; border-color: var(--accent); }
+        .chip:disabled, button:disabled { opacity: .4; cursor: not-allowed; }
+
+        .stab { flex: 1; text-align: center; font-size: 11px; font-weight: 600; padding: 8px 4px; border-radius: .6rem; border: 1px solid transparent; cursor: pointer; transition: all .15s ease; color: var(--text-secondary); background: var(--bg-subtle); }
+        .stab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+        .view-tab { padding: 9px 20px; border-radius: 10px 10px 0 0; border: 1px solid var(--border-soft); border-bottom: none; font-size: 13px; font-weight: 700; cursor: pointer; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        .view-tab.active { background: var(--bg-panel); color: var(--accent); }
+
+        .employee-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-inline-start: 3px solid var(--border-soft); border-radius: .7rem; padding: .8rem .9rem; cursor: pointer; transition: all .15s ease; }
+        .employee-card:hover { border-color: var(--accent); border-inline-start-color: var(--accent); background: var(--bg-elevated); }
+        .employee-card.active-focus { border-color: var(--accent); border-inline-start-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px rgba(51,199,244,.25); }
+
+        .map-tool-btn { background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 9px; box-shadow: var(--shadow-sm); padding: 9px; cursor: pointer; color: var(--text-secondary); display: flex; transition: all .15s ease; }
         .map-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
-        #fitAllBtn { top: 12px; right: 12px; }
-        .marker-cluster-custom {
-            background: rgba(16,24,39,0.92); color: var(--accent); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 12px; font-family: 'JetBrains Mono', monospace;
-            border: 2px solid var(--accent);
-            box-shadow: 0 0 12px rgba(51,199,244,0.35);
-        }
-        .gps-stale-badge {
-            font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
-            background: var(--offline-soft); color: var(--offline); white-space: nowrap;
-        }
-        .accuracy-good { color: var(--normal); }
-        .accuracy-mid { color: var(--warning); }
-        .accuracy-bad { color: var(--sos); }
+        .map-tool-btn.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+        .map-tool-btn.heat-on { border-color: var(--sos); background: var(--sos-soft); color: var(--sos); }
 
-        .insight-bar {
-            display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 0.7rem;
-            border: 1px solid var(--border-soft); background: var(--bg-panel); font-size: 12px;
-        }
+        .sparkline { display: block; overflow: visible; }
+        .marker-cluster-custom { width: 38px; height: 38px; border-radius: 50%; background: rgba(16,24,39,.92); border: 2px solid var(--accent); box-shadow: 0 0 12px rgba(51,199,244,.35); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--accent); }
 
+        .an-card { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border-soft); background: var(--bg-panel); }
+        .fatigue-bar-wrap { flex: 1; height: 8px; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; }
+        .fatigue-bar-fill { height: 100%; border-radius: 999px; }
         .log-entry { display: flex; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--border-soft); font-size: 11.5px; }
         .log-entry:last-child { border-bottom: none; }
         .log-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
 
-        .sparkline { display: block; overflow: visible; }
+        input:focus-visible, button:focus-visible, .employee-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .hidden { display: none !important; }
+        @media (prefers-reduced-motion: reduce) { .live-pulse::after, .refreshing { animation: none !important; } }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body style="height:100vh;width:100%;display:flex;flex-direction:column;overflow:hidden;">
 
     <!-- Header -->
-    <header class="flex flex-col md:flex-row justify-between items-center gap-3 px-4 py-3 z-40 border-b" style="background: var(--bg-panel); border-color: var(--border-soft);">
-        <div class="flex items-center gap-3">
-            <div class="p-2.5 rounded-xl border" style="background: var(--navy-soft); color: var(--navy); border-color: var(--border-soft);">
-                <i data-lucide="shield-check" class="w-6 h-6"></i>
+    <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--navy-soft);color:var(--navy);display:flex;">
+                <i data-lucide="shield-check" style="width:24px;height:24px;"></i>
             </div>
             <div>
-                <h1 class="text-lg font-bold font-display flex items-center gap-2" style="color: var(--text-primary);">
+                <h1 class="font-display" style="margin:0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
                     <span id="headerPulse" class="live-pulse"></span>
-                    مركز المراقبة والأمان المباشر
+                    مركز القيادة والمراقبة الأمنية الذكي
                 </h1>
-                <p class="text-xs flex items-center gap-1.5" style="color: var(--text-secondary);">
-                    <span id="systemStatusChip" class="badge normal">تشغيل طبيعي</span>
-                    تتبع حي عبر أجهزة الرصد الميدانية · آخر تحديث
-                    <span id="lastUpdateTime" class="font-semibold font-mono" style="color: var(--text-primary);">--:--:--</span>
-                    <span id="connectionErrorBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-bold animate-pulse" style="background: var(--sos-soft); color: var(--sos);">اتصال غير مستقر</span>
+                <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--text-secondary);">
+                    <span id="systemChip" class="badge normal">تشغيل طبيعي</span>
+                    تتبع حي بالذكاء التحليلي · آخر تحديث
+                    <span id="lastUpdateTime" class="font-mono" style="font-weight:700;color:var(--text-primary);">--:--:--</span>
+                    <span id="connectionErrorBadge" class="hidden" style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:var(--sos-soft);color:var(--sos);">اتصال غير مستقر</span>
                 </p>
             </div>
         </div>
 
-        <div class="flex items-center gap-2.5 w-full md:w-auto overflow-x-auto">
-            <div id="liveClock" class="font-mono text-sm font-semibold px-3 py-1.5 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--accent);">--:--:--</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div id="liveClock" class="font-mono" style="font-size:14px;font-weight:700;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--accent);">--:--:--</div>
 
-            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                <i data-lucide="link" class="w-4 h-4" style="color: var(--text-muted);"></i>
-                <input type="password" id="apiUrlInput" class="bg-transparent outline-none w-40 md:w-64 text-xs" style="color: var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbxQO7RjW_Wxqviuizlk2bOJyqNxvbIuiTPFJhiAHgiIFgQikS7mOHfFQJW0lZhqsuGjwg/exec">
-                <button id="toggleUrlVisibilityBtn" class="flex-shrink-0" style="color: var(--text-muted);" aria-label="إظهار الرابط" type="button">
-                    <i data-lucide="eye" class="w-4 h-4"></i>
-                </button>
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);font-size:11px;">
+                <i data-lucide="link" style="width:14px;height:14px;color:var(--text-muted);"></i>
+                <input type="password" id="apiUrlInput" style="background:transparent;outline:none;border:none;width:200px;font-size:11px;color:var(--text-primary);" placeholder="رابط الـ API..." value="https://script.google.com/macros/s/AKfycbyU6-3zlytVBxthPtVQU3qlMsZuksauuMqtPUF32pMvKM18fCqoxLg9q6hyH1qgSw/exec">
+                <button id="toggleUrlVisibilityBtn" type="button" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;display:flex;"><i data-lucide="eye" style="width:14px;height:14px;"></i></button>
             </div>
 
-            <!-- الصوت للمركز -->
-            <button id="muteAlarmBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none transition-colors" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-primary);" title="كتم / تفعيل التنبيه الصوتي للمركز">
-                <i id="muteIcon" data-lucide="volume-2" class="w-4 h-4" style="color: var(--normal);"></i>
-                <span id="muteText" class="font-medium">التنبيه الصوتي نشط</span>
+            <button id="muteAlarmBtn" type="button" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-primary);font-size:11px;cursor:pointer;">
+                <i id="muteIcon" data-lucide="volume-2" style="width:15px;height:15px;color:var(--normal);"></i>
+                <span id="muteText">التنبيه الصوتي نشط</span>
             </button>
 
-            <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs cursor-pointer select-none" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                <input type="checkbox" id="autoRefreshToggle" checked class="rounded" style="accent-color: var(--accent);">
-                <span>تحديث تلقائي كل:</span>
-                <select id="refreshRateSelect" class="bg-transparent border-0 font-bold focus:outline-none cursor-pointer text-xs" style="color: var(--text-primary);">
+            <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);font-size:11px;cursor:pointer;">
+                <input type="checkbox" id="autoRefreshToggle" checked style="accent-color:var(--accent);">
+                <span>تحديث كل:</span>
+                <select id="refreshRateSelect" style="background:transparent;border:none;font-weight:700;color:var(--text-primary);font-size:11px;cursor:pointer;">
                     <option value="3000" style="color:#000;">3 ثوانٍ</option>
                     <option value="10000" style="color:#000;">10 ثوانٍ</option>
                     <option value="15000" style="color:#000;" selected>15 ثانية</option>
@@ -286,57 +146,42 @@
                 </select>
             </label>
 
-            <!-- زر التحديث اليدوي -->
-            <button id="manualRefreshBtn" class="p-1.5 rounded-lg border transition-colors flex-shrink-0" style="background: var(--bg-subtle); border-color: var(--border-soft); color: var(--text-secondary);" title="تحديث يدوي الآن">
-                <i id="refreshIndicator" data-lucide="rotate-cw" class="w-4 h-4 flex-shrink-0"></i>
+            <button id="manualRefreshBtn" type="button" style="padding:8px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-secondary);cursor:pointer;display:flex;">
+                <i id="refreshIndicator" data-lucide="rotate-cw" style="width:15px;height:15px;"></i>
             </button>
         </div>
     </header>
 
-    <!-- Main -->
-    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden p-3 gap-3">
+    <!-- View tabs -->
+    <div style="display:flex;gap:10px;padding:10px 16px 0;">
+        <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية</button>
+        <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>التحليلات الذكية</button>
+    </div>
+
+    <div style="flex:1;display:flex;overflow:hidden;padding:0 16px 16px;gap:12px;border-top:1px solid var(--border-soft);background:var(--bg-page);">
 
         <!-- Sidebar -->
-        <aside class="w-full lg:w-80 flex flex-col gap-3 h-full overflow-hidden">
+        <aside style="width:340px;min-width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;padding-top:12px;">
 
-            <!-- KPIs -->
-            <div class="grid grid-cols-5 gap-1.5 p-2.5 rounded-xl border" style="background: var(--bg-panel); border-color: var(--border-soft);">
-                <div class="text-center">
-                    <span class="block text-[9px]" style="color: var(--text-muted);">الكل</span>
-                    <span id="statTotal" class="font-bold text-sm font-mono" style="color: var(--text-primary);">0</span>
-                </div>
-                <div class="text-center">
-                    <span class="block text-[9px]" style="color: var(--text-muted);">طبيعي</span>
-                    <span id="statNormal" class="font-bold text-sm font-mono" style="color: var(--normal);">0</span>
-                </div>
-                <div class="text-center">
-                    <span class="block text-[9px]" style="color: var(--text-muted);">تحذير</span>
-                    <span id="statWarning" class="font-bold text-sm font-mono" style="color: var(--warning);">0</span>
-                </div>
-                <div class="text-center">
-                    <span class="block text-[9px]" style="color: var(--text-muted);">SOS</span>
-                    <span id="statSos" class="font-bold text-sm font-mono" style="color: var(--sos);">0</span>
-                </div>
-                <div class="text-center">
-                    <span class="block text-[9px]" style="color: var(--text-muted);">حوادث اليوم</span>
-                    <span id="statIncidents" class="font-bold text-sm font-mono" style="color: var(--accent);">0</span>
-                </div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);">
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">الكل</span><span id="statTotal" class="font-mono" style="font-weight:800;font-size:14px;color:var(--text-primary);">0</span></div>
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">طبيعي</span><span id="statNormal" class="font-mono" style="font-weight:800;font-size:14px;color:var(--normal);">0</span></div>
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">تحذير</span><span id="statWarning" class="font-mono" style="font-weight:800;font-size:14px;color:var(--warning);">0</span></div>
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">SOS</span><span id="statSos" class="font-mono" style="font-weight:800;font-size:14px;color:var(--sos);">0</span></div>
+                <div style="text-align:center;"><span style="display:block;font-size:9px;color:var(--text-muted);">خطر مرتفع</span><span id="statRisk" class="font-mono" style="font-weight:800;font-size:14px;color:var(--accent);">0</span></div>
             </div>
 
-            <!-- Smart insight bar -->
-            <div id="insightBar" class="insight-bar">
-                <i data-lucide="activity" class="w-4 h-4 flex-shrink-0" style="color: var(--normal);"></i>
-                <span id="insightText" style="color: var(--text-secondary);">جاري تحليل الوضع الميداني...</span>
+            <div id="insightBar" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);font-size:11.5px;line-height:1.6;">
+                <i data-lucide="activity" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;color:var(--normal);"></i>
+                <span id="insightText" style="color:var(--text-secondary);">جاري تحليل الوضع الميداني...</span>
             </div>
 
-            <!-- Search -->
-            <div class="relative">
-                <i data-lucide="search" class="w-4 h-4 absolute right-3 top-2.5" style="color: var(--text-muted);"></i>
-                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full rounded-xl pr-9 pl-3 py-2 text-xs outline-none border" style="background: var(--bg-panel); border-color: var(--border-soft); color: var(--text-primary);">
+            <div style="position:relative;">
+                <i data-lucide="search" style="width:15px;height:15px;position:absolute;right:11px;top:10px;color:var(--text-muted);"></i>
+                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." style="width:100%;border-radius:10px;padding:9px 36px 9px 12px;font-size:12px;outline:none;border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-primary);">
             </div>
 
-            <!-- Status filter chips -->
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5" id="filterChips">
+            <div id="filterChips" style="display:flex;align-items:center;gap:6px;overflow-x:auto;">
                 <button class="chip active" data-filter="ALL">الكل</button>
                 <button class="chip" data-filter="SOS">SOS</button>
                 <button class="chip" data-filter="WARNING">تحذير</button>
@@ -344,1009 +189,987 @@
                 <button class="chip" data-filter="OFFLINE">غير متصل</button>
             </div>
 
-            <!-- Sidebar tabs: employees / activity log -->
-            <div class="flex gap-1.5" id="sidebarTabs">
-                <button class="stab active" data-tab="list"><i data-lucide="users" class="w-3.5 h-3.5 inline-block ml-1"></i>الموظفون</button>
-                <button class="stab" data-tab="log"><i data-lucide="list-tree" class="w-3.5 h-3.5 inline-block ml-1"></i>سجل الأحداث</button>
+            <div id="sidebarTabs" style="display:flex;gap:6px;">
+                <button class="stab active" data-tab="list"><i data-lucide="users" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-left:4px;"></i>الموظفون</button>
+                <button class="stab" data-tab="log"><i data-lucide="list-tree" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-left:4px;"></i>سجل الأحداث</button>
             </div>
 
-            <!-- Employee list -->
-            <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="employeeList">
-                <div class="text-center py-10 text-xs" style="color: var(--text-muted);">جاري جلب بيانات الموظفين...</div>
+            <div id="employeeList" style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
+                <div style="text-align:center;padding:40px 0;font-size:12px;color:var(--text-muted);">جاري جلب بيانات الموظفين...</div>
             </div>
-
-            <!-- Activity log -->
-            <div class="hidden flex-1 overflow-y-auto pr-1 rounded-xl border p-2" id="activityLogPanel" style="background: var(--bg-panel); border-color: var(--border-soft);">
-                <div class="text-center py-10 text-xs" style="color: var(--text-muted);">لا توجد أحداث مسجلة بعد.</div>
+            <div id="activityLogPanel" class="hidden" style="flex:1;overflow-y:auto;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);padding:8px;">
+                <div style="text-align:center;padding:40px 0;font-size:12px;color:var(--text-muted);">لا توجد أحداث مسجلة بعد.</div>
             </div>
         </aside>
 
-        <!-- Map -->
-        <main class="flex-1 relative h-full flex flex-col">
-            <div id="map" class="shadow-inner border" style="border-color: var(--border-soft);"></div>
+        <!-- Main -->
+        <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;padding-top:12px;overflow:hidden;">
 
-            <button id="fitAllBtn" class="map-tool-btn" title="تكبير لعرض جميع الموظفين" type="button">
-                <i data-lucide="maximize" class="w-4 h-4"></i>
-            </button>
+            <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft);">
+                <div id="map"></div>
 
-            <!-- Detail panel -->
-            <div id="detailPanel" class="hidden absolute bottom-4 right-4 left-4 md:left-auto md:w-96 backdrop-blur border p-4 rounded-2xl z-20 transition-all duration-300" style="background: rgba(16,24,39,0.97); border-color: var(--border-soft); box-shadow: var(--shadow-md);">
-                <div class="flex justify-between items-start mb-3 border-b pb-2" style="border-color: var(--border-soft);">
-                    <div class="flex items-center gap-2">
-                        <span id="detailStatusDot" class="status-dot normal"></span>
-                        <div>
-                            <h3 id="detailName" class="font-bold text-base font-display" style="color: var(--text-primary);">اسم الموظف</h3>
-                            <span id="detailId" class="text-xs font-mono" style="color: var(--text-muted);">#ID</span>
+                <div style="position:absolute;top:12px;left:12px;z-index:15;display:flex;flex-direction:column;gap:6px;">
+                    <button id="fitAllBtn" class="map-tool-btn" type="button" title="تكبير لعرض جميع الموظفين"><i data-lucide="maximize" style="width:16px;height:16px;"></i></button>
+                    <button id="toggleGeofenceBtn" class="map-tool-btn on" type="button" title="طبقة المناطق الجغرافية"><i data-lucide="shield" style="width:16px;height:16px;"></i></button>
+                    <button id="toggleWeatherBtn" class="map-tool-btn on" type="button" title="طبقة الطقس"><i data-lucide="cloud-sun" style="width:16px;height:16px;"></i></button>
+                    <button id="toggleHeatBtn" class="map-tool-btn heat-on" type="button" title="طبقة كثافة الحوادث"><i data-lucide="flame" style="width:16px;height:16px;"></i></button>
+                    <button id="toggleTrailsBtn" class="map-tool-btn on" type="button" title="مسار الموظف المحدد"><i data-lucide="route" style="width:16px;height:16px;"></i></button>
+                </div>
+
+                <div id="weatherWidget" class="hidden" style="position:absolute;top:12px;left:60px;z-index:15;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;background:rgba(16,24,39,.92);border:1px solid var(--border-soft);font-size:12px;">
+                    <i id="weatherIcon" data-lucide="cloud" style="width:16px;height:16px;color:var(--accent);"></i>
+                    <span id="weatherTemp" class="font-mono" style="color:var(--text-primary);font-weight:700;">--</span>
+                    <span id="weatherLabel" style="color:var(--text-secondary);">--</span>
+                    <span id="weatherWind" style="color:var(--text-muted);">--</span>
+                </div>
+                <div id="rainOverlay" class="hidden" style="position:absolute;inset:0;z-index:10;pointer-events:none;background:linear-gradient(rgba(51,199,244,0.05),rgba(51,199,244,0.09));"></div>
+
+                <div id="detailPanel" class="hidden" style="position:absolute;bottom:16px;right:16px;width:380px;max-height:calc(100% - 32px);overflow-y:auto;backdrop-filter:blur(6px);border:1px solid var(--border-soft);padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,.97);box-shadow:var(--shadow-md);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:1px solid var(--border-soft);padding-bottom:8px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span id="detailStatusDot" class="status-dot" style="background:var(--normal);"></span>
+                            <div><h3 id="detailName" class="font-display" style="margin:0;font-weight:700;font-size:15px;color:var(--text-primary);">—</h3><span id="detailId" class="font-mono" style="font-size:11px;color:var(--text-muted);">#—</span></div>
+                        </div>
+                        <button id="closeDetailBtn" type="button" style="padding:4px;border-radius:8px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;display:flex;"><i data-lucide="x" style="width:15px;height:15px;"></i></button>
+                    </div>
+
+                    <div id="responderBox" class="hidden" style="margin-bottom:12px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:10px;font-size:12px;background:var(--sos-soft);border:1px solid rgba(255,59,78,.4);color:var(--sos);">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <i data-lucide="ambulance" style="width:20px;height:20px;flex-shrink:0;"></i>
+                            <div style="flex:1;">
+                                <span style="display:block;font-size:10px;color:#FF9AA5;">أقرب مستجيب طوارئ (توصية ذكية بحسب المسافة):</span>
+                                <strong id="detailResponder" style="display:block;margin-top:2px;font-size:13px;color:var(--text-primary);">—</strong>
+                                <span id="detailResponderEta" style="display:block;margin-top:2px;font-size:10.5px;color:#FF9AA5;">—</span>
+                            </div>
+                        </div>
+                        <button id="resolveEmergencyBtn" type="button" style="width:100%;font-weight:700;padding:9px 12px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;background:var(--normal);color:#04241a;"><i data-lucide="check-circle" style="width:15px;height:15px;"></i><span>إنهاء حالة الطوارئ</span></button>
+                    </div>
+
+                    <div id="resolvingNotice" class="hidden" style="margin-bottom:12px;padding:10px;border-radius:12px;font-size:11.5px;display:flex;align-items:center;gap:8px;background:var(--accent-soft);color:var(--accent);">
+                        <i data-lucide="clock" style="width:15px;height:15px;flex-shrink:0;"></i><span>تم إنهاء الحالة، بانتظار تأكيد إيقاف الجهاز ميدانياً</span>
+                    </div>
+                    <div id="offlineNotice" class="hidden" style="margin-bottom:12px;padding:10px;border-radius:12px;font-size:11.5px;display:flex;align-items:center;gap:8px;background:var(--offline-soft);color:var(--offline);">
+                        <i data-lucide="wifi-off" style="width:15px;height:15px;flex-shrink:0;"></i><span>لم يتم استلام تحديث منذ أكثر من دقيقة ونصف</span>
+                    </div>
+
+                    <div style="margin-bottom:12px;padding:10px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;background:rgba(51,199,244,.08);border:1px solid rgba(51,199,244,.25);">
+                        <i data-lucide="brain-circuit" style="width:18px;height:18px;flex-shrink:0;color:var(--accent);"></i>
+                        <div style="flex:1;">
+                            <span style="display:block;font-size:10px;color:var(--text-muted);">مؤشر الإرهاق التنبؤي بالذكاء التحليلي</span>
+                            <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+                                <div class="fatigue-bar-wrap"><div id="detailFatigueBar" class="fatigue-bar-fill" style="width:0%;background:var(--normal);"></div></div>
+                                <span id="detailFatiguePct" class="font-mono" style="font-weight:700;font-size:12px;color:var(--normal);">0%</span>
+                            </div>
+                            <span id="detailFatigueReason" style="display:block;font-size:10.5px;margin-top:3px;color:var(--normal);">—</span>
                         </div>
                     </div>
-                    <button id="closeDetailBtn" class="p-1 rounded-lg" style="color: var(--text-muted);" aria-label="إغلاق">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
-                </div>
 
-                <!-- صندوق الاستجابة للإنذار -->
-                <div id="responderBox" class="hidden mb-3 p-3 rounded-xl text-xs flex flex-col gap-2.5" style="background: var(--sos-soft); border: 1px solid rgba(255,59,78,0.4); color: var(--sos);">
-                    <div class="flex items-center gap-2">
-                        <span class="scan-ring flex-shrink-0"><i data-lucide="ambulance" class="w-5 h-5"></i></span>
-                        <div class="flex-1">
-                            <span class="block text-[10px]" style="color: #FF9AA5;">المستجيب الأقرب طوارئ (حسب المسافة الحالية):</span>
-                            <strong id="detailResponder" class="block mt-0.5 text-sm" style="color: var(--text-primary);">حساب المستجيب القريب...</strong>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);">
+                            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;color:var(--text-muted);">النبض</span><svg id="heartSparkline" width="52" height="16" class="sparkline"></svg></div>
+                            <span id="detailHeartRate" class="font-mono" style="font-weight:700;color:var(--normal);">0 BPM</span>
+                        </div>
+                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">ضغط الدم</span><span id="detailBP" class="font-mono" style="font-weight:700;color:var(--warning);">120/80</span></div>
+                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">الأكسجين SpO2</span><span id="detailSpo2" class="font-mono" style="font-weight:700;color:var(--accent);">98%</span></div>
+                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">الحرارة</span><span id="detailTemp" class="font-mono" style="font-weight:700;color:var(--sos);">37.0°C</span></div>
+                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">الخطوات</span><span id="detailSteps" class="font-mono" style="font-weight:700;color:var(--text-primary);">0</span></div>
+                        <div style="padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">البطارية</span><span id="detailBattery" class="font-mono" style="font-weight:700;color:var(--text-primary);">100%</span></div>
+                        <div style="grid-column:span 2;padding:8px;border-radius:9px;border:1px solid var(--border-soft);background:var(--bg-subtle);"><span style="display:block;font-size:10px;color:var(--text-muted);">آخر تحديث</span><span id="detailTime" class="font-mono" style="font-weight:700;color:var(--text-primary);">--:--:--</span></div>
+                    </div>
+
+                    <div id="detailGeofenceNotice" class="hidden" style="margin-top:10px;padding:8px 10px;border-radius:10px;font-size:11px;display:flex;align-items:center;gap:8px;background:var(--warning-soft);color:var(--warning);">
+                        <i data-lucide="map-pin-off" style="width:14px;height:14px;flex-shrink:0;"></i><span>الموظف حالياً خارج نطاق المناطق التشغيلية المصرح بها</span>
+                    </div>
+
+                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-soft);">
+                        <span style="display:block;font-size:10px;margin-bottom:6px;color:var(--text-muted);">إرسال رسالة/أمر لجهاز الموظف</span>
+                        <div id="noTokenNotice" class="hidden" style="margin-bottom:8px;padding:8px;border-radius:9px;font-size:11px;display:flex;align-items:center;gap:6px;background:var(--offline-soft);color:var(--offline);">
+                            <i data-lucide="link-2-off" style="width:13px;height:13px;flex-shrink:0;"></i><span>لا يوجد توكن جهاز مسجل بعد لهذا الموظف</span>
+                        </div>
+                        <div id="quickCommandChips" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
+                            <button class="chip quick-cmd" data-command="ALERT" data-default-msg="تنبيه إداري من غرفة العمليات">تنبيه</button>
+                            <button class="chip quick-cmd" data-command="CHECK_IN" data-default-msg="يرجى تأكيد سلامتك الآن">تحقق سلامة</button>
+                            <button class="chip quick-cmd" data-command="RECALL" data-default-msg="يرجى العودة فوراً لأقرب نقطة تجمع">استدعاء</button>
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <input type="text" id="messageTextInput" placeholder="نص الرسالة (اختياري)..." style="flex:1;border-radius:8px;padding:7px 10px;font-size:11px;outline:none;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-primary);">
+                            <button id="sendMessageBtn" type="button" style="padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:var(--accent);color:#04222c;flex-shrink:0;">إرسال</button>
                         </div>
                     </div>
-                    <button id="resolveEmergencyBtn" class="w-full font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors" style="background: var(--normal); color: #04241a;" type="button">
-                        <i data-lucide="check-circle" class="w-4 h-4"></i>
-                        <span>إنهاء حالة الطوارئ وإغلاقها</span>
-                    </button>
                 </div>
+            </div>
 
-                <div id="offlineNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--offline-soft); color: var(--offline);">
-                    <i data-lucide="wifi-off" class="w-4 h-4 flex-shrink-0"></i>
-                    <span>لم يتم استلام تحديث من هذا الجهاز منذ أكثر من دقيقة ونصف</span>
-                </div>
+            <div id="analyticsView" class="hidden" style="flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:4px 2px 12px;">
 
-                <div id="resolvingNotice" class="hidden mb-3 p-2.5 rounded-xl text-xs flex items-center gap-2" style="background: var(--accent-soft); color: var(--accent);">
-                    <i data-lucide="clock" class="w-4 h-4 flex-shrink-0"></i>
-                    <span>تم إنهاء الحالة، لكن الجهاز لا يزال يرسل إشارة استغاثة — يرجى التأكد من إيقاف زر SOS يدوياً</span>
-                </div>
-
-                <!-- شبكة تفاصيل المؤشرات الحيوية المدمجة -->
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <div class="flex items-center justify-between">
-                            <span class="block text-[10px]" style="color: var(--text-muted);">النبض</span>
-                            <svg id="heartSparkline" class="sparkline" width="52" height="16"></svg>
-                        </div>
-                        <span id="detailHeartRate" class="font-bold font-mono" style="color: var(--normal);">0 BPM</span>
+                <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:stretch;">
+                    <div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(51,199,244,.25);background:linear-gradient(135deg, rgba(51,199,244,0.1), rgba(16,24,39,0.4));display:flex;gap:12px;align-items:flex-start;">
+                        <i data-lucide="sparkles" style="width:20px;height:20px;flex-shrink:0;color:var(--accent);margin-top:2px;"></i>
+                        <div><span style="display:block;font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">الملخص الذكي لوضع الفريق الميداني</span><span id="aiSummary" style="font-size:13px;line-height:1.8;color:var(--text-primary);">—</span></div>
                     </div>
-                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">ضغط الدم</span>
-                        <span id="detailBP" class="font-bold font-mono" style="color: var(--warning);">120/80</span>
+                    <div class="an-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;">
+                        <span style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">مؤشر استقرار الفريق</span>
+                        <span id="stabilityValue" class="font-mono" style="font-size:26px;font-weight:800;color:var(--normal);">100</span>
+                        <span id="stabilityLabel" style="font-size:10px;font-weight:700;color:var(--normal);">مستقر</span>
                     </div>
-                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">الأكسجين SpO2</span>
-                        <span id="detailSpo2" class="font-bold font-mono" style="color: var(--accent);">98%</span>
-                    </div>
-                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">درجة الحرارة</span>
-                        <span id="detailTemp" class="font-bold font-mono" style="color: var(--sos);">37.0°C</span>
-                    </div>
-                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">الخطوات</span>
-                        <span id="detailSteps" class="font-bold font-mono" style="color: var(--text-primary);">0</span>
-                    </div>
-                    <div class="p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">البطارية</span>
-                        <span id="detailBattery" class="font-bold font-mono" style="color: var(--text-primary);">100%</span>
-                    </div>
-                    <div class="col-span-2 p-2 rounded-lg border" style="background: var(--bg-subtle); border-color: var(--border-soft);">
-                        <span class="block text-[10px]" style="color: var(--text-muted);">التحديث</span>
-                        <span id="detailTime" class="font-bold font-mono" style="color: var(--text-primary);">--:--:--</span>
+                    <div class="an-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;">
+                        <span style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">تنبؤ النبض القادم</span>
+                        <i id="forecastArrow" data-lucide="minus" style="width:20px;height:20px;color:var(--text-secondary);"></i>
+                        <span id="forecastLabel" style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-top:2px;">مستقر 0%</span>
                     </div>
                 </div>
 
-                <div id="detailGpsInfo" class="hidden mt-2 flex flex-wrap items-center gap-2"></div>
+                <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:12px;">
+                    <div class="an-card">
+                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">اتجاه متوسط النبض للفريق (آخر التحديثات)</span>
+                        <svg width="100%" height="120" viewBox="0 0 480 120" preserveAspectRatio="none" style="display:block;">
+                            <line x1="0" y1="30" x2="480" y2="30" stroke="var(--border-soft)" stroke-width="1"></line>
+                            <line x1="0" y1="60" x2="480" y2="60" stroke="var(--border-soft)" stroke-width="1"></line>
+                            <line x1="0" y1="90" x2="480" y2="90" stroke="var(--border-soft)" stroke-width="1"></line>
+                            <path id="trendAreaPath" d="" fill="rgba(51,199,244,0.15)" stroke="none"></path>
+                            <path id="trendLinePath" d="" fill="none" stroke="var(--accent)" stroke-width="2"></path>
+                        </svg>
+                    </div>
+                    <div class="an-card" style="display:flex;flex-direction:column;align-items:center;">
+                        <span style="align-self:flex-start;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">توزيع الحالات الحالي</span>
+                        <svg width="140" height="140" viewBox="0 0 140 140">
+                            <g id="donutSegments"></g>
+                            <text x="70" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="#EAF0FB" font-family="JetBrains Mono, monospace" id="donutTotal">0</text>
+                            <text x="70" y="84" text-anchor="middle" font-size="10" fill="#8291A8" font-family="Cairo, sans-serif">إجمالي</text>
+                        </svg>
+                        <div id="donutLegend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;"></div>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="an-card">
+                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">حوادث الاستغاثة خلال آخر 6 ساعات</span>
+                        <div id="hourBuckets" style="display:flex;align-items:flex-end;gap:10px;height:90px;"></div>
+                    </div>
+                    <div class="an-card">
+                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">لوحة صدارة الإرهاق التنبؤي</span>
+                        <div id="fatigueBoard" style="display:flex;flex-direction:column;gap:8px;"></div>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="an-card">
+                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">كشف الانحرافات الحيوية الشاذة (تحليل z-score)</span>
+                        <div id="anomaliesList" style="display:flex;flex-direction:column;gap:7px;"></div>
+                    </div>
+                    <div class="an-card">
+                        <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">توصيات إجراءات فورية</span>
+                        <div id="recommendationsList" style="display:flex;flex-direction:column;gap:7px;"></div>
+                    </div>
+                </div>
+
+                <div class="an-card">
+                    <span style="display:block;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">توصيات الاستجابة الذكية للحالات عالية الخطورة</span>
+                    <div id="riskList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                </div>
             </div>
         </main>
     </div>
 
-    <script>
-        const OFFLINE_THRESHOLD_MS = 90000; // اعتبار الجهاز غير متصل إن لم يُحدّث خلال 90 ثانية (تمت زيادتها لتقليل الفصل المتكرر بسبب تأخر الشبكة البسيط)
-        let REFRESH_INTERVAL_MS = 15000;
-        const SEARCH_DEBOUNCE_MS = 250;
-        const HEART_HISTORY_LIMIT = 20;
-        const ACTIVITY_LOG_LIMIT = 100;
-        const SOS_RESOLVE_GRACE_MS = 120000; // بعد إنهاء حالة الطوارئ، تُكتم إعادة الإنذار لمدة دقيقتين ريثما يُوقف الموظف زر SOS من جهازه فعلياً
-
-        function safeParseFloat(val, defaultVal) {
-            if (val === undefined || val === null || val === "") return defaultVal;
-            const str = val.toString().replace(/٫/g, ".").replace(/,/g, ".");
-            const num = parseFloat(str);
-            return isNaN(num) ? defaultVal : num;
-        }
-
-        let state = {
-            employees: [],
-            filteredEmployees: [],
-            selectedEmployeeId: null,
-            searchQuery: '',
-            statusFilter: 'ALL',
-            isMuted: false,
-            apiUrl: document.getElementById('apiUrlInput')?.value || '',
-            autoRefresh: true,
-            refreshIntervalId: null,
-            audioContext: null,
-            sirenIntervalId: null,
-            fetchController: null,
-            searchDebounceId: null,
-            sidebarTab: 'list',
-            heartHistory: {},
-            previousStatuses: {},
-            activityLog: [],
-            incidentsToday: 0,
-            resolvedSuppression: {}
-        };
-
-        const mapMarkers = {}; // { empId: { marker, circle, status } }
-        let clusterGroup = null;
-        let sosLayerGroup = null;
-        let map = null;
-        let refreshTimeoutId = null;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initMap();
-            initEventListeners();
-            lucide.createIcons();
-            toggleAutoRefresh(true);
-            startRelativeTimeUpdater();
-            startLiveClock();
-        });
-
-        function startLiveClock() {
-            const el = document.getElementById('liveClock');
-            const tick = () => { el.innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false }); };
-            tick();
-            setInterval(tick, 1000);
-        }
-
-        function initMap() {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([24.7136, 46.6753], 12);
-            L.control.zoom({ position: 'topleft' }).addTo(map);
-
-            const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 20
-            }).addTo(map);
-
-            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri',
-                maxZoom: 19
-            });
-
-            L.control.layers({ 'خريطة ليلية': darkLayer, 'قمر صناعي': satelliteLayer }, null, { position: 'topleft' }).addTo(map);
-
-            clusterGroup = L.markerClusterGroup({
-                maxClusterRadius: 50,
-                iconCreateFunction: function (cluster) {
-                    return L.divIcon({
-                        html: `<div class="marker-cluster-custom" style="width:38px;height:38px;">${cluster.getChildCount()}</div>`,
-                        className: '', iconSize: [38, 38]
-                    });
-                }
-            }).addTo(map);
-
-            // حالات SOS تبقى دائماً ظاهرة بدون تجميع كي لا تختفي داخل عنقود
-            sosLayerGroup = L.layerGroup().addTo(map);
-        }
-
-        function initEventListeners() {
-            document.getElementById('searchInput').addEventListener('input', (e) => {
-                clearTimeout(state.searchDebounceId);
-                const val = e.target.value;
-                state.searchDebounceId = setTimeout(() => {
-                    state.searchQuery = val.trim().toLowerCase();
-                    filterEmployees();
-                }, SEARCH_DEBOUNCE_MS);
-            });
-
-            document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
-                toggleAutoRefresh(e.target.checked);
-            });
-
-            document.getElementById('refreshRateSelect').addEventListener('change', (e) => {
-                REFRESH_INTERVAL_MS = parseInt(e.target.value);
-                if (state.autoRefresh) {
-                    toggleAutoRefresh(false);
-                    toggleAutoRefresh(true);
-                }
-            });
-
-            document.getElementById('manualRefreshBtn').addEventListener('click', () => {
-                fetchTelemetryData();
-            });
-
-            document.getElementById('muteAlarmBtn').addEventListener('click', toggleMute);
-            document.getElementById('closeDetailBtn').addEventListener('click', deselectEmployee);
-
-            document.getElementById('apiUrlInput').addEventListener('change', (e) => {
-                const val = e.target.value.trim();
-                if (val) {
-                    state.apiUrl = val;
-                    fetchTelemetryData();
-                }
-            });
-
-            document.getElementById('filterChips').addEventListener('click', (e) => {
-                const btn = e.target.closest('.chip');
-                if (!btn) return;
-                document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-                state.statusFilter = btn.getAttribute('data-filter');
-                filterEmployees();
-            });
-
-            document.getElementById('sidebarTabs').addEventListener('click', (e) => {
-                const btn = e.target.closest('.stab');
-                if (!btn) return;
-                state.sidebarTab = btn.getAttribute('data-tab');
-                document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById('employeeList').classList.toggle('hidden', state.sidebarTab !== 'list');
-                document.getElementById('activityLogPanel').classList.toggle('hidden', state.sidebarTab !== 'log');
-                if (state.sidebarTab === 'log') renderActivityLog();
-            });
-
-            document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
-                if (state.selectedEmployeeId) {
-                    const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
-                    if (emp && confirm(`هل تم التعامل مع حالة الموظف ${emp.emp_name} وترغب بإغلاق حالة الطوارئ؟`)) {
-                        resolveEmergencyRemote(emp.emp_id);
-                    }
-                }
-            });
-
-            const urlInput = document.getElementById('apiUrlInput');
-            document.getElementById('toggleUrlVisibilityBtn').addEventListener('click', (e) => {
-                const btn = e.currentTarget;
-                const showing = urlInput.type === 'text';
-                urlInput.type = showing ? 'password' : 'text';
-                btn.innerHTML = showing
-                    ? '<i data-lucide="eye" class="w-4 h-4"></i>'
-                    : '<i data-lucide="eye-off" class="w-4 h-4"></i>';
-                lucide.createIcons();
-            });
-
-            document.getElementById('fitAllBtn').addEventListener('click', () => {
-                const pts = state.filteredEmployees.map(e => [e.lat, e.lng]);
-                if (pts.length === 0) return;
-                map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') deselectEmployee();
-                if (e.key === '/' && document.activeElement.id !== 'searchInput') {
-                    e.preventDefault();
-                    document.getElementById('searchInput').focus();
-                }
-            });
-        }
-
-        function isDeviceOffline(emp) {
-            const ts = new Date(emp.timestamp).getTime();
-            if (isNaN(ts)) return false;
-            return (Date.now() - ts) > OFFLINE_THRESHOLD_MS;
-        }
-
-        function isSuppressed(emp) {
-            const resolvedAt = state.resolvedSuppression[emp.emp_id];
-            if (!resolvedAt) return false;
-            if ((Date.now() - resolvedAt) >= SOS_RESOLVE_GRACE_MS) {
-                delete state.resolvedSuppression[emp.emp_id];
-                return false;
-            }
-            return true;
-        }
-
-        function effectiveStatus(emp) {
-            if (emp.status === 'SOS') {
-                // إذا أُنهيت الحالة يدوياً قبل قليل ولا يزال الجهاز يرسل SOS (لم يُطفأ زر الاستغاثة فعلياً)،
-                // تُعرض كحالة "قيد التأكيد" بدل إعادة تفعيل الإنذار فوراً
-                return isSuppressed(emp) ? 'RESOLVING' : 'SOS';
-            }
-            if (isDeviceOffline(emp)) return 'OFFLINE';
-            return emp.status;
-        }
-
-        function matchesStatusFilter(emp, filter) {
-            if (filter === 'ALL') return true;
-            const status = effectiveStatus(emp);
-            if (filter === 'SOS') return status === 'SOS' || status === 'RESOLVING';
-            return status === filter;
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const phi1 = lat1 * Math.PI / 180;
-            const phi2 = lat2 * Math.PI / 180;
-            const deltaPhi = (lat2 - lat1) * Math.PI / 180;
-            const deltaLambda = (lon2 - lon1) * Math.PI / 180;
-
-            const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-                      Math.cos(phi1) * Math.cos(phi2) *
-                      Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-            return R * c;
-        }
-
-        function findNearestResponder(sosEmp, allEmployees) {
-            let nearest = null;
-            let minDistance = Infinity;
-
-            allEmployees.forEach(other => {
-                if (other.emp_id === sosEmp.emp_id) return;
-                if (other.status === 'SOS') return;
-
-                const dist = calculateDistance(sosEmp.lat, sosEmp.lng, other.lat, other.lng);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    nearest = {
-                        emp_name: other.emp_name,
-                        emp_id: other.emp_id,
-                        distance: dist
-                    };
-                }
-            });
-
-            if (nearest) {
-                const distStr = nearest.distance < 1000
-                    ? `${Math.round(nearest.distance)} متر`
-                    : `${(nearest.distance / 1000).toFixed(1)} كم`;
-                return `${nearest.emp_name} (#${nearest.emp_id}) · على بعد ${distStr}`;
-            }
-            return 'لا يوجد مستجيب قريب متاح حالياً';
-        }
-
-        function getRelativeTimeString(isoString) {
-            const date = new Date(isoString);
-            const now = new Date();
-            const secondsDiff = Math.floor((now - date) / 1000);
-
-            if (isNaN(secondsDiff) || secondsDiff < 0) return 'الآن';
-            if (secondsDiff < 5) return 'الآن';
-            if (secondsDiff < 60) return `منذ ${secondsDiff} ثانية`;
-
-            const minutesDiff = Math.floor(secondsDiff / 60);
-            if (minutesDiff === 1) return 'منذ دقيقة';
-            if (minutesDiff === 2) return 'منذ دقيقتين';
-            if (minutesDiff <= 10) return `منذ ${minutesDiff} دقائق`;
-            if (minutesDiff < 60) return `منذ ${minutesDiff} دقيقة`;
-
-            const hoursDiff = Math.floor(minutesDiff / 60);
-            if (hoursDiff === 1) return 'منذ ساعة';
-            if (hoursDiff === 2) return 'منذ ساعتين';
-            if (hoursDiff <= 10) return `منذ ${hoursDiff} ساعات`;
-            return `منذ ${hoursDiff} ساعة`;
-        }
-
-        function startRelativeTimeUpdater() {
-            setInterval(() => {
-                document.querySelectorAll('.relative-time-update').forEach(el => {
-                    const ts = el.getAttribute('data-timestamp');
-                    if (ts) {
-                        el.innerText = getRelativeTimeString(ts);
-                    }
-                });
-                const detailTimeEl = document.getElementById('detailTime');
-                if (detailTimeEl) {
-                    const ts = detailTimeEl.getAttribute('data-timestamp');
-                    if (ts) {
-                        detailTimeEl.innerText = getRelativeTimeString(ts);
-                    }
-                }
-            }, 5000);
-        }
-
-        function pushHeartHistory(empId, value) {
-            if (!state.heartHistory[empId]) state.heartHistory[empId] = [];
-            const arr = state.heartHistory[empId];
-            arr.push(value);
-            if (arr.length > HEART_HISTORY_LIMIT) arr.shift();
-        }
-
-        function logEvent(type, message) {
-            state.activityLog.unshift({ time: new Date().toISOString(), type, message });
-            if (state.activityLog.length > ACTIVITY_LOG_LIMIT) state.activityLog.pop();
-            if (state.sidebarTab === 'log') renderActivityLog();
-        }
-
-        function trackStatusTransitions(cleaned) {
-            cleaned.forEach(emp => {
-                const status = effectiveStatus(emp);
-                const prev = state.previousStatuses[emp.emp_id];
-                if (prev !== undefined && prev !== status) {
-                    if (status === 'SOS') {
-                        state.incidentsToday += 1;
-                        logEvent('sos', `استغاثة SOS: ${emp.emp_name} (#${emp.emp_id})`);
-                    } else if (prev === 'SOS' || prev === 'RESOLVING') {
-                        logEvent('resolved', `تم إنهاء حالة الطوارئ: ${emp.emp_name} (#${emp.emp_id})`);
-                    } else if (status === 'OFFLINE') {
-                        logEvent('offline', `انقطع الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
-                    } else if (prev === 'OFFLINE') {
-                        logEvent('online', `عاد الاتصال بالجهاز: ${emp.emp_name} (#${emp.emp_id})`);
-                    } else if (status === 'WARNING') {
-                        logEvent('warning', `دخل الموظف حالة تحذير: ${emp.emp_name} (#${emp.emp_id})`);
-                    }
-                }
-                state.previousStatuses[emp.emp_id] = status;
-            });
-        }
-
-        async function fetchTelemetryData() {
-            const indicator = document.getElementById('refreshIndicator');
-            if (indicator) indicator.classList.add('refreshing');
-
-            if (state.fetchController) state.fetchController.abort();
-            state.fetchController = new AbortController();
-
-            try {
-                const response = await fetch(state.apiUrl, { signal: state.fetchController.signal });
-                if (!response.ok) throw new Error(`خطأ في خادم البيانات: ${response.status}`);
-
-                const rawData = await response.json();
-
-                const cleaned = rawData.filter(emp => {
-                    const id = (emp.emp_id || '').toString().trim();
-                    const name = (emp.emp_name || '').toString().trim();
-                    if (!id && !name) return false;
-                    return true;
-                }).map(emp => {
-                    const latNum = safeParseFloat(emp.lat, 24.7136);
-                    const lngNum = safeParseFloat(emp.lng, 46.6753);
-                    return {
-                        timestamp: emp.timestamp || new Date().toISOString(),
-                        emp_id: (emp.emp_id || 'N/A').toString(),
-                        emp_name: emp.emp_name || 'موظف غير معروف',
-                        lat: latNum,
-                        lng: lngNum,
-                        heart_rate: emp.heart_rate !== '' ? parseInt(emp.heart_rate) : 0,
-                        blood_pressure: emp.blood_pressure || '120/80',
-                        spo2: emp.spo2 || '98%',
-                        temperature: emp.temperature || '37.0°C',
-                        steps: emp.steps !== '' ? parseInt(emp.steps) : 0,
-                        battery: emp.battery ? emp.battery.toString().replace('%', '') + '%' : '100%',
-                        status: (emp.status || 'NORMAL').toUpperCase(),
-                        nearest_responder: emp.nearest_responder || 'لا يوجد',
-                        gps_accuracy: (emp.gps_accuracy !== undefined && emp.gps_accuracy !== null && emp.gps_accuracy !== '') ? safeParseFloat(emp.gps_accuracy, null) : null,
-                        heading: (emp.heading !== undefined && emp.heading !== null && emp.heading !== '') ? safeParseFloat(emp.heading, null) : null,
-                        gps_status: emp.gps_status || 'مباشر'
-                    };
-                });
-
-                cleaned.forEach(emp => {
-                    if (emp.status === 'SOS') {
-                        emp.nearest_responder = findNearestResponder(emp, cleaned);
-                    }
-                    pushHeartHistory(emp.emp_id, emp.heart_rate);
-                });
-
-                trackStatusTransitions(cleaned);
-
-                state.employees = cleaned;
-                filterEmployees();
-                updateStats();
-                checkSosAlerts();
-                updateHeaderPulse();
-                updateInsightBar();
-                document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
-                document.getElementById('connectionErrorBadge').classList.add('hidden');
-
-                if (state.selectedEmployeeId) {
-                    const currentEmp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
-                    if (currentEmp) {
-                        showEmployeeDetails(currentEmp);
-                    } else {
-                        deselectEmployee();
-                    }
-                }
-
-            } catch (error) {
-                if (error.name === 'AbortError') return;
-                console.error('حدث خطأ أثناء جلب البيانات:', error);
-                document.getElementById('connectionErrorBadge').classList.remove('hidden');
-            } finally {
-                if (indicator) setTimeout(() => indicator.classList.remove('refreshing'), 500);
-            }
-        }
-
-        function filterEmployees() {
-            state.filteredEmployees = state.employees.filter(emp => {
-                const matchesSearch = !state.searchQuery ||
-                    emp.emp_name.toLowerCase().includes(state.searchQuery) ||
-                    emp.emp_id.toLowerCase().includes(state.searchQuery);
-                if (!matchesSearch) return false;
-
-                return matchesStatusFilter(emp, state.statusFilter);
-            });
-
-            state.filteredEmployees.sort((a, b) => {
-                const priority = { SOS: 5, RESOLVING: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
-                return (priority[effectiveStatus(b)] || 0) - (priority[effectiveStatus(a)] || 0);
-            });
-
-            renderEmployeeList();
-            updateMapMarkers();
-        }
-
-        function renderEmployeeList() {
-            const listContainer = document.getElementById('employeeList');
-
-            if (state.filteredEmployees.length === 0) {
-                listContainer.innerHTML = `<div class="text-center py-10 text-xs" style="color: var(--text-muted);">لا يوجد نتائج تطابق البحث.</div>`;
-                return;
-            }
-
-            listContainer.innerHTML = '';
-
-            state.filteredEmployees.forEach(emp => {
-                const status = effectiveStatus(emp);
-                const card = document.createElement('div');
-                card.className = `employee-card st-${status.toLowerCase()} ${state.selectedEmployeeId === emp.emp_id ? 'active-focus' : ''}`;
-                card.setAttribute('data-id', emp.emp_id);
-                card.setAttribute('tabindex', '0');
-
-                const statusLabel = { SOS: 'SOS', RESOLVING: 'قيد التأكيد', WARNING: 'تحذير', NORMAL: 'طبيعي', OFFLINE: 'غير متصل' }[status] || status;
-                const lowBattery = parseInt(emp.battery) < 15;
-                const spark = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 44, 14);
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-1">
-                        <span class="font-bold text-sm">${escapeHTML(emp.emp_name)}</span>
-                        <span class="badge ${status.toLowerCase()}">${escapeHTML(statusLabel)}</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs mt-2" style="color: var(--text-secondary);">
-                        <span class="flex items-center gap-1 font-mono">${emp.heart_rate} BPM</span>
-                        ${spark}
-                        <span class="flex items-center gap-1 font-mono ${lowBattery ? 'font-bold' : ''}" style="${lowBattery ? 'color: var(--warning);' : ''}">${escapeHTML(emp.battery)}</span>
-                        <div class="flex flex-col items-end gap-0.5">
-                            <span class="text-[10px] font-mono" style="color: var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
-                            <span class="text-[9px] font-semibold relative-time-update" style="color: var(--text-muted);" data-timestamp="${emp.timestamp}">${getRelativeTimeString(emp.timestamp)}</span>
-                            ${emp.gps_status === 'آخر موقع معروف' ? '<span class="gps-stale-badge">GPS قديم</span>' : ''}
-                            ${emp.gps_status === 'تم التعديل يدوياً' ? '<span class="gps-stale-badge" style="background: var(--accent-soft); color: var(--accent);">موقع معدَّل</span>' : ''}
-                        </div>
-                    </div>
-                `;
-
-                card.addEventListener('click', () => focusOnEmployee(emp));
-                card.addEventListener('keydown', (e) => { if (e.key === 'Enter') focusOnEmployee(emp); });
-
-                listContainer.appendChild(card);
-            });
-        }
-
-        function buildSparklineSVG(history, width, height) {
-            width = width || 44; height = height || 14;
-            if (!history || history.length < 2) {
-                return `<svg class="sparkline" width="${width}" height="${height}"></svg>`;
-            }
-            const min = Math.min(...history);
-            const max = Math.max(...history);
-            const range = (max - min) || 1;
-            const stepX = width / (history.length - 1);
-            const points = history.map((v, i) => {
-                const x = i * stepX;
-                const y = height - ((v - min) / range) * (height - 3) - 1.5;
-                return `${x.toFixed(1)},${y.toFixed(1)}`;
-            }).join(' ');
-            const last = history[history.length - 1];
-            const rising = last >= history[0];
-            const color = rising ? 'var(--warning)' : 'var(--accent)';
-            return `<svg class="sparkline" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-        }
-
-        function renderActivityLog() {
-            const container = document.getElementById('activityLogPanel');
-            if (state.activityLog.length === 0) {
-                container.innerHTML = `<div class="text-center py-10 text-xs" style="color: var(--text-muted);">لا توجد أحداث مسجلة بعد.</div>`;
-                return;
-            }
-            const colorMap = { sos: 'var(--sos)', resolved: 'var(--normal)', offline: 'var(--offline)', online: 'var(--accent)', warning: 'var(--warning)' };
-            container.innerHTML = state.activityLog.map(entry => {
-                const time = new Date(entry.time).toLocaleTimeString('ar-SA', { hour12: false });
-                return `<div class="log-entry">
-                    <span class="log-dot" style="background: ${colorMap[entry.type] || 'var(--text-muted)'};"></span>
-                    <div class="flex-1">
-                        <span style="color: var(--text-primary);">${escapeHTML(entry.message)}</span>
-                        <span class="block text-[10px] font-mono" style="color: var(--text-muted);">${time}</span>
-                    </div>
-                </div>`;
-            }).join('');
-        }
-
-        function updateInsightBar() {
-            const icon = document.querySelector('#insightBar i');
-            const textEl = document.getElementById('insightText');
-            const chip = document.getElementById('systemStatusChip');
-            const sosCount = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e)).length;
-            const resolvingCount = state.employees.filter(e => effectiveStatus(e) === 'RESOLVING').length;
-            const warningCount = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
-            const offlineCount = state.employees.filter(e => effectiveStatus(e) === 'OFFLINE').length;
-
-            if (sosCount > 0) {
-                textEl.innerText = `تنبيه حرج: ${sosCount} حالة استغاثة نشطة تتطلب استجابة فورية.`;
-                icon.setAttribute('data-lucide', 'siren');
-                icon.style.color = 'var(--sos)';
-                chip.className = 'badge sos'; chip.innerText = 'حالة طوارئ';
-            } else if (resolvingCount > 0) {
-                textEl.innerText = `تم إنهاء ${resolvingCount} حالة استغاثة، بانتظار إيقاف الجهاز الميداني يدوياً لتأكيد الإغلاق.`;
-                icon.setAttribute('data-lucide', 'clock');
-                icon.style.color = 'var(--accent)';
-                chip.className = 'badge resolving'; chip.innerText = 'قيد التأكيد';
-            } else if (offlineCount > 0 && warningCount > 0) {
-                textEl.innerText = `${warningCount} تحذير حركة و ${offlineCount} جهاز غير متصل — يوصى بالمتابعة.`;
-                icon.setAttribute('data-lucide', 'alert-triangle');
-                icon.style.color = 'var(--warning)';
-                chip.className = 'badge warning'; chip.innerText = 'يتطلب متابعة';
-            } else if (warningCount > 0) {
-                textEl.innerText = `${warningCount} موظف في حالة تحذير حركة — يُنصح بالتحقق من حالتهم.`;
-                icon.setAttribute('data-lucide', 'alert-triangle');
-                icon.style.color = 'var(--warning)';
-                chip.className = 'badge warning'; chip.innerText = 'يتطلب متابعة';
-            } else if (offlineCount > 0) {
-                textEl.innerText = `${offlineCount} جهاز غير متصل حالياً — تحقق من تغطية الشبكة أو حالة البطارية.`;
-                icon.setAttribute('data-lucide', 'wifi-off');
-                icon.style.color = 'var(--offline)';
-                chip.className = 'badge offline'; chip.innerText = 'تغطية جزئية';
-            } else {
-                textEl.innerText = 'جميع الموظفين ضمن الحالة الطبيعية، ولا توجد حوادث نشطة حالياً.';
-                icon.setAttribute('data-lucide', 'activity');
-                icon.style.color = 'var(--normal)';
-                chip.className = 'badge normal'; chip.innerText = 'تشغيل طبيعي';
-            }
-            lucide.createIcons();
-        }
-
-        function updateStats() {
-            document.getElementById('statTotal').innerText = state.employees.length;
-            document.getElementById('statNormal').innerText = state.employees.filter(e => effectiveStatus(e) === 'NORMAL').length;
-            document.getElementById('statWarning').innerText = state.employees.filter(e => effectiveStatus(e) === 'WARNING').length;
-            document.getElementById('statSos').innerText = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e)).length;
-            document.getElementById('statIncidents').innerText = state.incidentsToday;
-        }
-
-        function updateHeaderPulse() {
-            const hasSos = state.employees.some(e => e.status === 'SOS' && !isSuppressed(e));
-            document.getElementById('headerPulse').classList.toggle('sos', hasSos);
-        }
-
-        function updateMapMarkers() {
-            const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
-
-            for (const empId in mapMarkers) {
-                if (!activeIds.has(empId)) {
-                    removeMarkerFromMap(mapMarkers[empId]);
-                    delete mapMarkers[empId];
-                }
-            }
-
-            state.filteredEmployees.forEach(emp => {
-                const latLng = [emp.lat, emp.lng];
-                const status = effectiveStatus(emp);
-                const existing = mapMarkers[emp.emp_id];
-
-                const customIcon = L.divIcon({
-                    className: 'gps-pin-wrap',
-                    html: `<div class="gps-pin ${status.toLowerCase()}"></div>`,
-                    iconSize: [26, 26],
-                    iconAnchor: [13, 24]
-                });
-
-                if (existing) {
-                    animateMarkerTo(existing.marker, latLng);
-                    existing.marker.setIcon(customIcon);
-                    existing.marker.setPopupContent(buildPopupHTML(emp));
-                    relocateMarkerGroup(existing, status);
-                    existing.status = status;
-                    updateAccuracyCircle(existing, emp, latLng);
-                } else {
-                    const marker = L.marker(latLng, { icon: customIcon }).bindPopup(buildPopupHTML(emp));
-                    marker.on('click', () => selectEmployee(emp));
-
-                    const entry = { marker, circle: null, status };
-                    mapMarkers[emp.emp_id] = entry;
-
-                    const targetGroup = status === 'SOS' ? sosLayerGroup : clusterGroup;
-                    targetGroup.addLayer(marker);
-                    updateAccuracyCircle(entry, emp, latLng);
-                }
-            });
-        }
-
-        function relocateMarkerGroup(entry, newStatus) {
-            if (entry.status === newStatus) return;
-            const oldGroup = entry.status === 'SOS' ? sosLayerGroup : clusterGroup;
-            const newGroup = newStatus === 'SOS' ? sosLayerGroup : clusterGroup;
-            oldGroup.removeLayer(entry.marker);
-            newGroup.addLayer(entry.marker);
-            if (entry.circle) {
-                oldGroup.removeLayer(entry.circle);
-                newGroup.addLayer(entry.circle);
-            }
-        }
-
-        // دائرة نصف قطرها = دقة GPS المُبلَّغة (متر)، توضّح مدى موثوقية الموقع المعروض
-        function updateAccuracyCircle(entry, emp, latLng) {
-            const group = entry.status === 'SOS' ? sosLayerGroup : clusterGroup;
-            const hasAccuracy = emp.gps_accuracy && emp.gps_accuracy > 0;
-
-            if (!hasAccuracy) {
-                if (entry.circle) { group.removeLayer(entry.circle); entry.circle = null; }
-                return;
-            }
-            if (entry.circle) {
-                entry.circle.setLatLng(latLng);
-                entry.circle.setRadius(emp.gps_accuracy);
-            } else {
-                entry.circle = L.circle(latLng, { radius: emp.gps_accuracy, color: '#33C7F4', weight: 1, fillOpacity: 0.08, interactive: false });
-                group.addLayer(entry.circle);
-            }
-        }
-
-        function removeMarkerFromMap(entry) {
-            const group = entry.status === 'SOS' ? sosLayerGroup : clusterGroup;
-            group.removeLayer(entry.marker);
-            if (entry.circle) group.removeLayer(entry.circle);
-        }
-
-        // حركة انتقال سلسة للمؤشر بدل القفز المفاجئ عند كل تحديث
-        function animateMarkerTo(marker, newLatLng) {
-            const startLatLng = marker.getLatLng();
-            const targetLatLng = L.latLng(newLatLng);
-            if (startLatLng.distanceTo(targetLatLng) < 1) {
-                marker.setLatLng(targetLatLng);
-                return;
-            }
-            const duration = 500;
-            const startTime = performance.now();
-
-            function step(now) {
-                const t = Math.min(1, (now - startTime) / duration);
-                const lat = startLatLng.lat + (targetLatLng.lat - startLatLng.lat) * t;
-                const lng = startLatLng.lng + (targetLatLng.lng - startLatLng.lng) * t;
-                marker.setLatLng([lat, lng]);
-                if (t < 1) requestAnimationFrame(step);
-            }
-            requestAnimationFrame(step);
-        }
-
-        function buildPopupHTML(emp) {
-            const status = effectiveStatus(emp);
-            const statusLabel = { SOS: 'طوارئ SOS', RESOLVING: 'قيد التأكيد', WARNING: 'تحذير حركة', NORMAL: 'مستقر', OFFLINE: 'غير متصل' }[status] || status;
-            const color = { SOS: 'var(--sos)', RESOLVING: 'var(--accent)', WARNING: 'var(--warning)', NORMAL: 'var(--normal)', OFFLINE: 'var(--offline)' }[status];
-
-            return `
-                <div dir="rtl" class="p-1 text-xs">
-                    <b class="text-sm block mb-1" style="color: var(--text-primary);">${escapeHTML(emp.emp_name)}</b>
-                    <span class="block mb-1 font-mono" style="color: var(--text-muted);">رقم: ${escapeHTML(emp.emp_id)}</span>
-                    <span class="block mb-1">الحالة: <b style="color: ${color};">${escapeHTML(statusLabel)}</b></span>
-                    <span class="block mb-1 font-mono">النبض: ${emp.heart_rate} BPM</span>
-                    <span class="block font-mono">البطارية: ${escapeHTML(emp.battery)}</span>
-                    ${buildGpsInfoHTML(emp)}
-                </div>
-            `;
-        }
-
-        function buildGpsInfoHTML(emp) {
-            const parts = [];
-            if (emp.gps_status === 'آخر موقع معروف') {
-                parts.push(`<span class="gps-stale-badge">موقع مخزّن سابقاً (GPS غير متاح حالياً)</span>`);
-            }
-            if (emp.gps_status === 'تم التعديل يدوياً') {
-                parts.push(`<span class="gps-stale-badge" style="background: var(--accent-soft); color: var(--accent);">تم تعديل هذا الموقع يدوياً من لوحة التحكم</span>`);
-            }
-            if (emp.gps_accuracy) {
-                const cls = emp.gps_accuracy <= 20 ? 'accuracy-good' : (emp.gps_accuracy <= 75 ? 'accuracy-mid' : 'accuracy-bad');
-                parts.push(`<span class="${cls} font-mono">دقة الموقع: ${Math.round(emp.gps_accuracy)} م</span>`);
-            }
-            if (emp.heading !== null && emp.heading !== undefined) {
-                parts.push(`<span class="font-mono" style="color: var(--text-secondary);">الاتجاه: ${Math.round(emp.heading)}°</span>`);
-            }
-            return parts.length ? `<div class="mt-1.5 pt-1.5 border-t flex flex-wrap gap-1.5" style="border-color: var(--border-soft);">${parts.join('')}</div>` : '';
-        }
-
-        function focusOnEmployee(emp) {
-            selectEmployee(emp);
-            map.setView([emp.lat, emp.lng], 16, { animate: true, duration: 1.2 });
-            if (mapMarkers[emp.emp_id]) mapMarkers[emp.emp_id].marker.openPopup();
-        }
-
-        function selectEmployee(emp) {
-            state.selectedEmployeeId = emp.emp_id;
-
-            document.querySelectorAll('.employee-card').forEach(card => {
-                if (card.getAttribute('data-id') === emp.emp_id) {
-                    card.classList.add('active-focus');
-                    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                } else {
-                    card.classList.remove('active-focus');
-                }
-            });
-
-            showEmployeeDetails(emp);
-        }
-
-        function showEmployeeDetails(emp) {
-            const panel = document.getElementById('detailPanel');
-            panel.classList.remove('hidden');
-
-            document.getElementById('detailName').innerText = emp.emp_name;
-            document.getElementById('detailId').innerText = `#${emp.emp_id}`;
-            document.getElementById('detailHeartRate').innerText = `${emp.heart_rate} BPM`;
-            document.getElementById('detailBP').innerText = emp.blood_pressure || '120/80';
-            document.getElementById('detailSpo2').innerText = emp.spo2 || '98%';
-            document.getElementById('detailTemp').innerText = emp.temperature || '37.0°C';
-            document.getElementById('detailSteps').innerText = `${emp.steps.toLocaleString()} خطوة`;
-            document.getElementById('detailBattery').innerText = emp.battery;
-
-            document.getElementById('detailTime').innerText = getRelativeTimeString(emp.timestamp);
-            document.getElementById('detailTime').setAttribute('data-timestamp', emp.timestamp);
-
-            const sparkContainer = document.getElementById('heartSparkline');
-            if (sparkContainer) {
-                sparkContainer.outerHTML = buildSparklineSVG(state.heartHistory[emp.emp_id] || [], 52, 16).replace('class="sparkline"', 'id="heartSparkline" class="sparkline"');
-            }
-
-            const status = effectiveStatus(emp);
-            document.getElementById('detailStatusDot').className = `status-dot ${status.toLowerCase()}`;
-
-            document.getElementById('responderBox').classList.toggle('hidden', status !== 'SOS');
-            if (status === 'SOS') {
-                document.getElementById('detailResponder').innerText = emp.nearest_responder;
-            }
-
-            document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
-            document.getElementById('resolvingNotice').classList.toggle('hidden', status !== 'RESOLVING');
-
-            const gpsInfoEl = document.getElementById('detailGpsInfo');
-            const gpsInfo = buildGpsInfoHTML(emp).replace(/^<div[^>]*>|<\/div>$/g, '');
-            if (gpsInfo) {
-                gpsInfoEl.innerHTML = gpsInfo;
-                gpsInfoEl.classList.remove('hidden');
-            } else {
-                gpsInfoEl.classList.add('hidden');
-            }
-        }
-
-        function deselectEmployee() {
-            state.selectedEmployeeId = null;
-            document.getElementById('detailPanel').classList.add('hidden');
-            document.querySelectorAll('.employee-card').forEach(card => card.classList.remove('active-focus'));
-        }
-
-        async function performAutoRefresh() {
-            if (!state.autoRefresh) return;
-            await fetchTelemetryData();
-            if (state.autoRefresh) {
-                refreshTimeoutId = setTimeout(performAutoRefresh, REFRESH_INTERVAL_MS);
-            }
-        }
-
-        function toggleAutoRefresh(enable) {
-            state.autoRefresh = enable;
-            if (enable) {
-                if (!refreshTimeoutId) {
-                    performAutoRefresh();
-                }
-            } else {
-                if (refreshTimeoutId) {
-                    clearTimeout(refreshTimeoutId);
-                    refreshTimeoutId = null;
-                }
-            }
-        }
-
-        function checkSosAlerts() {
-            const sosEmployees = state.employees.filter(e => e.status === 'SOS' && !isSuppressed(e));
-            if (sosEmployees.length > 0) {
-                playAlarmSiren();
-            } else {
-                stopAlarmSiren();
-            }
-        }
-
-        // إغلاق حالة الطوارئ وإرسال طلب GET
-        async function resolveEmergencyRemote(empId) {
-            state.resolvedSuppression[empId] = Date.now();
-            const emp = state.employees.find(e => e.emp_id === empId);
-            if (emp) {
-                emp.status = 'NORMAL';
-                emp.nearest_responder = 'لا يوجد';
-                filterEmployees();
-                updateStats();
-                checkSosAlerts();
-                updateHeaderPulse();
-                updateInsightBar();
-                if (state.selectedEmployeeId === empId) {
-                    showEmployeeDetails(emp);
-                }
-            }
-
-            try {
-                const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
-                const response = await fetch(url);
-
-                if (!response.ok) throw new Error(`خادم السكربت غير متاح: ${response.status}`);
-
-                await fetchTelemetryData();
-                alert(`تم إنهاء حالة الطوارئ للموظف #${empId} بنجاح. يرجى إيقاف زر الاستغاثة (SOS) من ساعة الموظف الميداني لكي لا يعاد تفعيل الإنذار تلقائياً.`);
-            } catch (err) {
-                console.error('فشل إغلاق حالة الطوارئ:', err);
-                alert('تم التحديث محلياً ولكن تعذر إغلاقه على السيرفر. تحقق من الاتصال وحاول مرة أخرى.');
-            }
-        }
-
-        function playAlarmSiren() {
-            if (state.isMuted) return;
-            if (!state.audioContext) {
-                state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (state.sirenIntervalId) return;
-
-            state.sirenIntervalId = setInterval(() => {
-                if (state.audioContext.state === 'suspended') state.audioContext.resume();
-
-                const osc = state.audioContext.createOscillator();
-                const gain = state.audioContext.createGain();
-                osc.connect(gain);
-                gain.connect(state.audioContext.destination);
-
-                osc.type = 'sawtooth';
-                const time = state.audioContext.currentTime;
-                osc.frequency.setValueAtTime(580, time);
-                osc.frequency.linearRampToValueAtTime(880, time + 0.35);
-                gain.gain.setValueAtTime(0.12, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.35);
-
-                osc.start(time);
-                osc.stop(time + 0.38);
-            }, 450);
-        }
-
-        function stopAlarmSiren() {
-            if (state.sirenIntervalId) {
-                clearInterval(state.sirenIntervalId);
-                state.sirenIntervalId = null;
-            }
-        }
-
-        function toggleMute() {
-            state.isMuted = !state.isMuted;
-            const muteIcon = document.getElementById('muteIcon');
-            const muteText = document.getElementById('muteText');
-
-            if (state.isMuted) {
-                muteIcon.setAttribute('data-lucide', 'volume-x');
-                muteIcon.style.color = 'var(--sos)';
-                muteText.innerText = 'التنبيه الصوتي مكتوم';
-                stopAlarmSiren();
-            } else {
-                muteIcon.setAttribute('data-lucide', 'volume-2');
-                muteIcon.style.color = 'var(--normal)';
-                muteText.innerText = 'التنبيه الصوتي نشط';
-                checkSosAlerts();
-            }
-            lucide.createIcons();
-        }
-
-        function escapeHTML(str) {
-            if (!str) return '';
-            return str.toString()
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-    </script>
+<script>
+const OFFLINE_THRESHOLD_MS = 90000;
+const HEART_HISTORY_LIMIT = 20;
+const ACTIVITY_LOG_LIMIT = 60;
+const SOS_RESOLVE_GRACE_MS = 120000;
+const SNAPSHOT_LIMIT = 24;
+const SEARCH_DEBOUNCE_MS = 250;
+
+const GEOFENCES = [
+  { name: 'المنطقة التشغيلية الرئيسية', lat: 24.7136, lng: 46.6753, radius: 9000 },
+  { name: 'نقطة الدعم الشمالية', lat: 24.79, lng: 46.70, radius: 4500 }
+];
+const STATUS_COLORS = {
+  NORMAL: { label: 'طبيعي', dot: '#22D488', bg: 'rgba(34,212,136,0.12)', fg: '#22D488' },
+  WARNING: { label: 'تحذير', dot: '#F5A623', bg: 'rgba(245,166,35,0.14)', fg: '#F5A623' },
+  SOS: { label: 'SOS', dot: '#FF3B4E', bg: '#FF3B4E', fg: '#1a0405' },
+  OFFLINE: { label: 'غير متصل', dot: '#64748B', bg: 'rgba(100,116,139,0.14)', fg: '#64748B' },
+  RESOLVING: { label: 'قيد التأكيد', dot: '#33C7F4', bg: 'rgba(51,199,244,0.12)', fg: '#33C7F4' }
+};
+
+function safeParseFloat(val, def) {
+  if (val === undefined || val === null || val === '') return def;
+  const n = parseFloat(val.toString().replace(/٫/g, '.').replace(/,/g, '.'));
+  return isNaN(n) ? def : n;
+}
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371e3, p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+  const dp = (lat2 - lat1) * Math.PI / 180, dl = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+function escapeHTML(s) {
+  if (!s) return '';
+  return s.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+function getRelativeTimeString(iso) {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (isNaN(s) || s < 5) return 'الآن';
+  if (s < 60) return `منذ ${s} ثانية`;
+  const m = Math.floor(s / 60);
+  if (m === 1) return 'منذ دقيقة';
+  if (m === 2) return 'منذ دقيقتين';
+  if (m <= 10) return `منذ ${m} دقائق`;
+  if (m < 60) return `منذ ${m} دقيقة`;
+  const h = Math.floor(m / 60);
+  if (h === 1) return 'منذ ساعة';
+  if (h === 2) return 'منذ ساعتين';
+  return `منذ ${h} ساعات`;
+}
+function buildSparklineSVG(history, w, h) {
+  w = w || 44; h = h || 14;
+  if (!history || history.length < 2) return '';
+  const min = Math.min(...history), max = Math.max(...history), range = (max - min) || 1;
+  const stepX = w / (history.length - 1);
+  return history.map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * (h - 3) - 1.5).toFixed(1)}`).join(' ');
+}
+
+let state = {
+  employees: [], filteredEmployees: [], selectedEmployeeId: null,
+  searchQuery: '', statusFilter: 'ALL', sidebarTab: 'list', activeView: 'map',
+  isMuted: false, autoRefresh: true, apiUrl: document.getElementById('apiUrlInput').value,
+  refreshRate: 15000, heartHistory: {}, prevStatuses: {}, prevSteps: {},
+  activityLog: [], incidentsToday: 0, resolvedSuppression: {}, snapshots: [],
+  weather: null, showGeofence: true, showWeather: true, showHeat: true, showTrails: true,
+  trails: {}, incidentPoints: [], connectionError: false, lastUpdate: null,
+  selectedCommand: 'ALERT', audioContext: null, sirenIntervalId: null, fetchController: null, searchDebounceId: null
+};
+
+let map = null, clusterGroup = null, sosLayerGroup = null, geofenceLayer = null, routeLayer = null, heatLayer = null, trailLayer = null;
+const markers = {};
+let refreshTimeoutId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  initEventListeners();
+  lucide.createIcons();
+  toggleAutoRefresh(true);
+  startRelativeTimeUpdater();
+  startLiveClock();
+  fetchWeather();
+  setInterval(fetchWeather, 600000);
+});
+
+function startLiveClock() {
+  const el = document.getElementById('liveClock');
+  const tick = () => { el.innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false }); };
+  tick(); setInterval(tick, 1000);
+}
+function startRelativeTimeUpdater() {
+  setInterval(() => {
+    document.querySelectorAll('.relative-time-update').forEach(el => {
+      const ts = el.getAttribute('data-timestamp');
+      if (ts) el.innerText = getRelativeTimeString(ts);
+    });
+    const dt = document.getElementById('detailTime');
+    if (dt && dt.getAttribute('data-timestamp')) dt.innerText = getRelativeTimeString(dt.getAttribute('data-timestamp'));
+  }, 5000);
+}
+
+function initMap() {
+  map = L.map('map', { zoomControl: false, attributionControl: false }).setView([24.7136, 46.6753], 12);
+  L.control.zoom({ position: 'topleft' }).addTo(map);
+  const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
+  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+  L.control.layers({ 'خريطة ليلية': dark, 'قمر صناعي': sat }, null, { position: 'topleft' }).addTo(map);
+
+  clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 50,
+    iconCreateFunction: c => L.divIcon({ html: `<div class="marker-cluster-custom">${c.getChildCount()}</div>`, className: '', iconSize: [38, 38] })
+  }).addTo(map);
+  sosLayerGroup = L.layerGroup().addTo(map);
+  geofenceLayer = L.layerGroup().addTo(map);
+  routeLayer = L.layerGroup().addTo(map);
+  trailLayer = L.layerGroup().addTo(map);
+  heatLayer = L.heatLayer([], { radius: 32, blur: 24, maxZoom: 17, gradient: { 0.2: '#33C7F4', 0.5: '#F5A623', 0.8: '#FF3B4E' } }).addTo(map);
+
+  GEOFENCES.forEach(z => {
+    L.circle([z.lat, z.lng], { radius: z.radius, color: '#33C7F4', weight: 1.5, dashArray: '6,6', fillOpacity: 0.04, interactive: false })
+      .bindTooltip(z.name, { permanent: false }).addTo(geofenceLayer);
+  });
+}
+
+function initEventListeners() {
+  document.getElementById('searchInput').addEventListener('input', e => {
+    clearTimeout(state.searchDebounceId);
+    const val = e.target.value;
+    state.searchDebounceId = setTimeout(() => { state.searchQuery = val.trim().toLowerCase(); filterEmployees(); }, SEARCH_DEBOUNCE_MS);
+  });
+  document.getElementById('autoRefreshToggle').addEventListener('change', e => toggleAutoRefresh(e.target.checked));
+  document.getElementById('refreshRateSelect').addEventListener('change', e => {
+    state.refreshRate = parseInt(e.target.value);
+    if (state.autoRefresh) { toggleAutoRefresh(false); toggleAutoRefresh(true); }
+  });
+  document.getElementById('manualRefreshBtn').addEventListener('click', fetchTelemetryData);
+  document.getElementById('muteAlarmBtn').addEventListener('click', toggleMute);
+  document.getElementById('closeDetailBtn').addEventListener('click', deselectEmployee);
+  document.getElementById('apiUrlInput').addEventListener('change', e => {
+    const v = e.target.value.trim();
+    if (v) { state.apiUrl = v; fetchTelemetryData(); }
+  });
+  document.getElementById('toggleUrlVisibilityBtn').addEventListener('click', e => {
+    const input = document.getElementById('apiUrlInput');
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    e.currentTarget.innerHTML = showing ? '<i data-lucide="eye" style="width:14px;height:14px;"></i>' : '<i data-lucide="eye-off" style="width:14px;height:14px;"></i>';
+    lucide.createIcons();
+  });
+
+  document.getElementById('filterChips').addEventListener('click', e => {
+    const btn = e.target.closest('.chip'); if (!btn) return;
+    document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    state.statusFilter = btn.getAttribute('data-filter');
+    filterEmployees();
+  });
+  document.getElementById('sidebarTabs').addEventListener('click', e => {
+    const btn = e.target.closest('.stab'); if (!btn) return;
+    state.sidebarTab = btn.getAttribute('data-tab');
+    document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('employeeList').classList.toggle('hidden', state.sidebarTab !== 'list');
+    document.getElementById('activityLogPanel').classList.toggle('hidden', state.sidebarTab !== 'log');
+    if (state.sidebarTab === 'log') renderActivityLog();
+  });
+
+  document.getElementById('tabMapBtn').addEventListener('click', () => switchView('map'));
+  document.getElementById('tabAnalyticsBtn').addEventListener('click', () => switchView('analytics'));
+
+  document.getElementById('fitAllBtn').addEventListener('click', () => {
+    const pts = state.filteredEmployees.map(e => [e.lat, e.lng]);
+    if (pts.length === 0) return;
+    map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
+  });
+  document.getElementById('toggleGeofenceBtn').addEventListener('click', () => {
+    state.showGeofence = !state.showGeofence;
+    document.getElementById('toggleGeofenceBtn').classList.toggle('on', state.showGeofence);
+    if (state.showGeofence) geofenceLayer.addTo(map); else map.removeLayer(geofenceLayer);
+  });
+  document.getElementById('toggleWeatherBtn').addEventListener('click', () => {
+    state.showWeather = !state.showWeather;
+    document.getElementById('toggleWeatherBtn').classList.toggle('on', state.showWeather);
+    renderWeatherWidget();
+  });
+  document.getElementById('toggleHeatBtn').addEventListener('click', () => {
+    state.showHeat = !state.showHeat;
+    document.getElementById('toggleHeatBtn').classList.toggle('heat-on', state.showHeat);
+    if (state.showHeat) heatLayer.addTo(map); else map.removeLayer(heatLayer);
+  });
+  document.getElementById('toggleTrailsBtn').addEventListener('click', () => {
+    state.showTrails = !state.showTrails;
+    document.getElementById('toggleTrailsBtn').classList.toggle('on', state.showTrails);
+    updateRouteAndTrail();
+  });
+
+  document.getElementById('resolveEmergencyBtn').addEventListener('click', () => {
+    const emp = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+    if (emp && confirm(`هل تم التعامل مع حالة الموظف ${emp.emp_name} وترغب بإغلاق حالة الطوارئ؟`)) resolveEmergencyRemote(emp.emp_id);
+  });
+
+  document.getElementById('quickCommandChips').addEventListener('click', e => {
+    const btn = e.target.closest('.quick-cmd'); if (!btn) return;
+    document.querySelectorAll('.quick-cmd').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    state.selectedCommand = btn.getAttribute('data-command');
+    document.getElementById('messageTextInput').value = btn.getAttribute('data-default-msg') || '';
+  });
+  document.getElementById('sendMessageBtn').addEventListener('click', sendMessageToSelectedEmployee);
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') deselectEmployee();
+    if (e.key === '/' && document.activeElement.id !== 'searchInput') { e.preventDefault(); document.getElementById('searchInput').focus(); }
+  });
+}
+
+function switchView(view) {
+  state.activeView = view;
+  document.getElementById('tabMapBtn').classList.toggle('active', view === 'map');
+  document.getElementById('tabAnalyticsBtn').classList.toggle('active', view === 'analytics');
+  document.getElementById('mapView').classList.toggle('hidden', view !== 'map');
+  document.getElementById('analyticsView').classList.toggle('hidden', view !== 'analytics');
+  if (view === 'map') { setTimeout(() => map.invalidateSize(), 50); }
+  else { renderAnalyticsView(); }
+}
+
+/* ---------- intelligence engine ---------- */
+function effectiveStatus(emp) {
+  if (emp.status === 'SOS') {
+    const r = state.resolvedSuppression[emp.emp_id];
+    if (r && (Date.now() - r) < SOS_RESOLVE_GRACE_MS) return 'RESOLVING';
+    return 'SOS';
+  }
+  const ts = new Date(emp.timestamp).getTime();
+  if (!isNaN(ts) && (Date.now() - ts) > OFFLINE_THRESHOLD_MS) return 'OFFLINE';
+  return emp.status;
+}
+function matchesStatusFilter(emp, filter) {
+  if (filter === 'ALL') return true;
+  const st = effectiveStatus(emp);
+  if (filter === 'SOS') return st === 'SOS' || st === 'RESOLVING';
+  return st === filter;
+}
+function computeFatigue(emp) {
+  const hr = emp.heart_rate || 0;
+  const hrPenalty = Math.min(45, Math.abs(hr - 82) / 60 * 45);
+  const prevSteps = state.prevSteps[emp.emp_id];
+  const stagnant = prevSteps !== undefined && Math.abs((emp.steps || 0) - prevSteps) < 5;
+  const inactivityPenalty = stagnant ? 28 : 0;
+  const battPenalty = parseInt(emp.battery) < 15 ? 8 : 0;
+  const gpsPenalty = (emp.gps_accuracy && emp.gps_accuracy > 75) ? 6 : 0;
+  const score = Math.round(Math.max(0, Math.min(100, hrPenalty + inactivityPenalty + battPenalty + gpsPenalty)));
+  let level = 'منخفض', reason = 'المؤشرات الحيوية ضمن النطاق الطبيعي ولا توجد علامات إرهاق.';
+  if (score >= 75) { level = 'حرج'; reason = 'نبض غير مستقر مع خمول حركي — يوصى بفحص فوري.'; }
+  else if (score >= 50) { level = 'مرتفع'; reason = 'انحراف واضح في النبض أو خمول حركي متكرر.'; }
+  else if (score >= 25) { level = 'متوسط'; reason = 'بعض مؤشرات الإجهاد بدأت بالظهور — تابع الحالة.'; }
+  return { score, level, reason };
+}
+function fatigueColor(score) { return score >= 75 ? 'var(--sos)' : score >= 50 ? 'var(--warning)' : score >= 25 ? 'var(--accent)' : 'var(--normal)'; }
+function detectAnomaly(emp) {
+  const hist = state.heartHistory[emp.emp_id] || [];
+  if (hist.length < 5) return null;
+  const mean = hist.reduce((a, b) => a + b, 0) / hist.length;
+  const variance = hist.reduce((a, b) => a + (b - mean) ** 2, 0) / hist.length;
+  const sd = Math.sqrt(variance) || 1;
+  const z = (emp.heart_rate - mean) / sd;
+  if (Math.abs(z) >= 2 && Math.abs(emp.heart_rate - mean) >= 12) return { z: z.toFixed(1), dir: z > 0 ? 'ارتفاع' : 'انخفاض', mean: Math.round(mean) };
+  return null;
+}
+function insideAnyGeofence(emp) { return GEOFENCES.some(z => haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius); }
+function findNearestResponder(sosEmp, all) {
+  let nearest = null, min = Infinity;
+  all.forEach(o => { if (o.emp_id === sosEmp.emp_id || o.status === 'SOS') return; const d = haversine(sosEmp.lat, sosEmp.lng, o.lat, o.lng); if (d < min) { min = d; nearest = o; } });
+  if (!nearest) return { text: 'لا يوجد مستجيب قريب متاح حالياً', eta: '—', target: null };
+  const distStr = min < 1000 ? `${Math.round(min)} متر` : `${(min / 1000).toFixed(1)} كم`;
+  const etaMin = Math.max(1, Math.round(min / 80));
+  return { text: `${nearest.emp_name} (#${nearest.emp_id}) · على بعد ${distStr}`, eta: `${etaMin} دقيقة تقريباً`, target: nearest };
+}
+
+async function fetchWeather() {
+  try {
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=24.7136&longitude=46.6753&current=temperature_2m,weather_code,wind_speed_10m');
+    const d = await r.json();
+    state.weather = d.current;
+    renderWeatherWidget();
+  } catch (e) { /* silent */ }
+}
+function weatherMeta(code) {
+  if (code === undefined || code === null) return { icon: 'cloud', label: 'غير متاح' };
+  if (code === 0) return { icon: 'sun', label: 'صافٍ' };
+  if (code <= 3) return { icon: 'cloud-sun', label: 'غائم جزئياً' };
+  if (code <= 48) return { icon: 'cloud-fog', label: 'ضباب' };
+  if (code <= 67) return { icon: 'cloud-rain', label: 'أمطار' };
+  if (code <= 77) return { icon: 'cloud-snow', label: 'ثلوج' };
+  if (code <= 82) return { icon: 'cloud-rain-wind', label: 'زخات مطر' };
+  return { icon: 'cloud-lightning', label: 'عاصفة رعدية' };
+}
+function renderWeatherWidget() {
+  const w = state.weather;
+  const visible = state.showWeather && !!w;
+  document.getElementById('weatherWidget').classList.toggle('hidden', !visible);
+  if (!visible) { document.getElementById('rainOverlay').classList.add('hidden'); return; }
+  const meta = weatherMeta(w.weather_code);
+  document.getElementById('weatherIcon').setAttribute('data-lucide', meta.icon);
+  document.getElementById('weatherTemp').innerText = `${Math.round(w.temperature_2m)}°`;
+  document.getElementById('weatherLabel').innerText = meta.label;
+  document.getElementById('weatherWind').innerText = `رياح ${Math.round(w.wind_speed_10m)} كم/س`;
+  document.getElementById('rainOverlay').classList.toggle('hidden', !(w.weather_code >= 51 && w.weather_code <= 82));
+  lucide.createIcons();
+}
+
+/* ---------- data fetch ---------- */
+async function fetchTelemetryData() {
+  const indicator = document.getElementById('refreshIndicator');
+  if (indicator) indicator.style.animation = 'spinCw 1s linear infinite';
+  if (state.fetchController) state.fetchController.abort();
+  state.fetchController = new AbortController();
+  try {
+    const res = await fetch(state.apiUrl, { signal: state.fetchController.signal });
+    if (!res.ok) throw new Error('bad status');
+    const raw = await res.json();
+    const cleaned = raw.filter(e => (e.emp_id || '').toString().trim() || (e.emp_name || '').toString().trim()).map(e => ({
+      timestamp: e.timestamp || new Date().toISOString(),
+      emp_id: (e.emp_id || 'N/A').toString(), emp_name: e.emp_name || 'موظف غير معروف',
+      lat: safeParseFloat(e.lat, 24.7136), lng: safeParseFloat(e.lng, 46.6753),
+      heart_rate: (() => { const n = parseInt(e.heart_rate); return Number.isFinite(n) ? n : 0; })(),
+      blood_pressure: e.blood_pressure || '120/80', spo2: e.spo2 || '98%', temperature: e.temperature || '37.0°C',
+      steps: (() => { const n = parseInt(e.steps); return Number.isFinite(n) ? n : 0; })(),
+      battery: e.battery ? e.battery.toString().replace('%', '') + '%' : '100%',
+      status: (e.status || 'NORMAL').toUpperCase(),
+      gps_accuracy: (e.gps_accuracy !== undefined && e.gps_accuracy !== '') ? safeParseFloat(e.gps_accuracy, null) : null,
+      gps_status: e.gps_status || 'مباشر', fcm_token: e.fcm_token || ''
+    }));
+
+    cleaned.forEach(e => {
+      e.fatigue = computeFatigue(e);
+      e.insideGeofence = insideAnyGeofence(e);
+      if (e.status === 'SOS') e.responder = findNearestResponder(e, cleaned);
+      if (!state.trails[e.emp_id]) state.trails[e.emp_id] = [];
+      const trail = state.trails[e.emp_id];
+      const lastPt = trail[trail.length - 1];
+      if (!lastPt || haversine(lastPt[0], lastPt[1], e.lat, e.lng) > 5) { trail.push([e.lat, e.lng]); if (trail.length > 40) trail.shift(); }
+      if (!state.heartHistory[e.emp_id]) state.heartHistory[e.emp_id] = [];
+      state.heartHistory[e.emp_id].push(e.heart_rate);
+      if (state.heartHistory[e.emp_id].length > HEART_HISTORY_LIMIT) state.heartHistory[e.emp_id].shift();
+    });
+
+    cleaned.forEach(e => {
+      const st = effectiveStatus(e);
+      const prev = state.prevStatuses[e.emp_id];
+      if (prev !== undefined && prev !== st) {
+        if (st === 'SOS') { state.incidentsToday += 1; logEvent('sos', `استغاثة SOS: ${e.emp_name} (#${e.emp_id})`); state.incidentPoints.push([e.lat, e.lng, 1]); }
+        else if (prev === 'SOS' || prev === 'RESOLVING') logEvent('resolved', `تم إنهاء حالة الطوارئ: ${e.emp_name} (#${e.emp_id})`);
+        else if (st === 'OFFLINE') logEvent('offline', `انقطع الاتصال: ${e.emp_name} (#${e.emp_id})`);
+        else if (prev === 'OFFLINE') logEvent('online', `عاد الاتصال: ${e.emp_name} (#${e.emp_id})`);
+        else if (st === 'WARNING') { logEvent('warning', `دخل حالة تحذير: ${e.emp_name} (#${e.emp_id})`); state.incidentPoints.push([e.lat, e.lng, 0.5]); }
+        if (state.incidentPoints.length > 300) state.incidentPoints.shift();
+      }
+      state.prevStatuses[e.emp_id] = st;
+      state.prevSteps[e.emp_id] = e.steps;
+    });
+
+    const avgHr = cleaned.length ? Math.round(cleaned.reduce((s, e) => s + e.heart_rate, 0) / cleaned.length) : 0;
+    state.snapshots.push({ t: Date.now(), avgHr });
+    if (state.snapshots.length > SNAPSHOT_LIMIT) state.snapshots.shift();
+
+    state.employees = cleaned;
+    state.connectionError = false;
+    state.lastUpdate = Date.now();
+    document.getElementById('lastUpdateTime').innerText = new Date().toLocaleTimeString('ar-SA', { hour12: false });
+    document.getElementById('connectionErrorBadge').classList.add('hidden');
+
+    filterEmployees();
+    updateStats();
+    checkSosAlerts();
+    updateHeaderPulseAndInsight();
+    if (state.activeView === 'analytics') renderAnalyticsView();
+
+    if (state.selectedEmployeeId) {
+      const cur = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+      if (cur) showEmployeeDetails(cur); else deselectEmployee();
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    console.error('telemetry fetch error:', err);
+    state.connectionError = true;
+    document.getElementById('connectionErrorBadge').classList.remove('hidden');
+  } finally {
+    if (indicator) setTimeout(() => { indicator.style.animation = 'none'; }, 500);
+  }
+}
+function toggleAutoRefresh(enable) {
+  state.autoRefresh = enable;
+  if (enable) { if (!refreshTimeoutId) performAutoRefresh(); }
+  else if (refreshTimeoutId) { clearTimeout(refreshTimeoutId); refreshTimeoutId = null; }
+}
+async function performAutoRefresh() {
+  if (!state.autoRefresh) return;
+  await fetchTelemetryData();
+  if (state.autoRefresh) refreshTimeoutId = setTimeout(performAutoRefresh, state.refreshRate);
+}
+
+/* ---------- filtering + list rendering ---------- */
+function filterEmployees() {
+  state.filteredEmployees = state.employees.filter(e => {
+    const q = state.searchQuery;
+    const matchQ = !q || e.emp_name.toLowerCase().includes(q) || e.emp_id.toLowerCase().includes(q);
+    if (!matchQ) return false;
+    return matchesStatusFilter(e, state.statusFilter);
+  });
+  const prio = { SOS: 5, RESOLVING: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
+  state.filteredEmployees.sort((a, b) => (prio[effectiveStatus(b)] || 0) - (prio[effectiveStatus(a)] || 0));
+  renderEmployeeList();
+  updateMapMarkers();
+}
+function renderEmployeeList() {
+  const container = document.getElementById('employeeList');
+  if (state.filteredEmployees.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:40px 0;font-size:12px;color:var(--text-muted);">لا يوجد نتائج تطابق البحث.</div>`;
+    return;
+  }
+  container.innerHTML = '';
+  state.filteredEmployees.forEach(emp => {
+    const status = effectiveStatus(emp);
+    const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+    const active = state.selectedEmployeeId === emp.emp_id;
+    const fatigue = emp.fatigue || { score: 0, level: 'منخفض' };
+    const fColor = fatigueColor(fatigue.score);
+    const hist = state.heartHistory[emp.emp_id] || [];
+    const rising = hist.length > 1 && hist[hist.length - 1] >= hist[0];
+    const sparkPts = buildSparklineSVG(hist, 44, 14);
+
+    const card = document.createElement('div');
+    card.className = 'employee-card' + (active ? ' active-focus' : '');
+    card.style.borderInlineStartColor = colors.dot;
+    card.setAttribute('data-id', emp.emp_id);
+    card.setAttribute('tabindex', '0');
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;">
+        <span style="font-weight:700;font-size:13px;color:var(--text-primary);">${escapeHTML(emp.emp_name)}</span>
+        <span class="badge" style="background:${colors.bg};color:${colors.fg};">${colors.label}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-secondary);">
+        <span class="font-mono">${emp.heart_rate} BPM</span>
+        <svg width="44" height="14" viewBox="0 0 44 14" style="overflow:visible;"><polyline points="${sparkPts}" fill="none" stroke="${rising ? 'var(--warning)' : 'var(--accent)'}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+        <span class="font-mono" style="color:${parseInt(emp.battery) < 15 ? 'var(--warning)' : 'var(--text-secondary)'};">${escapeHTML(emp.battery)}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+          <span class="font-mono" style="font-size:9px;color:var(--text-muted);">#${escapeHTML(emp.emp_id)}</span>
+          <span class="relative-time-update" data-timestamp="${emp.timestamp}" style="font-size:9px;font-weight:600;color:var(--text-muted);">${getRelativeTimeString(emp.timestamp)}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border-soft);">
+        <i data-lucide="brain-circuit" style="width:12px;height:12px;color:${fColor};"></i>
+        <span style="font-size:10px;color:${fColor};font-weight:600;">إرهاق تنبؤي: ${fatigue.score}% · ${fatigue.level}</span>
+        ${!emp.insideGeofence ? `<span style="margin-inline-start:auto;font-size:9px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--warning-soft);color:var(--warning);">خارج المنطقة</span>` : ''}
+      </div>
+    `;
+    card.addEventListener('click', () => selectEmployee(emp));
+    card.addEventListener('keydown', e => { if (e.key === 'Enter') selectEmployee(emp); });
+    container.appendChild(card);
+  });
+  lucide.createIcons();
+}
+function renderActivityLog() {
+  const container = document.getElementById('activityLogPanel');
+  if (state.activityLog.length === 0) { container.innerHTML = `<div style="text-align:center;padding:40px 0;font-size:12px;color:var(--text-muted);">لا توجد أحداث مسجلة بعد.</div>`; return; }
+  const colorMap = { sos: 'var(--sos)', resolved: 'var(--normal)', offline: 'var(--offline)', online: 'var(--accent)', warning: 'var(--warning)' };
+  container.innerHTML = state.activityLog.slice(0, 30).map(en => `
+    <div class="log-entry">
+      <span class="log-dot" style="background:${colorMap[en.type] || 'var(--text-muted)'};"></span>
+      <div style="flex:1;"><span style="color:var(--text-primary);">${escapeHTML(en.message)}</span><span class="font-mono" style="display:block;font-size:10px;color:var(--text-muted);">${new Date(en.time).toLocaleTimeString('ar-SA', { hour12: false })}</span></div>
+    </div>`).join('');
+}
+function logEvent(type, message) {
+  state.activityLog.unshift({ time: new Date().toISOString(), type, message });
+  if (state.activityLog.length > ACTIVITY_LOG_LIMIT) state.activityLog.pop();
+  if (state.sidebarTab === 'log') renderActivityLog();
+}
+
+/* ---------- stats + insight ---------- */
+function updateStats() {
+  const emps = state.employees;
+  document.getElementById('statTotal').innerText = emps.length;
+  document.getElementById('statNormal').innerText = emps.filter(e => effectiveStatus(e) === 'NORMAL').length;
+  document.getElementById('statWarning').innerText = emps.filter(e => effectiveStatus(e) === 'WARNING').length;
+  document.getElementById('statSos').innerText = emps.filter(e => e.status === 'SOS' && effectiveStatus(e) === 'SOS').length;
+  document.getElementById('statRisk').innerText = emps.filter(e => e.fatigue && e.fatigue.score >= 50).length;
+}
+function updateHeaderPulseAndInsight() {
+  const emps = state.employees;
+  const statSos = emps.filter(e => e.status === 'SOS' && effectiveStatus(e) === 'SOS').length;
+  const resolvingCount = emps.filter(e => effectiveStatus(e) === 'RESOLVING').length;
+  const statWarning = emps.filter(e => effectiveStatus(e) === 'WARNING').length;
+  const offlineCount = emps.filter(e => effectiveStatus(e) === 'OFFLINE').length;
+  const statRisk = emps.filter(e => e.fatigue && e.fatigue.score >= 50).length;
+
+  document.getElementById('headerPulse').classList.toggle('sos', statSos > 0);
+
+  const icon = document.querySelector('#insightBar i');
+  const textEl = document.getElementById('insightText');
+  const chip = document.getElementById('systemChip');
+  let text, iconName, color, chipLabel, chipBg, chipFg;
+  if (statSos > 0) { text = `تنبيه حرج: ${statSos} حالة استغاثة نشطة تتطلب استجابة فورية.`; iconName = 'siren'; color = 'var(--sos)'; chipLabel = 'حالة طوارئ'; chipBg = STATUS_COLORS.SOS.bg; chipFg = '#fff'; }
+  else if (resolvingCount > 0) { text = `تم إنهاء ${resolvingCount} حالة استغاثة، بانتظار تأكيد إيقاف الجهاز ميدانياً.`; iconName = 'clock'; color = 'var(--accent)'; chipLabel = 'قيد التأكيد'; chipBg = STATUS_COLORS.RESOLVING.bg; chipFg = STATUS_COLORS.RESOLVING.fg; }
+  else if (statRisk > 0) { text = `الذكاء التحليلي رصد ${statRisk} حالة إرهاق مرتفع الخطورة — يوصى بالمتابعة الاستباقية.`; iconName = 'brain-circuit'; color = 'var(--accent)'; chipLabel = 'مراقبة استباقية'; chipBg = 'rgba(51,199,244,0.12)'; chipFg = '#33C7F4'; }
+  else if (statWarning > 0) { text = `${statWarning} موظف في حالة تحذير حركة — يُنصح بالتحقق من حالتهم.`; iconName = 'alert-triangle'; color = 'var(--warning)'; chipLabel = 'يتطلب متابعة'; chipBg = STATUS_COLORS.WARNING.bg; chipFg = STATUS_COLORS.WARNING.fg; }
+  else if (offlineCount > 0) { text = `${offlineCount} جهاز غير متصل حالياً — تحقق من تغطية الشبكة أو البطارية.`; iconName = 'wifi-off'; color = 'var(--offline)'; chipLabel = 'تغطية جزئية'; chipBg = STATUS_COLORS.OFFLINE.bg; chipFg = STATUS_COLORS.OFFLINE.fg; }
+  else { text = 'جميع الموظفين ضمن الحالة الطبيعية، ولا توجد حوادث نشطة حالياً.'; iconName = 'activity'; color = 'var(--normal)'; chipLabel = 'تشغيل طبيعي'; chipBg = STATUS_COLORS.NORMAL.bg; chipFg = STATUS_COLORS.NORMAL.fg; }
+  textEl.innerText = text; icon.setAttribute('data-lucide', iconName); icon.style.color = color;
+  chip.innerText = chipLabel; chip.style.background = chipBg; chip.style.color = chipFg;
+  lucide.createIcons();
+}
+
+/* ---------- map markers, geofence/heat/trail/route ---------- */
+function updateMapMarkers() {
+  const activeIds = new Set(state.filteredEmployees.map(e => e.emp_id));
+  Object.keys(markers).forEach(id => {
+    if (!activeIds.has(id)) {
+      const m = markers[id];
+      (m.status === 'SOS' ? sosLayerGroup : clusterGroup).removeLayer(m.marker);
+      delete markers[id];
+    }
+  });
+  state.filteredEmployees.forEach(emp => {
+    const status = effectiveStatus(emp);
+    const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+    const latLng = [emp.lat, emp.lng];
+    const anim = status === 'SOS' ? 'animation:pulseMarker 1s infinite;' : '';
+    const icon = L.divIcon({ className: '', iconSize: [26, 26], iconAnchor: [13, 24], html: `<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #060911;background:${colors.dot};${anim}"></div>` });
+    const popup = `<div dir="rtl" style="font-size:12px;">
+      <b style="display:block;font-size:13px;margin-bottom:4px;color:#EAF0FB;">${escapeHTML(emp.emp_name)}</b>
+      <span style="display:block;font-family:'JetBrains Mono',monospace;color:#4F5E76;">#${escapeHTML(emp.emp_id)}</span>
+      <span style="display:block;margin-top:3px;">الحالة: <b style="color:${colors.dot};">${colors.label}</b></span>
+      <span style="display:block;font-family:'JetBrains Mono',monospace;">${emp.heart_rate} BPM</span>
+    </div>`;
+    let entry = markers[emp.emp_id];
+    if (entry) {
+      entry.marker.setLatLng(latLng); entry.marker.setIcon(icon); entry.marker.setPopupContent(popup);
+      if (entry.status !== status) { (entry.status === 'SOS' ? sosLayerGroup : clusterGroup).removeLayer(entry.marker); (status === 'SOS' ? sosLayerGroup : clusterGroup).addLayer(entry.marker); }
+      entry.status = status;
+    } else {
+      const marker = L.marker(latLng, { icon }).bindPopup(popup);
+      marker.on('click', () => selectEmployee(emp));
+      entry = { marker, status };
+      markers[emp.emp_id] = entry;
+      (status === 'SOS' ? sosLayerGroup : clusterGroup).addLayer(marker);
+    }
+  });
+  if (state.showHeat) { if (!map.hasLayer(heatLayer)) heatLayer.addTo(map); heatLayer.setLatLngs(state.incidentPoints); }
+  updateRouteAndTrail();
+}
+function updateRouteAndTrail() {
+  routeLayer.clearLayers();
+  trailLayer.clearLayers();
+  const sel = state.employees.find(e => e.emp_id === state.selectedEmployeeId);
+  if (!sel) return;
+  if (sel.status === 'SOS' && sel.responder && sel.responder.target) {
+    L.polyline([[sel.lat, sel.lng], [sel.responder.target.lat, sel.responder.target.lng]], { color: '#22D488', weight: 2, dashArray: '4,8' }).addTo(routeLayer);
+  }
+  if (state.showTrails) {
+    const pts = state.trails[sel.emp_id] || [];
+    if (pts.length > 1) {
+      L.polyline(pts, { color: '#33C7F4', weight: 2.5, opacity: 0.7, dashArray: '1,7', lineCap: 'round' }).addTo(trailLayer);
+      pts.forEach((p, i) => { if (i < pts.length - 1) L.circleMarker(p, { radius: 2.5, color: '#33C7F4', weight: 0, fillOpacity: 0.5 }).addTo(trailLayer); });
+    }
+  }
+}
+
+/* ---------- selection + detail panel ---------- */
+function selectEmployee(emp) {
+  state.selectedEmployeeId = emp.emp_id;
+  document.querySelectorAll('.employee-card').forEach(c => c.classList.toggle('active-focus', c.getAttribute('data-id') === emp.emp_id));
+  showEmployeeDetails(emp);
+  if (state.activeView === 'map') { map.panTo([emp.lat, emp.lng]); updateRouteAndTrail(); }
+}
+function deselectEmployee() {
+  state.selectedEmployeeId = null;
+  document.getElementById('detailPanel').classList.add('hidden');
+  document.querySelectorAll('.employee-card').forEach(c => c.classList.remove('active-focus'));
+  updateRouteAndTrail();
+}
+function showEmployeeDetails(emp) {
+  document.getElementById('detailPanel').classList.remove('hidden');
+  const status = effectiveStatus(emp);
+  const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+  document.getElementById('detailName').innerText = emp.emp_name;
+  document.getElementById('detailId').innerText = `#${emp.emp_id}`;
+  document.getElementById('detailStatusDot').style.background = colors.dot;
+  document.getElementById('detailHeartRate').innerText = `${emp.heart_rate} BPM`;
+  document.getElementById('detailBP').innerText = emp.blood_pressure;
+  document.getElementById('detailSpo2').innerText = emp.spo2;
+  document.getElementById('detailTemp').innerText = emp.temperature;
+  document.getElementById('detailSteps').innerText = emp.steps.toLocaleString();
+  document.getElementById('detailBattery').innerText = emp.battery;
+  document.getElementById('detailTime').innerText = getRelativeTimeString(emp.timestamp);
+  document.getElementById('detailTime').setAttribute('data-timestamp', emp.timestamp);
+
+  const spark = document.getElementById('heartSparkline');
+  const hist = state.heartHistory[emp.emp_id] || [];
+  spark.innerHTML = `<polyline points="${buildSparklineSVG(hist, 52, 16)}" fill="none" stroke="#33C7F4" stroke-width="1.5"></polyline>`;
+
+  const fatigue = emp.fatigue || { score: 0, reason: '' };
+  const fColor = fatigueColor(fatigue.score);
+  document.getElementById('detailFatigueBar').style.width = fatigue.score + '%';
+  document.getElementById('detailFatigueBar').style.background = fColor;
+  document.getElementById('detailFatiguePct').innerText = fatigue.score + '%';
+  document.getElementById('detailFatiguePct').style.color = fColor;
+  document.getElementById('detailFatigueReason').innerText = fatigue.reason;
+  document.getElementById('detailFatigueReason').style.color = fColor;
+
+  document.getElementById('responderBox').classList.toggle('hidden', status !== 'SOS');
+  if (status === 'SOS' && emp.responder) {
+    document.getElementById('detailResponder').innerText = emp.responder.text;
+    document.getElementById('detailResponderEta').innerText = 'وقت وصول متوقع: ' + emp.responder.eta;
+  }
+  document.getElementById('resolvingNotice').classList.toggle('hidden', status !== 'RESOLVING');
+  document.getElementById('offlineNotice').classList.toggle('hidden', status !== 'OFFLINE');
+  document.getElementById('detailGeofenceNotice').classList.toggle('hidden', !!emp.insideGeofence);
+
+  const hasToken = !!emp.fcm_token;
+  document.getElementById('noTokenNotice').classList.toggle('hidden', hasToken);
+  document.getElementById('sendMessageBtn').disabled = !hasToken;
+  document.getElementById('messageTextInput').disabled = !hasToken;
+  document.querySelectorAll('.quick-cmd').forEach(c => { c.disabled = !hasToken; c.classList.remove('active'); });
+  document.getElementById('messageTextInput').value = '';
+  state.selectedCommand = 'ALERT';
+  lucide.createIcons();
+}
+
+/* ---------- resolve + message actions ---------- */
+async function resolveEmergencyRemote(empId) {
+  state.resolvedSuppression[empId] = Date.now();
+  const emp = state.employees.find(e => e.emp_id === empId);
+  if (emp) { emp.status = 'NORMAL'; filterEmployees(); updateStats(); checkSosAlerts(); updateHeaderPulseAndInsight(); if (state.selectedEmployeeId === empId) showEmployeeDetails(emp); }
+  try {
+    const url = `${state.apiUrl}?action=resolve&emp_id=${encodeURIComponent(empId)}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`status ${response.status}`);
+    await fetchTelemetryData();
+    alert(`تم إنهاء حالة الطوارئ للموظف #${empId} بنجاح. يرجى إيقاف زر الاستغاثة من ساعة الموظف الميداني لكي لا يعاد تفعيل الإنذار تلقائياً.`);
+  } catch (err) {
+    console.error('resolve error:', err);
+    alert('تم التحديث محلياً ولكن تعذر إغلاقه على السيرفر. تحقق من الاتصال وحاول مرة أخرى.');
+  }
+}
+async function sendMessageToSelectedEmployee() {
+  const empId = state.selectedEmployeeId; if (!empId) return;
+  const emp = state.employees.find(e => e.emp_id === empId);
+  if (!emp || !emp.fcm_token) return;
+  const command = state.selectedCommand || 'ALERT';
+  const message = document.getElementById('messageTextInput').value.trim();
+  const btn = document.getElementById('sendMessageBtn');
+  btn.disabled = true; btn.innerText = 'جارٍ الإرسال...';
+  try {
+    const url = `${state.apiUrl}?action=send_message&emp_id=${encodeURIComponent(empId)}&command=${encodeURIComponent(command)}&message=${encodeURIComponent(message)}`;
+    const response = await fetch(url);
+    const result = await response.json().catch(() => null);
+    if (!response.ok || (result && result.result === 'error')) throw new Error((result && result.message) || `status ${response.status}`);
+    document.getElementById('messageTextInput').value = '';
+    document.querySelectorAll('.quick-cmd').forEach(c => c.classList.remove('active'));
+  } catch (err) {
+    console.error('send message error:', err);
+    alert('تعذر إرسال الرسالة. تحقق من الاتصال وحاول مرة أخرى.');
+  } finally { btn.disabled = false; btn.innerText = 'إرسال'; }
+}
+
+/* ---------- audible siren ---------- */
+function checkSosAlerts() {
+  const active = state.employees.filter(e => e.status === 'SOS' && effectiveStatus(e) === 'SOS');
+  if (active.length > 0) playAlarmSiren(); else stopAlarmSiren();
+}
+function playAlarmSiren() {
+  if (state.isMuted) return;
+  if (!state.audioContext) state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (state.sirenIntervalId) return;
+  state.sirenIntervalId = setInterval(() => {
+    if (state.audioContext.state === 'suspended') state.audioContext.resume();
+    const osc = state.audioContext.createOscillator(), gain = state.audioContext.createGain();
+    osc.connect(gain); gain.connect(state.audioContext.destination);
+    osc.type = 'sawtooth';
+    const t = state.audioContext.currentTime;
+    osc.frequency.setValueAtTime(580, t); osc.frequency.linearRampToValueAtTime(880, t + 0.35);
+    gain.gain.setValueAtTime(0.12, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+    osc.start(t); osc.stop(t + 0.38);
+  }, 450);
+}
+function stopAlarmSiren() { if (state.sirenIntervalId) { clearInterval(state.sirenIntervalId); state.sirenIntervalId = null; } }
+function toggleMute() {
+  state.isMuted = !state.isMuted;
+  const icon = document.getElementById('muteIcon'), text = document.getElementById('muteText');
+  if (state.isMuted) { icon.setAttribute('data-lucide', 'volume-x'); icon.style.color = 'var(--sos)'; text.innerText = 'مكتوم'; stopAlarmSiren(); }
+  else { icon.setAttribute('data-lucide', 'volume-2'); icon.style.color = 'var(--normal)'; text.innerText = 'نشط'; checkSosAlerts(); }
+  lucide.createIcons();
+}
+
+/* ---------- analytics view ---------- */
+function renderAnalyticsView() {
+  const emps = state.employees;
+  const statTotal = emps.length;
+  const statSos = emps.filter(e => e.status === 'SOS' && effectiveStatus(e) === 'SOS').length;
+  const resolvingCount = emps.filter(e => effectiveStatus(e) === 'RESOLVING').length;
+  const statWarning = emps.filter(e => effectiveStatus(e) === 'WARNING').length;
+  const offlineCount = emps.filter(e => effectiveStatus(e) === 'OFFLINE').length;
+  const statRisk = emps.filter(e => e.fatigue && e.fatigue.score >= 50).length;
+  const outCount = emps.filter(e => !e.insideGeofence).length;
+
+  const avgHr = statTotal ? Math.round(emps.reduce((a, e) => a + e.heart_rate, 0) / statTotal) : 0;
+  document.getElementById('aiSummary').innerText = `${document.getElementById('insightText').innerText} ${outCount > 0 ? `كما رُصد ${outCount} موظف خارج نطاق المناطق التشغيلية المصرح بها. ` : ''}متوسط النبض العام للفريق ${avgHr} نبضة/دقيقة، و${statRisk} حالة مصنّفة ضمن الإرهاق المرتفع بحسب النموذج التنبؤي.`;
+
+  const stability = Math.round(Math.max(0, 100 - (statSos * 35 + resolvingCount * 15 + statWarning * 8 + offlineCount * 6 + statRisk * 5)));
+  const stColor = stability >= 80 ? 'var(--normal)' : stability >= 55 ? 'var(--warning)' : 'var(--sos)';
+  const stLabel = stability >= 80 ? 'مستقر' : stability >= 55 ? 'يتطلب انتباه' : 'حرج';
+  const stEl = document.getElementById('stabilityValue'); stEl.innerText = stability; stEl.style.color = stColor;
+  const stLabelEl = document.getElementById('stabilityLabel'); stLabelEl.innerText = stLabel; stLabelEl.style.color = stColor;
+
+  let forecastDir = 'مستقر', forecastArrow = 'minus', forecastColor = 'var(--text-secondary)', forecastPct = '0';
+  const snaps = state.snapshots;
+  if (snaps.length >= 4) {
+    const recent = snaps.slice(-4).map(x => x.avgHr);
+    const delta = recent[recent.length - 1] - recent[0];
+    const pct = recent[0] ? (delta / recent[0] * 100) : 0;
+    forecastPct = Math.abs(pct).toFixed(1);
+    if (pct > 3) { forecastDir = 'تصاعدي'; forecastArrow = 'trending-up'; forecastColor = 'var(--warning)'; }
+    else if (pct < -3) { forecastDir = 'تنازلي'; forecastArrow = 'trending-down'; forecastColor = 'var(--accent)'; }
+  }
+  const fArrowEl = document.getElementById('forecastArrow'); fArrowEl.setAttribute('data-lucide', forecastArrow); fArrowEl.style.color = forecastColor;
+  const fLabelEl = document.getElementById('forecastLabel'); fLabelEl.innerText = `${forecastDir} ${forecastPct}%`; fLabelEl.style.color = forecastColor;
+
+  if (snaps.length > 1) {
+    const vals = snaps.map(x => x.avgHr);
+    const min = Math.min(...vals), max = Math.max(...vals), range = (max - min) || 1;
+    const w = 480, h = 100, top = 10;
+    const pts = snaps.map((v, i) => [i * (w / (snaps.length - 1)), top + h - ((v.avgHr - min) / range) * h]);
+    const line = 'M' + pts.map(p => p.join(',')).join(' L');
+    document.getElementById('trendLinePath').setAttribute('d', line);
+    document.getElementById('trendAreaPath').setAttribute('d', line + ` L${pts[pts.length - 1][0]},120 L0,120 Z`);
+  }
+
+  const donutCounts = { NORMAL: 0, WARNING: 0, SOS: 0, OFFLINE: 0 };
+  emps.forEach(e => { const st = effectiveStatus(e); const key = st === 'RESOLVING' ? 'SOS' : st; donutCounts[key] = (donutCounts[key] || 0) + 1; });
+  const total = statTotal || 1, circumference = 2 * Math.PI * 54;
+  let acc = 0;
+  const donutOrder = ['NORMAL', 'WARNING', 'SOS', 'OFFLINE'];
+  const segG = document.getElementById('donutSegments');
+  segG.innerHTML = donutOrder.filter(k => donutCounts[k] > 0).map(k => {
+    const frac = donutCounts[k] / total, dash = frac * circumference;
+    const svg = `<circle cx="70" cy="70" r="54" fill="none" stroke="${STATUS_COLORS[k].dot}" stroke-width="18" stroke-dasharray="${dash} ${circumference - dash}" stroke-dashoffset="${-acc}" transform="rotate(-90 70 70)"></circle>`;
+    acc += dash; return svg;
+  }).join('');
+  document.getElementById('donutTotal').textContent = statTotal;
+  document.getElementById('donutLegend').innerHTML = donutOrder.map(k => `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-secondary);"><span style="width:8px;height:8px;border-radius:50%;background:${STATUS_COLORS[k].dot};display:inline-block;"></span>${STATUS_COLORS[k].label} (${donutCounts[k]})</span>`).join('');
+
+  const now = new Date();
+  const buckets = [];
+  for (let i = 5; i >= 0; i--) {
+    const hourStart = new Date(now.getTime() - i * 3600000);
+    const count = state.activityLog.filter(en => en.type === 'sos' && Math.floor((now - new Date(en.time)) / 3600000) === i).length;
+    buckets.push({ label: `${hourStart.getHours()}:00`, count, h: Math.max(4, count * 22) });
+  }
+  document.getElementById('hourBuckets').innerHTML = buckets.map(b => `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <span class="font-mono" style="font-size:10px;color:var(--text-secondary);">${b.count}</span>
+      <div style="width:100%;border-radius:5px 5px 0 0;background:var(--sos);height:${b.h}px;min-height:2px;"></div>
+      <span style="font-size:9px;color:var(--text-muted);">${b.label}</span>
+    </div>`).join('');
+
+  const fatigueBoard = emps.filter(e => e.fatigue).slice().sort((a, b) => b.fatigue.score - a.fatigue.score).slice(0, 5);
+  document.getElementById('fatigueBoard').innerHTML = fatigueBoard.length ? fatigueBoard.map(e => `
+    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
+      <span style="width:90px;flex-shrink:0;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(e.emp_name)}</span>
+      <div class="fatigue-bar-wrap"><div class="fatigue-bar-fill" style="width:${e.fatigue.score}%;background:${fatigueColor(e.fatigue.score)};"></div></div>
+      <span class="font-mono" style="width:34px;text-align:left;font-weight:700;color:${fatigueColor(e.fatigue.score)};">${e.fatigue.score}%</span>
+    </div>`).join('') : `<span style="font-size:11px;color:var(--text-muted);">لا توجد بيانات كافية بعد.</span>`;
+
+  const anomalies = emps.map(e => ({ e, a: detectAnomaly(e) })).filter(x => x.a);
+  document.getElementById('anomaliesList').innerHTML = anomalies.length ? anomalies.map(x => `
+    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;padding:7px 9px;border-radius:9px;background:var(--warning-soft);border:1px solid rgba(245,166,35,0.25);">
+      <i data-lucide="waves" style="width:14px;height:14px;flex-shrink:0;color:var(--warning);"></i>
+      <span style="color:var(--text-primary);font-weight:600;">${escapeHTML(x.e.emp_name)}</span><span style="color:var(--warning);">${x.a.dir} غير معتاد بالنبض (${x.e.heart_rate} مقابل متوسطه ${x.a.mean} BPM، z=${x.a.z})</span>
+    </div>`).join('') : `<span style="font-size:11px;color:var(--text-muted);">لا توجد انحرافات غير معتادة حالياً في المؤشرات الحيوية.</span>`;
+
+  const recs = [];
+  if (statSos > 0) recs.push({ icon: 'siren', text: `استدعِ فرق الدعم الميداني فوراً لـ ${statSos} حالة استغاثة نشطة.`, color: 'var(--sos)' });
+  if (outCount > 0) recs.push({ icon: 'map-pin-off', text: `تحقق من سبب خروج ${outCount} موظف عن المناطق التشغيلية المصرح بها.`, color: 'var(--warning)' });
+  if (statRisk > 0) recs.push({ icon: 'brain-circuit', text: `راجع الحالة الصحية لأصحاب الإرهاق المرتفع (${statRisk}) قبل تفاقم الحالة.`, color: 'var(--accent)' });
+  if (offlineCount > 1) recs.push({ icon: 'battery-warning', text: `${offlineCount} جهاز غير متصل — تحقق من تغطية الشبكة أو شحن الأجهزة الميدانية.`, color: 'var(--offline)' });
+  if (anomalies.length > 0) recs.push({ icon: 'activity', text: `رُصدت ${anomalies.length} حالة انحراف حيوي غير معتاد تستحق مراجعة يدوية.`, color: 'var(--accent)' });
+  if (recs.length === 0) recs.push({ icon: 'check-circle-2', text: 'لا توجد إجراءات عاجلة مطلوبة — استمر بالمراقبة الدورية.', color: 'var(--normal)' });
+  document.getElementById('recommendationsList').innerHTML = recs.map(r => `<div style="display:flex;align-items:center;gap:8px;font-size:11.5px;padding:7px 9px;"><i data-lucide="${r.icon}" style="width:14px;height:14px;flex-shrink:0;color:${r.color};"></i><span style="color:var(--text-primary);">${r.text}</span></div>`).join('');
+
+  const riskList = emps.filter(e => e.fatigue && e.fatigue.score >= 50).sort((a, b) => b.fatigue.score - a.fatigue.score);
+  document.getElementById('riskList').innerHTML = riskList.length ? riskList.map(e => {
+    const crit = e.fatigue.score >= 75;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;border:1px solid ${crit ? 'rgba(255,59,78,0.35)' : 'rgba(245,166,35,0.35)'};background:${crit ? 'rgba(255,59,78,0.08)' : 'rgba(245,166,35,0.08)'};">
+      <i data-lucide="alert-octagon" style="width:16px;height:16px;flex-shrink:0;color:${crit ? 'var(--sos)' : 'var(--warning)'};"></i>
+      <div style="flex:1;"><span style="font-size:12px;font-weight:700;color:var(--text-primary);">${escapeHTML(e.emp_name)}</span><span style="display:block;font-size:11px;color:${crit ? 'var(--sos)' : 'var(--warning)'};">${e.fatigue.reason}</span></div>
+      <span class="badge" style="background:${crit ? 'rgba(255,59,78,0.16)' : 'rgba(245,166,35,0.16)'};color:${crit ? 'var(--sos)' : 'var(--warning)'};flex-shrink:0;">${e.fatigue.level}</span>
+    </div>`;
+  }).join('') : `<span style="font-size:11px;color:var(--text-muted);">لا توجد حالات مصنّفة كخطر مرتفع حالياً — الوضع مستقر.</span>`;
+
+  lucide.createIcons();
+}
+</script>
 </body>
 </html>
