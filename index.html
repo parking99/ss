@@ -1,1375 +1,1221 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مركز القيادة الأمنية · SHIELD OPS</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<style>
-/* ═══════════════════════════════════════════
-   TOKENS
-═══════════════════════════════════════════ */
-:root {
-  --void:    #020408;
-  --base:    #050B14;
-  --surface: #080F1C;
-  --card:    #0C1525;
-  --lift:    #101D30;
-  --hover:   #14223A;
-
-  --b1: rgba(0,180,255,.05);
-  --b2: rgba(0,180,255,.10);
-  --b3: rgba(0,180,255,.18);
-
-  --cyan:    #00D4FF;
-  --cyan-a:  rgba(0,212,255,.12);
-  --cyan-b:  rgba(0,212,255,.25);
-  --cyan-glow: 0 0 28px rgba(0,212,255,.35);
-
-  --green:   #00F0A0;
-  --green-a: rgba(0,240,160,.10);
-  --green-b: rgba(0,240,160,.22);
-
-  --amber:   #FFB830;
-  --amber-a: rgba(255,184,48,.10);
-  --amber-b: rgba(255,184,48,.22);
-
-  --red:     #FF2D55;
-  --red-a:   rgba(255,45,85,.10);
-  --red-b:   rgba(255,45,85,.22);
-
-  --purple:  #9B6DFF;
-  --purple-a:rgba(155,109,255,.10);
-
-  --t1: #E8F4FF;
-  --t2: #7B9DBF;
-  --t3: #3A5470;
-  --t4: #1C3048;
-
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 20px;
-
-  --sh-sm: 0 2px 8px rgba(0,0,0,.5);
-  --sh-md: 0 8px 32px rgba(0,0,0,.65);
-  --sh-lg: 0 20px 60px rgba(0,0,0,.8);
-}
-
-/* ═══════════════════════════════════════════
-   RESET
-═══════════════════════════════════════════ */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100vh;width:100%;overflow:hidden;background:var(--void);color:var(--t1);
-  font-family:'IBM Plex Sans Arabic','Cairo',sans-serif;font-size:13px}
-.mono{font-family:'JetBrains Mono',monospace;direction:ltr;unicode-bidi:isolate}
-.cairo{font-family:'Cairo',sans-serif}
-
-::-webkit-scrollbar{width:3px;height:3px}
-::-webkit-scrollbar-thumb{background:var(--b3);border-radius:99px}
-::-webkit-scrollbar-track{background:transparent}
-
-/* ═══════════════════════════════════════════
-   AMBIENT GLOW LAYERS
-═══════════════════════════════════════════ */
-#bg-canvas{
-  position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,80,160,.18) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 60% at 100% 100%, rgba(0,40,100,.12) 0%, transparent 55%),
-    repeating-linear-gradient(0deg, transparent 0px, transparent 47px, rgba(0,180,255,.02) 48px),
-    repeating-linear-gradient(90deg,transparent 0px, transparent 47px, rgba(0,180,255,.02) 48px);
-}
-
-/* ═══════════════════════════════════════════
-   LAYOUT
-═══════════════════════════════════════════ */
-#shell{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-
-/* ═══════════════════════════════════════════
-   TOP BAR
-═══════════════════════════════════════════ */
-#topbar{
-  display:flex;align-items:stretch;gap:0;
-  height:58px;flex-shrink:0;
-  background:rgba(8,15,28,.9);
-  border-bottom:1px solid var(--b2);
-  backdrop-filter:blur(20px);
-  position:relative;z-index:50;
-}
-
-#topbar::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent 0%,var(--cyan-b) 30%,var(--cyan-b) 70%,transparent 100%);
-}
-
-/* Brand block */
-.tb-brand{
-  display:flex;align-items:center;gap:12px;
-  padding:0 20px 0 16px;
-  border-left:1px solid var(--b2);
-  min-width:280px;
-}
-
-.brand-shield{
-  width:38px;height:38px;border-radius:10px;flex-shrink:0;
-  background:linear-gradient(135deg,rgba(0,80,160,.5) 0%,rgba(0,40,100,.3) 100%);
-  border:1px solid rgba(0,120,220,.35);
-  display:flex;align-items:center;justify-content:center;
-  color:var(--cyan);
-  box-shadow:0 0 18px rgba(0,120,220,.25);
-  position:relative;overflow:hidden;
-}
-.brand-shield::before{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(0,212,255,.12) 0%,transparent 60%);
-}
-
-.brand-text-main{
-  font-family:'Cairo',sans-serif;
-  font-size:14px;font-weight:900;
-  color:var(--t1);letter-spacing:-.3px;
-}
-.brand-text-sub{
-  font-size:9.5px;font-weight:600;color:var(--t3);
-  letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;
-}
-
-/* Center KPI strip */
-.tb-kpis{
-  display:flex;align-items:stretch;flex:1;
-  overflow:hidden;
-}
-
-.tb-kpi{
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  padding:0 18px;border-left:1px solid var(--b1);
-  position:relative;cursor:default;transition:background .15s;min-width:90px;
-}
-.tb-kpi:hover{background:rgba(0,212,255,.04)}
-
-.tb-kpi-label{
-  font-size:8.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
-  color:var(--t3);margin-bottom:4px;white-space:nowrap;
-}
-.tb-kpi-val{
-  font-family:'JetBrains Mono',monospace;
-  font-size:20px;font-weight:700;line-height:1;
-}
-.tb-kpi-val.c-all{color:var(--t1)}
-.tb-kpi-val.c-green{color:var(--green);text-shadow:0 0 12px rgba(0,240,160,.5)}
-.tb-kpi-val.c-amber{color:var(--amber);text-shadow:0 0 12px rgba(255,184,48,.5)}
-.tb-kpi-val.c-red{color:var(--red);text-shadow:0 0 14px rgba(255,45,85,.6)}
-
-/* Alert badge */
-.tb-kpi.has-alert::after{
-  content:'';position:absolute;top:8px;left:8px;
-  width:5px;height:5px;border-radius:50%;
-  background:var(--red);
-  animation:dotBlink 1.4s ease-in-out infinite;
-}
-@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.2}}
-
-/* Right block */
-.tb-right{
-  display:flex;align-items:center;gap:10px;
-  padding:0 16px 0 20px;
-  border-right:1px solid var(--b2);
-}
-
-.clock-block{
-  display:flex;flex-direction:column;align-items:flex-start;
-  padding:6px 12px;
-  background:rgba(0,212,255,.04);
-  border:1px solid var(--b2);
-  border-radius:var(--r-sm);
-}
-.clock-time{
-  font-family:'JetBrains Mono',monospace;
-  font-size:18px;font-weight:700;color:var(--cyan);
-  letter-spacing:2px;line-height:1.1;
-  text-shadow:0 0 16px rgba(0,212,255,.4);
-}
-.clock-date{font-size:9px;color:var(--t3);letter-spacing:.3px;margin-top:1px}
-
-.live-chip{
-  display:flex;align-items:center;gap:5px;
-  padding:5px 10px;border-radius:99px;
-  background:var(--green-a);border:1px solid var(--green-b);
-  font-family:'Cairo',sans-serif;
-  font-size:10px;font-weight:800;color:var(--green);
-}
-.live-dot{
-  width:6px;height:6px;border-radius:50%;
-  background:var(--green);
-  animation:livePop 2s ease-in-out infinite;
-}
-@keyframes livePop{0%,100%{box-shadow:0 0 0 0 rgba(0,240,160,.6)}50%{box-shadow:0 0 0 5px rgba(0,240,160,0)}}
-
-.refresh-btn{
-  display:flex;align-items:center;justify-content:center;
-  width:34px;height:34px;border-radius:var(--r-sm);
-  background:var(--card);border:1px solid var(--b2);
-  color:var(--t3);cursor:pointer;transition:all .15s;
-}
-.refresh-btn:hover{border-color:var(--cyan-b);color:var(--cyan)}
-.refresh-btn.spinning svg{animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ═══════════════════════════════════════════
-   TABS
-═══════════════════════════════════════════ */
-#tabs{
-  display:flex;align-items:flex-end;gap:2px;
-  padding:8px 16px 0;
-  background:rgba(8,15,28,.7);
-  border-bottom:1px solid var(--b2);
-  flex-shrink:0;
-}
-
-.tab{
-  display:flex;align-items:center;gap:6px;
-  padding:8px 16px 9px;
-  border-radius:var(--r-sm) var(--r-sm) 0 0;
-  border:1px solid transparent;border-bottom:none;
-  background:transparent;
-  color:var(--t3);
-  font-family:'Cairo',sans-serif;
-  font-size:12px;font-weight:700;
-  cursor:pointer;transition:all .15s;
-  position:relative;
-}
-.tab:hover{color:var(--t2);background:rgba(0,212,255,.04)}
-.tab.active{
-  background:var(--base);
-  border-color:var(--b2);
-  color:var(--cyan);
-}
-.tab.active::after{
-  content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;
-  background:var(--cyan);border-radius:99px 99px 0 0;
-}
-
-/* ═══════════════════════════════════════════
-   WORKSPACE
-═══════════════════════════════════════════ */
-#workspace{
-  flex:1;display:flex;overflow:hidden;
-  padding:12px;gap:10px;
-  background:var(--base);
-}
-
-/* ═══════════════════════════════════════════
-   SIDEBAR
-═══════════════════════════════════════════ */
-#sidebar{
-  width:290px;min-width:290px;flex-shrink:0;
-  display:flex;flex-direction:column;gap:8px;
-  height:100%;overflow:hidden;
-}
-
-/* Filter bar */
-.filter-row{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
-.filter-row::-webkit-scrollbar{height:0}
-
-.chip{
-  flex-shrink:0;display:inline-flex;align-items:center;gap:4px;
-  padding:5px 11px;border-radius:99px;
-  border:1px solid var(--b2);background:var(--card);
-  color:var(--t3);
-  font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:700;
-  cursor:pointer;transition:all .15s;white-space:nowrap;
-}
-.chip:hover{border-color:var(--b3);color:var(--t2)}
-.chip.active{background:var(--cyan-a);border-color:var(--cyan-b);color:var(--cyan)}
-.chip[data-filter="SOS"].active{background:var(--red-a);border-color:var(--red-b);color:var(--red)}
-.chip[data-filter="WARNING"].active{background:var(--amber-a);border-color:var(--amber-b);color:var(--amber)}
-.chip[data-filter="NORMAL"].active{background:var(--green-a);border-color:var(--green-b);color:var(--green)}
-
-/* Section label */
-.sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:0 2px}
-.sec-lbl{font-size:9px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--t3)}
-.sec-cnt{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--t4)}
-
-/* Cards */
-#employeeList{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
-
-.employee-card{
-  position:relative;
-  background:var(--card);
-  border:1px solid var(--b1);
-  border-radius:var(--r-md);
-  padding:10px 12px 10px 14px;
-  cursor:pointer;overflow:hidden;
-  transition:all .15s ease;
-}
-.employee-card::before{
-  content:'';position:absolute;
-  top:0;bottom:0;right:0;width:3px;
-  transition:background .15s;
-}
-.employee-card.st-NORMAL::before{background:var(--green)}
-.employee-card.st-WARNING::before{background:var(--amber)}
-.employee-card.st-SOS::before{background:var(--red);animation:stripePulse 1.6s ease-in-out infinite}
-.employee-card.st-OFFBODY::before{background:var(--purple)}
-
-@keyframes stripePulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-.employee-card:hover{
-  background:var(--lift);border-color:var(--b2);
-  transform:translateX(-2px);box-shadow:var(--sh-sm);
-}
-.employee-card.st-SOS{
-  background:rgba(255,45,85,.04);border-color:rgba(255,45,85,.15);
-}
-
-/* Card internals */
-.ec-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
-.ec-name{font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;color:var(--t1);line-height:1.3}
-.ec-id{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);margin-top:1px}
-
-.status-pip{
-  display:inline-flex;align-items:center;gap:3px;
-  padding:2px 7px;border-radius:99px;
-  font-family:'Cairo',sans-serif;font-size:9px;font-weight:800;
-  white-space:nowrap;flex-shrink:0;margin-top:1px;
-}
-.pip-NORMAL{background:var(--green-a);color:var(--green);border:1px solid var(--green-b)}
-.pip-WARNING{background:var(--amber-a);color:var(--amber);border:1px solid var(--amber-b)}
-.pip-SOS{background:var(--red-a);color:var(--red);border:1px solid var(--red-b);animation:pipGlow 1.5s ease-in-out infinite}
-.pip-OFFBODY{background:var(--purple-a);color:var(--purple);border:1px solid rgba(155,109,255,.3)}
-@keyframes pipGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(255,45,85,.6)}}
-
-.ec-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
-.vital{
-  display:flex;flex-direction:column;align-items:center;
-  background:var(--surface);border:1px solid var(--b1);
-  border-radius:6px;padding:5px 4px;
-}
-.vital-icon{margin-bottom:3px;opacity:.6}
-.vital-val{
-  font-family:'JetBrains Mono',monospace;
-  font-size:11px;font-weight:700;color:var(--t1);
-  line-height:1;white-space:nowrap;
-}
-.vital-lbl{font-size:8px;color:var(--t3);margin-top:2px;white-space:nowrap}
-
-/* ═══════════════════════════════════════════
-   MAP VIEW
-═══════════════════════════════════════════ */
-#mapView{
-  position:relative;flex:1;min-width:0;
-  border-radius:var(--r-lg);overflow:hidden;
-  border:1px solid var(--b2);display:flex;
-  box-shadow:var(--sh-md);
-}
-#map{height:100%;width:100%;z-index:1;background:var(--card)}
-
-/* Map overlay labels */
-.map-badge{
-  position:absolute;z-index:10;pointer-events:none;
-  display:flex;align-items:center;gap:6px;
-  padding:5px 11px;background:rgba(5,11,20,.85);
-  border:1px solid var(--b2);border-radius:var(--r-sm);
-  backdrop-filter:blur(8px);
-  font-size:9.5px;font-weight:700;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;
-}
-.map-badge.top-right{top:12px;right:12px}
-.map-badge.top-left{top:12px;left:12px}
-
-/* Auto-refresh progress bar */
-#refreshBar{
-  position:absolute;bottom:0;left:0;right:0;z-index:10;height:2px;
-  background:rgba(0,212,255,.12);
-}
-#refreshBarFill{
-  height:100%;width:100%;
-  background:linear-gradient(90deg,var(--cyan),rgba(0,212,255,.3));
-  transform-origin:right;
-  transition:transform linear;
-}
-
-/* Leaflet overrides */
-.leaflet-control-zoom{border:none!important}
-.leaflet-control-zoom a{
-  background:rgba(8,15,28,.9)!important;color:var(--t2)!important;
-  border:1px solid var(--b2)!important;border-radius:8px!important;margin-bottom:3px!important;
-  backdrop-filter:blur(8px);
-}
-.leaflet-control-zoom a:hover{color:var(--cyan)!important;border-color:var(--cyan-b)!important}
-.leaflet-popup-content-wrapper{
-  background:rgba(12,21,37,.96)!important;color:var(--t1)!important;
-  border-radius:var(--r-md)!important;border:1px solid var(--b2)!important;
-  box-shadow:var(--sh-md)!important;backdrop-filter:blur(16px);
-}
-.leaflet-popup-tip{background:rgba(12,21,37,.96)!important}
-.leaflet-popup-content{margin:12px 14px!important;font-family:'Cairo',sans-serif;font-size:12px}
-
-/* ═══════════════════════════════════════════
-   DETAIL PANEL
-═══════════════════════════════════════════ */
-#detailPanel{
-  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
-  width:430px;z-index:20;
-  background:rgba(8,15,28,.97);
-  border:1px solid var(--b3);border-radius:var(--r-xl);
-  box-shadow:var(--sh-lg),var(--cyan-glow);
-  backdrop-filter:blur(24px);
-  overflow:hidden;
-}
-
-.dp-header{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:14px 16px;
-  background:linear-gradient(135deg,rgba(0,212,255,.07) 0%,transparent 55%);
-  border-bottom:1px solid var(--b2);
-}
-.dp-name{font-family:'Cairo',sans-serif;font-size:14px;font-weight:800;color:var(--t1)}
-.dp-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);margin-top:2px}
-.dp-close{
-  display:flex;align-items:center;justify-content:center;
-  width:28px;height:28px;border-radius:8px;
-  background:var(--lift);border:1px solid var(--b2);
-  color:var(--t3);cursor:pointer;transition:all .15s;
-}
-.dp-close:hover{border-color:var(--red);color:var(--red)}
-
-.dp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 16px}
-
-.dp-metric{
-  background:var(--surface);border:1px solid var(--b2);
-  border-radius:var(--r-md);padding:10px;
-  position:relative;overflow:hidden;text-align:center;
-}
-.dp-metric::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:2px;
-}
-.dp-m-heart::before{background:linear-gradient(90deg,var(--red),transparent)}
-.dp-m-spo2::before{background:linear-gradient(90deg,var(--cyan),transparent)}
-.dp-m-temp::before{background:linear-gradient(90deg,var(--amber),transparent)}
-.dp-m-batt::before{background:linear-gradient(90deg,var(--green),transparent)}
-
-.dp-m-icon{margin:0 auto 6px;opacity:.7;display:flex;justify-content:center}
-.dp-m-val{
-  font-family:'JetBrains Mono',monospace;
-  font-size:17px;font-weight:700;line-height:1;
-}
-.dp-m-heart .dp-m-val{color:var(--red)}
-.dp-m-spo2 .dp-m-val{color:var(--cyan)}
-.dp-m-temp .dp-m-val{color:var(--amber)}
-.dp-m-batt .dp-m-val{color:var(--green)}
-.dp-m-lbl{font-size:9px;color:var(--t3);margin-top:4px;letter-spacing:.5px}
-
-/* ═══════════════════════════════════════════
-   ANALYTICS VIEW
-═══════════════════════════════════════════ */
-#analyticsView{
-  flex:1;min-width:0;overflow-y:auto;
-  display:flex;flex-direction:column;gap:10px;
-}
-
-.kpi-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-
-.kpi-card{
-  background:var(--card);border:1px solid var(--b1);
-  border-radius:var(--r-lg);padding:16px;
-  position:relative;overflow:hidden;transition:border-color .2s;
-}
-.kpi-card:hover{border-color:var(--b2)}
-.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-.kpi-c .kpi-card::before,.kpi-card.kpi-c::before{background:linear-gradient(90deg,var(--cyan),transparent)}
-.kpi-g .kpi-card::before,.kpi-card.kpi-g::before{background:linear-gradient(90deg,var(--green),transparent)}
-.kpi-r .kpi-card::before,.kpi-card.kpi-r::before{background:linear-gradient(90deg,var(--red),transparent)}
-
-.kpi-icon{
-  width:34px;height:34px;border-radius:9px;
-  display:flex;align-items:center;justify-content:center;
-  margin-bottom:10px;
-}
-.kpi-c .kpi-icon,.kpi-card.kpi-c .kpi-icon{background:var(--cyan-a);color:var(--cyan)}
-.kpi-g .kpi-icon,.kpi-card.kpi-g .kpi-icon{background:var(--green-a);color:var(--green)}
-.kpi-r .kpi-icon,.kpi-card.kpi-r .kpi-icon{background:var(--red-a);color:var(--red)}
-
-.kpi-lbl{font-size:10.5px;font-weight:600;color:var(--t3);margin-bottom:5px}
-.kpi-val{
-  font-family:'JetBrains Mono',monospace;
-  font-size:26px;font-weight:700;color:var(--t1);line-height:1.1;
-}
-.kpi-sub{font-size:9.5px;color:var(--t4);margin-top:4px}
-
-/* Backward compat for JS analytics ids */
-#avgHeartRate{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--t1);margin-top:5px}
-#avgBattery{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--t1);margin-top:5px}
-#totalRiskIndex{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--red);margin-top:5px}
-
-.charts-row{display:grid;grid-template-columns:3fr 2fr;gap:10px;flex:1}
-
-.chart-card{
-  background:var(--card);border:1px solid var(--b1);
-  border-radius:var(--r-lg);padding:14px;
-  display:flex;flex-direction:column;min-height:220px;
-}
-.chart-hdr{
-  display:flex;align-items:center;gap:7px;
-  font-size:11.5px;font-weight:700;color:var(--t2);
-  margin-bottom:12px;
-}
-.chart-dot{width:6px;height:6px;border-radius:50%}
-.chart-wrap{flex:1;position:relative;min-height:0}
-
-/* ═══════════════════════════════════════════
-   AI ASSISTANT
-═══════════════════════════════════════════ */
-#aiToggleBtn{
-  position:fixed;bottom:20px;left:20px;z-index:998;
-  display:flex;align-items:center;gap:7px;
-  padding:9px 15px;border-radius:99px;
-  background:rgba(8,15,28,.95);
-  border:1px solid var(--cyan-b);
-  color:var(--cyan);
-  font-family:'Cairo',sans-serif;font-size:11.5px;font-weight:700;
-  cursor:pointer;backdrop-filter:blur(14px);
-  box-shadow:var(--sh-md),0 0 24px rgba(0,212,255,.12);
-  transition:all .2s;
-}
-#aiToggleBtn:hover{background:var(--cyan);color:#011015;box-shadow:var(--sh-md),0 0 32px rgba(0,212,255,.5)}
-#aiToggleBtn svg{width:15px;height:15px}
-
-#aiChatBox{
-  position:fixed;bottom:68px;left:20px;z-index:999;
-  width:360px;height:500px;
-  display:flex;flex-direction:column;overflow:hidden;
-  border-radius:18px;border:1px solid var(--b3);
-  background:rgba(8,15,28,.98);
-  box-shadow:var(--sh-lg),0 0 40px rgba(0,212,255,.12);
-  backdrop-filter:blur(24px);
-}
-
-.ai-hdr{
-  padding:12px 14px;flex-shrink:0;
-  background:linear-gradient(135deg,rgba(0,212,255,.07) 0%,transparent 60%);
-  border-bottom:1px solid var(--b2);
-  display:flex;justify-content:space-between;align-items:center;
-}
-.ai-hdr-title{
-  display:flex;align-items:center;gap:7px;
-  font-family:'Cairo',sans-serif;font-size:13px;font-weight:800;color:var(--cyan);
-}
-.ai-model{font-size:9.5px;font-weight:600;color:var(--t3);letter-spacing:.5px;margin-top:1px}
-.ai-x{
-  display:flex;align-items:center;justify-content:center;
-  width:26px;height:26px;border-radius:7px;
-  background:var(--lift);border:1px solid var(--b2);
-  color:var(--t3);cursor:pointer;transition:all .15s;
-}
-.ai-x:hover{border-color:var(--red);color:var(--red)}
-
-.ai-keybar{
-  display:flex;align-items:center;gap:7px;
-  padding:7px 12px;background:rgba(0,0,0,.2);
-  border-bottom:1px solid var(--b1);flex-shrink:0;
-}
-#geminiApiKeyInput{
-  flex:1;background:transparent;border:none;outline:none;
-  font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--t2);
-}
-#geminiApiKeyInput::placeholder{color:var(--t4)}
-
-#aiMessages{
-  flex:1;overflow-y:auto;
-  display:flex;flex-direction:column;gap:8px;padding:10px 12px;
-}
-
-.ai-msg{
-  padding:9px 12px;border-radius:11px;
-  font-size:11.5px;line-height:1.6;max-width:90%;word-break:break-word;
-  animation:msgIn .2s ease;
-}
-@keyframes msgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
-.ai-msg.user{
-  align-self:flex-end;
-  background:var(--cyan-a);border:1px solid var(--cyan-b);
-  color:var(--t1);border-bottom-left-radius:3px;
-}
-.ai-msg.bot{
-  align-self:flex-start;
-  background:var(--lift);border:1px solid var(--b2);
-  color:var(--t2);border-bottom-right-radius:3px;
-}
-
-.ai-ftr{
-  padding:9px 10px;border-top:1px solid var(--b2);
-  background:var(--surface);
-  display:flex;gap:7px;flex-shrink:0;
-}
-#aiInput{
-  flex:1;background:var(--card);border:1px solid var(--b2);
-  border-radius:9px;padding:8px 11px;
-  color:var(--t1);font-size:11.5px;
-  font-family:'IBM Plex Sans Arabic',sans-serif;outline:none;
-  transition:border-color .15s;
-}
-#aiInput::placeholder{color:var(--t4)}
-#aiInput:focus{border-color:var(--cyan-b)}
-#aiSendBtn{
-  background:var(--cyan);border:none;border-radius:9px;
-  padding:8px 13px;cursor:pointer;color:#011015;
-  display:flex;align-items:center;justify-content:center;transition:all .15s;
-}
-#aiSendBtn:hover{background:#00eaff;box-shadow:0 0 16px rgba(0,212,255,.55)}
-#aiSendBtn svg{width:13px;height:13px}
-
-/* ═══════════════════════════════════════════
-   MISC
-═══════════════════════════════════════════ */
-.hidden{display:none!important}
-
-/* ═══════════════════════════════════════════
-   LOADING OVERLAY
-═══════════════════════════════════════════ */
-#loadingOverlay{
-  position:fixed;inset:0;z-index:9999;
-  background:var(--void);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
-  transition:opacity .5s ease;
-}
-.loader-ring{
-  width:56px;height:56px;border-radius:50%;
-  border:3px solid var(--b2);
-  border-top-color:var(--cyan);
-  animation:spin .9s linear infinite;
-}
-.loader-text{
-  font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;
-  color:var(--t3);letter-spacing:1px;
-}
-.loader-sub{font-size:10px;color:var(--t4)}
-
-/* Error toast */
-#errorToast{
-  position:fixed;top:70px;left:50%;transform:translateX(-50%);
-  z-index:9000;
-  display:flex;align-items:center;gap:10px;
-  padding:10px 16px;border-radius:var(--r-md);
-  background:rgba(255,45,85,.12);border:1px solid rgba(255,45,85,.3);
-  color:var(--red);font-size:12px;font-family:'Cairo',sans-serif;font-weight:700;
-  box-shadow:var(--sh-md);backdrop-filter:blur(12px);
-  transition:opacity .3s;
-}
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
 </head>
 <body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #060911; }
+  body { font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
+  a { color: #33C7F4; }
+  a:hover { color: #6fdcff; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #2E3D56; border-radius: 999px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes pulseMarker { 0% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0.55); } 70% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 16px rgba(255,59,78,0); } 100% { box-shadow: 0 0 0 3px rgba(255,59,78,0.32), 0 0 0 0 rgba(255,59,78,0); } }
+  @keyframes pingDot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes livePulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
+  @keyframes livePulseSos { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(3.2); opacity: 0; } }
+  @keyframes scanSpin { to { transform: rotate(360deg); } }
+  @keyframes spinCw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes rainDrift { 0% { background-position: 0 0; } 100% { background-position: 0 200px; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  #map { height: 100%; width: 100%; z-index: 1; background: #0B121E; }
+  .leaflet-control-zoom a { background-color: #101827 !important; color: #EAF0FB !important; border-color: #202C40 !important; }
+  .leaflet-control-zoom a:hover { color: #33C7F4 !important; }
+  .leaflet-control-layers { background-color: #101827 !important; color: #EAF0FB !important; border: 1px solid #202C40 !important; box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important; }
+  .leaflet-control-layers-expanded { color: #EAF0FB !important; }
+  .leaflet-popup-content-wrapper { background-color: #16202F !important; color: #EAF0FB !important; border-radius: 0.75rem !important; border: 1px solid #202C40; box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important; }
+  .leaflet-popup-tip { background-color: #16202F !important; }
+  .leaflet-container a.leaflet-popup-close-button { color: #4F5E76 !important; }
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="height:100vh;width:100%;display:flex;flex-direction:column;overflow:hidden;background-color:#060911;background-image:linear-gradient(#0A0F19,#0A0F19),repeating-linear-gradient(0deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px),repeating-linear-gradient(90deg, rgba(51,199,244,0.028) 0px, rgba(51,199,244,0.028) 1px, transparent 1px, transparent 42px);color:#EAF0FB;">
 
-<div id="bg-canvas"></div>
-
-<!-- LOADING OVERLAY -->
-<div id="loadingOverlay">
-  <div class="loader-ring"></div>
-  <div>
-    <div class="loader-text">جاري تحميل البيانات الميدانية</div>
-    <div class="loader-sub" style="text-align:center;margin-top:4px">الاتصال بـ Google Sheets API ···</div>
-  </div>
-</div>
-
-<!-- APP SHELL -->
-<div id="shell">
-
-  <!-- ══ TOP BAR ══ -->
-  <div id="topbar">
-    <div class="tb-brand">
-      <div class="brand-shield">
-        <i data-lucide="shield-check" style="width:20px;height:20px;"></i>
+  <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #202C40;background:#101827;z-index:40;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="padding:10px;border-radius:12px;border:1px solid #202C40;background:rgba(62,142,222,0.12);color:#3E8EDE;display:flex;">
+        <i data-lucide="shield-check" style="width:24px;height:24px;"></i>
       </div>
       <div>
-        <div class="brand-text-main cairo">مركز القيادة الأمنية</div>
-        <div class="brand-text-sub">SHIELD OPS · COMMAND CENTER</div>
+        <h1 style="margin:0;font-family:'Cairo',sans-serif;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;color:#EAF0FB;">
+          <span style="position:relative;width:11px;height:11px;border-radius:50%;background:{{ hasSos }};display:inline-block;"></span>
+          مركز القيادة والمراقبة الأمنية الذكي
+        </h1>
+        <p style="margin:2px 0 0;font-size:12px;display:flex;align-items:center;gap:6px;color:#8291A8;">
+          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;font-family:'Cairo',sans-serif;background:{{ systemChip.bg }};color:{{ systemChip.fg }};">{{ systemChip.label }}</span>
+          تتبع حي بالذكاء التحليلي · آخر تحديث
+          <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#EAF0FB;">{{ lastUpdateLabel }}</span>
+          <sc-if value="{{ connectionError }}">
+            <span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(255,59,78,0.16);color:#FF3B4E;">اتصال غير مستقر</span>
+          </sc-if>
+        </p>
       </div>
     </div>
 
-    <div class="tb-kpis">
-      <div class="tb-kpi">
-        <div class="tb-kpi-label">الإجمالي</div>
-        <div id="statTotal" class="tb-kpi-val c-all">—</div>
-      </div>
-      <div class="tb-kpi">
-        <div class="tb-kpi-label">طبيعي</div>
-        <div id="statNormal" class="tb-kpi-val c-green">—</div>
-      </div>
-      <div class="tb-kpi">
-        <div class="tb-kpi-label">تحذير</div>
-        <div id="statWarning" class="tb-kpi-val c-amber">—</div>
-      </div>
-      <div class="tb-kpi" id="kpiSos">
-        <div class="tb-kpi-label">SOS</div>
-        <div id="statSos" class="tb-kpi-val c-red">—</div>
-      </div>
-      <div class="tb-kpi" id="kpiOffbody">
-        <div class="tb-kpi-label">OFF-BODY</div>
-        <div id="statOffbody" class="tb-kpi-val" style="color:var(--purple)">—</div>
-      </div>
-    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;padding:7px 12px;border-radius:8px;border:1px solid #202C40;background:#0B121E;color:#33C7F4;">{{ clockLabel }}</div>
 
-    <div class="tb-right">
-      <div class="live-chip">
-        <div class="live-dot"></div>
-        بث مباشر
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:8px;border:1px solid #202C40;background:#0B121E;font-size:11px;">
+        <i data-lucide="link" style="width:14px;height:14px;color:#4F5E76;"></i>
+        <input type="password" value="{{ apiUrl }}" onChange="{{ onApiUrlChange }}" style="background:transparent;outline:none;border:none;width:200px;font-size:11px;color:#EAF0FB;" placeholder="رابط الـ API...">
       </div>
-      <button class="refresh-btn" id="refreshBtn" title="تحديث البيانات">
-        <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
+
+      <button onClick="{{ toggleMute }}" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid #202C40;background:#0B121E;color:#EAF0FB;font-size:11px;cursor:pointer;">
+        <i data-lucide="{{ muteIconName }}" style="width:15px;height:15px;color:{{ muteIconColor }};"></i>
+        <span>{{ muteLabel }}</span>
       </button>
-      <div class="clock-block">
-        <div id="liveClock" class="clock-time mono">--:--:--</div>
-        <div id="liveDate" class="clock-date">—</div>
-      </div>
+
+      <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid #202C40;background:#0B121E;font-size:11px;cursor:pointer;">
+        <input type="checkbox" checked="{{ autoRefresh }}" onChange="{{ onToggleAutoRefresh }}" style="accent-color:#33C7F4;">
+        <span>تحديث كل:</span>
+        <select onChange="{{ onRefreshRateChange }}" style="background:transparent;border:none;font-weight:700;color:#EAF0FB;font-size:11px;cursor:pointer;">
+          <option value="3000">3 ثوانٍ</option>
+          <option value="10000">10 ثوانٍ</option>
+          <option value="15000" selected="selected">15 ثانية</option>
+          <option value="30000">30 ثانية</option>
+        </select>
+      </label>
+
+      <button onClick="{{ manualRefresh }}" style="padding:8px;border-radius:8px;border:1px solid #202C40;background:#0B121E;color:#8291A8;cursor:pointer;display:flex;">
+        <i data-lucide="rotate-cw" style="width:15px;height:15px;animation:{{ refreshSpin }};"></i>
+      </button>
     </div>
-  </div>
+  </header>
 
-  <!-- ══ TABS ══ -->
-  <div id="tabs">
-    <button id="tabMapBtn" class="tab active" type="button">
-      <i data-lucide="map-pin" style="width:13px;height:13px;"></i>
-      الخريطة الحية
+  <div style="display:flex;gap:10px;padding:10px 16px 0;">
+    <button onClick="{{ setViewMap }}" style="padding:9px 20px;border-radius:10px 10px 0 0;border:1px solid #202C40;border-bottom:none;font-size:13px;font-weight:700;cursor:pointer;background:{{ tabMapBg }};color:{{ tabMapFg }};display:flex;align-items:center;gap:6px;">
+      <i data-lucide="map" style="width:15px;height:15px;"></i>الخريطة الحية
     </button>
-    <button id="tabAnalyticsBtn" class="tab" type="button">
-      <i data-lucide="bar-chart-3" style="width:13px;height:13px;"></i>
-      التحليلات
+    <button onClick="{{ setViewAnalytics }}" style="padding:9px 20px;border-radius:10px 10px 0 0;border:1px solid #202C40;border-bottom:none;font-size:13px;font-weight:700;cursor:pointer;background:{{ tabAnalyticsBg }};color:{{ tabAnalyticsFg }};display:flex;align-items:center;gap:6px;">
+      <i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i>التحليلات الذكية
     </button>
   </div>
 
-  <!-- ══ WORKSPACE ══ -->
-  <div id="workspace">
+  <div style="flex:1;display:flex;overflow:hidden;padding:0 16px 16px;gap:12px;border-top:1px solid #202C40;background:#0A0F19;">
 
-    <!-- SIDEBAR -->
-    <aside id="sidebar">
+    <aside style="width:340px;min-width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;height:100%;overflow:hidden;padding-top:12px;">
 
-      <!-- Filter chips -->
-      <div id="filterChips" class="filter-row">
-        <button class="chip active" data-filter="ALL">
-          <i data-lucide="layers" style="width:9px;height:9px;"></i> الكل
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;border-radius:12px;border:1px solid #202C40;background:#101827;">
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">الكل</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#EAF0FB;">{{ statTotal }}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">طبيعي</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#22D488;">{{ statNormal }}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">تحذير</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#F5A623;">{{ statWarning }}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">SOS</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#FF3B4E;">{{ statSos }}</span>
+        </div>
+        <div style="text-align:center;">
+          <span style="display:block;font-size:9px;color:#4F5E76;">خطر مرتفع</span>
+          <span style="font-weight:800;font-size:14px;font-family:'JetBrains Mono',monospace;color:#33C7F4;">{{ statRisk }}</span>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid #202C40;background:#101827;font-size:11.5px;line-height:1.6;">
+        <i data-lucide="{{ insightIcon }}" style="width:16px;height:16px;flex-shrink:0;margin-top:2px;color:{{ insightColor }};"></i>
+        <span style="color:#8291A8;">{{ insightText }}</span>
+      </div>
+
+      <div style="position:relative;">
+        <i data-lucide="search" style="width:15px;height:15px;position:absolute;right:11px;top:10px;color:#4F5E76;"></i>
+        <input type="text" value="{{ searchQuery }}" onChange="{{ onSearchChange }}" placeholder="بحث بالاسم أو الرقم..." style="width:100%;border-radius:10px;padding:9px 36px 9px 12px;font-size:12px;outline:none;border:1px solid #202C40;background:#101827;color:#EAF0FB;">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px;overflow-x:auto;">
+        <sc-for list="{{ filterChips }}" as="chip" hint-placeholder-count="5">
+          <button onClick="{{ chip.onClick }}" style="font-size:11px;font-weight:600;padding:5px 12px;border-radius:999px;white-space:nowrap;cursor:pointer;border:1px solid {{ chip.borderColor }};background:{{ chip.bg }};color:{{ chip.fg }};">{{ chip.label }}</button>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;gap:6px;">
+        <button onClick="{{ setSidebarList }}" style="flex:1;text-align:center;font-size:11px;font-weight:600;padding:8px 4px;border-radius:8px;cursor:pointer;border:1px solid {{ tabListBorder }};background:{{ tabListBg }};color:{{ tabListFg }};">
+          <i data-lucide="users" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-left:4px;"></i>الموظفون
         </button>
-        <button class="chip" data-filter="SOS">
-          <i data-lucide="siren" style="width:9px;height:9px;"></i> SOS
-        </button>
-        <button class="chip" data-filter="WARNING">
-          <i data-lucide="triangle-alert" style="width:9px;height:9px;"></i> تحذير
-        </button>
-        <button class="chip" data-filter="NORMAL">
-          <i data-lucide="check-circle-2" style="width:9px;height:9px;"></i> طبيعي
-        </button>
-        <button class="chip" data-filter="OFFBODY">
-          <i data-lucide="wifi-off" style="width:9px;height:9px;"></i> غير موصول
+        <button onClick="{{ setSidebarLog }}" style="flex:1;text-align:center;font-size:11px;font-weight:600;padding:8px 4px;border-radius:8px;cursor:pointer;border:1px solid {{ tabLogBorder }};background:{{ tabLogBg }};color:{{ tabLogFg }};">
+          <i data-lucide="list-tree" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-left:4px;"></i>سجل الأحداث
         </button>
       </div>
 
-      <!-- List header -->
-      <div class="sec-hdr">
-        <span class="sec-lbl">الأفراد الميدانيون</span>
-        <span class="sec-cnt" id="listCount">—</span>
+      <sc-if value="{{ sidebarListVisible }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding-right:2px;">
+        <sc-if value="{{ hasEmployees }}" hint-placeholder-val="{{ true }}">
+        <sc-for list="{{ employeeItems }}" as="item" hint-placeholder-count="6">
+          <div onClick="{{ item.onClick }}" tabindex="0" style="background:{{ item.cardBg }};border:1px solid {{ item.cardBorder }};border-inline-start:3px solid {{ item.accentColor }};border-radius:11px;padding:10px 12px;cursor:pointer;box-shadow:{{ item.cardShadow }};">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;">
+              <span style="font-weight:700;font-size:13px;color:#EAF0FB;">{{ item.name }}</span>
+              <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;font-family:'Cairo',sans-serif;background:{{ item.statusBg }};color:{{ item.statusFg }};">{{ item.statusLabel }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#8291A8;">
+              <span style="font-family:'JetBrains Mono',monospace;">{{ item.heartRate }}</span>
+              <svg width="44" height="14" viewBox="0 0 44 14" style="overflow:visible;"><polyline points="{{ item.sparkPoints }}" fill="none" stroke="{{ item.sparkColor }}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+              <span style="font-family:'JetBrains Mono',monospace;color:{{ item.batteryColor }};">{{ item.battery }}</span>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+                <span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:#4F5E76;">#{{ item.id }}</span>
+                <span style="font-size:9px;font-weight:600;color:#4F5E76;">{{ item.relTime }}</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #202C40;">
+              <i data-lucide="brain-circuit" style="width:12px;height:12px;color:{{ item.riskColor }};"></i>
+              <span style="font-size:10px;color:{{ item.riskColor }};font-weight:600;">إرهاق تنبؤي: {{ item.fatigueScore }}% · {{ item.riskLabel }}</span>
+              <sc-if value="{{ item.geofenceOut }}">
+                <span style="margin-inline-start:auto;font-size:9px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(245,166,35,0.14);color:#F5A623;">خارج المنطقة</span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+        </sc-if>
+        <sc-if value="{{ noEmployees }}">
+          <div style="text-align:center;padding:40px 0;font-size:12px;color:#4F5E76;">لا يوجد نتائج تطابق البحث.</div>
+        </sc-if>
       </div>
+      </sc-if>
 
-      <!-- Employee cards -->
-      <div id="employeeList"></div>
+      <sc-if value="{{ sidebarLogVisible }}">
+      <div style="flex:1;overflow-y:auto;border-radius:12px;border:1px solid #202C40;background:#101827;padding:8px;">
+        <sc-if value="{{ hasLog }}">
+        <sc-for list="{{ logItems }}" as="entry" hint-placeholder-count="6">
+          <div style="display:flex;gap:8px;padding:8px 4px;border-bottom:1px solid #202C40;font-size:11.5px;">
+            <span style="width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;background:{{ entry.color }};"></span>
+            <div style="flex:1;">
+              <span style="color:#EAF0FB;">{{ entry.message }}</span>
+              <span style="display:block;font-size:10px;font-family:'JetBrains Mono',monospace;color:#4F5E76;">{{ entry.time }}</span>
+            </div>
+          </div>
+        </sc-for>
+        </sc-if>
+        <sc-if value="{{ noLog }}">
+          <div style="text-align:center;padding:40px 0;font-size:12px;color:#4F5E76;">لا توجد أحداث مسجلة بعد.</div>
+        </sc-if>
+      </div>
+      </sc-if>
     </aside>
 
-    <!-- MAIN -->
-    <main id="content-area" style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;">
+    <main style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;padding-top:12px;overflow:hidden;">
 
-      <!-- MAP -->
-      <div id="mapView" style="position:relative;flex:1;border-radius:16px;overflow:hidden;border:1px solid var(--b2);display:flex;">
+      <sc-if value="{{ isMapView }}" hint-placeholder-val="{{ true }}">
+      <div style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid #202C40;">
         <div id="map"></div>
 
-        <div class="map-badge top-right">
-          <i data-lucide="navigation" style="width:10px;height:10px;color:var(--cyan);"></i>
-          خريطة التتبع الحي
-        </div>
-        <div class="map-badge top-left" id="mapLastUpdate" style="font-family:'JetBrains Mono',monospace;font-size:9px;">
-          آخر تحديث: —
+        <div style="position:absolute;top:12px;left:12px;z-index:15;display:flex;flex-direction:column;gap:6px;">
+          <button onClick="{{ fitAll }}" style="background:#101827;border:1px solid #202C40;border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;color:#8291A8;display:flex;">
+            <i data-lucide="maximize" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleGeofence }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ geofenceBtnBorder }};background:{{ geofenceBtnBg }};color:{{ geofenceBtnFg }};display:flex;" title="طبقة المناطق الجغرافية">
+            <i data-lucide="shield" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleZonesPanel }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ zonesBtnBorder }};background:{{ zonesBtnBg }};color:{{ zonesBtnFg }};display:flex;" title="إدارة المناطق الأمنية">
+            <i data-lucide="map-pinned" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleWeather }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ weatherBtnBorder }};background:{{ weatherBtnBg }};color:{{ weatherBtnFg }};display:flex;" title="طبقة الطقس">
+            <i data-lucide="cloud-sun" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleHeat }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ heatBtnBorder }};background:{{ heatBtnBg }};color:{{ heatBtnFg }};display:flex;" title="طبقة كثافة الحوادث">
+            <i data-lucide="flame" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleTrails }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ trailBtnBorder }};background:{{ trailBtnBg }};color:{{ trailBtnFg }};display:flex;" title="مسار الموظف المحدد">
+            <i data-lucide="route" style="width:16px;height:16px;"></i>
+          </button>
+          <button onClick="{{ toggleTraffic }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ trafficBtnBorder }};background:{{ trafficBtnBg }};color:{{ trafficBtnFg }};display:flex;" title="طبقة الازدحام المروري">
+            <i data-lucide="car-front" style="width:16px;height:16px;"></i>
+          </button>
+          <div style="height:1px;background:#202C40;margin:2px 0;"></div>
+          <button onClick="{{ toggleAllLayers }}" style="border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,0.35);padding:9px;cursor:pointer;border:1px solid {{ allLayersBtnBorder }};background:{{ allLayersBtnBg }};color:{{ allLayersBtnFg }};display:flex;" title="إظهار/إخفاء جميع طبقات الخريطة">
+            <i data-lucide="{{ allLayersIcon }}" style="width:16px;height:16px;"></i>
+          </button>
         </div>
 
-        <!-- Auto-refresh bar -->
-        <div id="refreshBar"><div id="refreshBarFill"></div></div>
+        <sc-if value="{{ needsTrafficKey }}">
+        <div style="position:absolute;top:12px;left:60px;z-index:16;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(16,24,39,0.95);border:1px solid rgba(245,166,35,0.35);font-size:11px;">
+          <i data-lucide="key-round" style="width:14px;height:14px;color:#F5A623;flex-shrink:0;"></i>
+          <span style="color:#F5A623;">أدخل مفتاح TomTom Traffic API لعرض الازدحام:</span>
+          <input type="text" value="{{ trafficApiKey }}" onChange="{{ onTrafficKeyChange }}" placeholder="مفتاح API..." style="background:#0B121E;border:1px solid #202C40;border-radius:6px;color:#EAF0FB;font-size:11px;padding:4px 8px;width:160px;">
+        </div>
+        </sc-if>
 
-        <!-- Detail panel -->
-        <div id="detailPanel" class="hidden">
-          <div class="dp-header">
-            <div>
-              <div id="detailName" class="dp-name">—</div>
-              <div id="detailId" class="dp-id mono">#—</div>
+        <sc-if value="{{ showWeather }}">
+        <div style="position:absolute;top:12px;left:60px;z-index:15;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;background:rgba(16,24,39,0.92);border:1px solid #202C40;font-size:12px;">
+          <i data-lucide="{{ weatherIcon }}" style="width:16px;height:16px;color:#33C7F4;"></i>
+          <span style="font-family:'JetBrains Mono',monospace;color:#EAF0FB;font-weight:700;">{{ weatherTemp }}</span>
+          <span style="color:#8291A8;">{{ weatherLabel }}</span>
+          <span style="color:#4F5E76;">· رياح {{ weatherWind }}</span>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ zonesPanelVisible }}">
+        <div style="position:absolute;top:12px;right:12px;width:280px;max-height:calc(100% - 24px);overflow-y:auto;z-index:22;background:rgba(16,24,39,0.97);border:1px solid #202C40;border-radius:14px;padding:14px;box-shadow:0 16px 40px rgba(0,0,0,0.55);">
+          <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:8px;">إدارة المناطق الأمنية</span>
+          <button onClick="{{ startPickZone }}" style="width:100%;padding:8px;border-radius:9px;font-size:11px;font-weight:700;margin-bottom:10px;cursor:pointer;border:1px dashed #33C7F4;background:rgba(51,199,244,0.08);color:#33C7F4;">{{ pickZoneLabel }}</button>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+            <span style="font-size:10px;color:#8291A8;">نصف قطر المنطقة الجديدة (م):</span>
+            <input type="number" value="{{ newZoneRadius }}" onChange="{{ onNewZoneRadiusChange }}" style="width:70px;background:#0B121E;border:1px solid #202C40;border-radius:6px;color:#EAF0FB;font-size:11px;padding:3px 6px;">
+          </div>
+          <sc-if value="{{ hasZones }}">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ zoneItems }}" as="z" hint-placeholder-count="2">
+              <div style="padding:8px 9px;border-radius:9px;border:1px solid #202C40;background:#0B121E;">
+                <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+                  <input type="text" value="{{ z.name }}" onChange="{{ z.onNameChange }}" style="flex:1;background:transparent;border:none;border-bottom:1px solid #202C40;color:#EAF0FB;font-size:11.5px;font-weight:700;padding:2px 0;outline:none;">
+                  <button onClick="{{ z.onDelete }}" style="border:none;background:transparent;color:#FF3B4E;cursor:pointer;display:flex;padding:2px;"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:10px;color:#4F5E76;">نصف القطر:</span>
+                  <input type="number" value="{{ z.radius }}" onChange="{{ z.onRadiusChange }}" style="width:70px;background:#101827;border:1px solid #202C40;border-radius:6px;color:#EAF0FB;font-size:11px;padding:3px 6px;">
+                  <span style="font-size:10px;color:#4F5E76;">م</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+          <sc-if value="{{ noZones }}"><span style="font-size:11px;color:#4F5E76;">لا توجد مناطق معرّفة بعد.</span></sc-if>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isRaining }}">
+        <div style="position:absolute;inset:0;z-index:10;pointer-events:none;background:linear-gradient(rgba(51,199,244,0.05),rgba(51,199,244,0.09));"></div>
+        </sc-if>
+
+        <sc-if value="{{ hasDetail }}">
+        <div style="position:absolute;bottom:16px;right:16px;width:380px;max-height:calc(100% - 32px);overflow-y:auto;backdrop-filter:blur(6px);border:1px solid #202C40;padding:16px;border-radius:16px;z-index:20;background:rgba(16,24,39,0.97);box-shadow:0 16px 40px rgba(0,0,0,0.55);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:1px solid #202C40;padding-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:{{ detail.dotColor }};"></span>
+              <div>
+                <h3 style="margin:0;font-weight:700;font-size:15px;font-family:'Cairo',sans-serif;color:#EAF0FB;">{{ detail.name }}</h3>
+                <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#4F5E76;">#{{ detail.id }}</span>
+              </div>
             </div>
-            <button id="closeDetailBtn" class="dp-close" type="button">
-              <i data-lucide="x" style="width:13px;height:13px;"></i>
+            <button onClick="{{ closeDetail }}" style="padding:4px;border-radius:8px;border:none;background:transparent;color:#4F5E76;cursor:pointer;display:flex;"><i data-lucide="x" style="width:15px;height:15px;"></i></button>
+          </div>
+
+          <sc-if value="{{ detail.isSos }}">
+          <div style="margin-bottom:12px;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:10px;font-size:12px;background:rgba(255,59,78,0.16);border:1px solid rgba(255,59,78,0.4);color:#FF3B4E;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="position:relative;flex-shrink:0;"><i data-lucide="ambulance" style="width:20px;height:20px;"></i></span>
+              <div style="flex:1;">
+                <span style="display:block;font-size:10px;color:#FF9AA5;">أقرب مستجيب طوارئ (توصية ذكية بحسب المسافة):</span>
+                <strong style="display:block;margin-top:2px;font-size:13px;color:#EAF0FB;">{{ detail.responder }}</strong>
+                <span style="display:block;margin-top:2px;font-size:10.5px;color:#FF9AA5;">وقت وصول متوقع: {{ detail.responderEta }}</span>
+              </div>
+            </div>
+            <button onClick="{{ resolveEmergency }}" style="width:100%;font-weight:700;padding:9px 12px;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;background:#22D488;color:#04241a;">
+              <i data-lucide="check-circle" style="width:15px;height:15px;"></i><span>إنهاء حالة الطوارئ</span>
             </button>
           </div>
-          <div class="dp-grid">
-            <div class="dp-metric dp-m-heart">
-              <div class="dp-m-icon"><i data-lucide="heart-pulse" style="width:16px;height:16px;color:var(--red);"></i></div>
-              <div id="detailHeartRate" class="dp-m-val mono">--</div>
-              <div class="dp-m-lbl">النبض</div>
-            </div>
-            <div class="dp-metric dp-m-spo2">
-              <div class="dp-m-icon"><i data-lucide="droplets" style="width:16px;height:16px;color:var(--cyan);"></i></div>
-              <div id="detailSpo2" class="dp-m-val mono">--</div>
-              <div class="dp-m-lbl">SpO₂</div>
-            </div>
-            <div class="dp-metric dp-m-temp">
-              <div class="dp-m-icon"><i data-lucide="thermometer" style="width:16px;height:16px;color:var(--amber);"></i></div>
-              <div id="detailTemp" class="dp-m-val mono">--</div>
-              <div class="dp-m-lbl">الحرارة</div>
-            </div>
-            <div class="dp-metric dp-m-batt">
-              <div class="dp-m-icon"><i data-lucide="battery-medium" style="width:16px;height:16px;color:var(--green);"></i></div>
-              <div id="detailBattery" class="dp-m-val mono">--</div>
-              <div class="dp-m-lbl">البطارية</div>
-            </div>
-          </div>
-        </div>
-      </div>
+          </sc-if>
 
-      <!-- ANALYTICS VIEW -->
-      <div id="analyticsView" class="hidden" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
-        <div class="kpi-strip">
-          <div class="kpi-card kpi-c">
-            <div class="kpi-icon"><i data-lucide="activity" style="width:17px;height:17px;"></i></div>
-            <div class="kpi-lbl">متوسط النبض العام</div>
-            <div id="avgHeartRate">-- BPM</div>
-            <div class="kpi-sub">قراءة من الأجهزة الميدانية</div>
+          <sc-if value="{{ detail.isOffline }}">
+          <div style="margin-bottom:12px;padding:10px;border-radius:12px;font-size:11.5px;display:flex;align-items:center;gap:8px;background:rgba(100,116,139,0.14);color:#64748B;">
+            <i data-lucide="wifi-off" style="width:15px;height:15px;flex-shrink:0;"></i><span>لم يتم استلام تحديث منذ أكثر من دقيقة ونصف</span>
           </div>
-          <div class="kpi-card kpi-g">
-            <div class="kpi-icon"><i data-lucide="battery-medium" style="width:17px;height:17px;"></i></div>
-            <div class="kpi-lbl">متوسط شحن الأجهزة</div>
-            <div id="avgBattery">-- %</div>
-            <div class="kpi-sub">متوسط بطاريات الوحدات</div>
-          </div>
-          <div class="kpi-card kpi-r">
-            <div class="kpi-icon"><i data-lucide="flame" style="width:17px;height:17px;"></i></div>
-            <div class="kpi-lbl">مؤشر الخطر الإجمالي</div>
-            <div id="totalRiskIndex">-- / 100</div>
-            <div class="kpi-sub">مشتق من حالات الطوارئ</div>
-          </div>
-        </div>
-        <div class="charts-row" style="flex:1;">
-          <div class="chart-card">
-            <div class="chart-hdr">
-              <div class="chart-dot" style="background:var(--cyan)"></div>
-              توزيع الحالات الأمنية
-            </div>
-            <div class="chart-wrap"><canvas id="barChart"></canvas></div>
-          </div>
-          <div class="chart-card">
-            <div class="chart-hdr">
-              <div class="chart-dot" style="background:var(--green)"></div>
-              نسبة الجاهزية التشغيلية
-            </div>
-            <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;">
-              <canvas id="doughnutChart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
+          </sc-if>
 
+          <div style="margin-bottom:12px;padding:10px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;background:rgba(51,199,244,0.08);border:1px solid rgba(51,199,244,0.25);">
+            <i data-lucide="brain-circuit" style="width:18px;height:18px;flex-shrink:0;color:#33C7F4;"></i>
+            <div style="flex:1;">
+              <span style="display:block;font-size:10px;color:#4F5E76;">مؤشر الإرهاق التنبؤي بالذكاء التحليلي</span>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+                <div style="flex:1;height:6px;border-radius:999px;background:#0B121E;overflow:hidden;">
+                  <div style="height:100%;border-radius:999px;width:{{ detail.fatigueScore }}%;background:{{ detail.fatigueColor }};"></div>
+                </div>
+                <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;color:{{ detail.fatigueColor }};">{{ detail.fatigueScore }}%</span>
+              </div>
+              <span style="display:block;font-size:10.5px;margin-top:3px;color:{{ detail.fatigueColor }};">{{ detail.fatigueReason }}</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;">
+              <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;color:#4F5E76;">النبض</span><svg width="52" height="16" style="display:block;"><polyline points="{{ detail.sparkPoints }}" fill="none" stroke="#33C7F4" stroke-width="1.5"></polyline></svg></div>
+              <span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#22D488;">{{ detail.heartRate }}</span>
+            </div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">ضغط الدم</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#F5A623;">{{ detail.bp }}</span></div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">الأكسجين SpO2</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#33C7F4;">{{ detail.spo2 }}</span></div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">الحرارة</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#FF3B4E;">{{ detail.temp }}</span></div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">الخطوات</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#EAF0FB;">{{ detail.steps }}</span></div>
+            <div style="padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">البطارية</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#EAF0FB;">{{ detail.battery }}</span></div>
+            <div style="grid-column:span 2;padding:8px;border-radius:9px;border:1px solid #202C40;background:#0B121E;"><span style="display:block;font-size:10px;color:#4F5E76;">آخر تحديث</span><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:#EAF0FB;">{{ detail.relTime }}</span></div>
+          </div>
+
+          <sc-if value="{{ detail.geofenceOut }}">
+          <div style="margin-top:10px;padding:8px 10px;border-radius:10px;font-size:11px;display:flex;align-items:center;gap:8px;background:rgba(245,166,35,0.14);color:#F5A623;">
+            <i data-lucide="map-pin-off" style="width:14px;height:14px;flex-shrink:0;"></i><span>الموظف حالياً خارج نطاق المنطقة المخصصة له</span>
+          </div>
+          </sc-if>
+
+          <div style="margin-top:10px;padding:9px 10px;border-radius:10px;border:1px solid #202C40;background:#0B121E;">
+            <span style="display:block;font-size:10px;color:#4F5E76;margin-bottom:5px;">المنطقة الأمنية المخصصة لهذا الموظف</span>
+            <select value="{{ detail.assignedZoneId }}" onChange="{{ detail.onZoneAssign }}" style="width:100%;background:#101827;border:1px solid #202C40;border-radius:8px;color:#EAF0FB;font-size:11.5px;padding:6px 8px;">
+              <option value="">أي منطقة معرّفة (افتراضي)</option>
+              <sc-for list="{{ detail.zoneOptions }}" as="zo" hint-placeholder-count="2">
+                <option value="{{ zo.id }}">{{ zo.name }}</option>
+              </sc-for>
+            </select>
+          </div>
+
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid #202C40;">
+            <span style="display:block;font-size:10px;margin-bottom:6px;color:#4F5E76;">إرسال أمر لجهاز الموظف</span>
+            <sc-if value="{{ detail.noToken }}">
+            <div style="margin-bottom:8px;padding:8px;border-radius:9px;font-size:11px;display:flex;align-items:center;gap:6px;background:rgba(100,116,139,0.14);color:#64748B;">
+              <i data-lucide="link-2-off" style="width:13px;height:13px;flex-shrink:0;"></i><span>لا يوجد توكن جهاز مسجل لهذا الموظف</span>
+            </div>
+            </sc-if>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
+              <button onClick="{{ setCmdAlert }}" disabled="{{ detail.noToken }}" style="font-size:11px;font-weight:600;padding:7px 6px;border-radius:9px;cursor:pointer;border:1px solid {{ cmdAlertBorder }};background:{{ cmdAlertBg }};color:{{ cmdAlertFg }};">تنبيه</button>
+              <button onClick="{{ setCmdCheck }}" disabled="{{ detail.noToken }}" style="font-size:11px;font-weight:600;padding:7px 6px;border-radius:9px;cursor:pointer;border:1px solid {{ cmdCheckBorder }};background:{{ cmdCheckBg }};color:{{ cmdCheckFg }};">تحقق سلامة</button>
+              <button onClick="{{ setCmdRecall }}" disabled="{{ detail.noToken }}" style="font-size:11px;font-weight:600;padding:7px 6px;border-radius:9px;cursor:pointer;border:1px solid {{ cmdRecallBorder }};background:{{ cmdRecallBg }};color:{{ cmdRecallFg }};">استدعاء</button>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <input type="text" value="{{ messageText }}" onChange="{{ onMessageChange }}" disabled="{{ detail.noToken }}" placeholder="نص الرسالة (اختياري)..." style="flex:1;border-radius:8px;padding:7px 10px;font-size:11px;outline:none;border:1px solid #202C40;background:#0B121E;color:#EAF0FB;">
+              <button onClick="{{ sendMessage }}" disabled="{{ detail.noToken }}" style="padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:#33C7F4;color:#04222c;flex-shrink:0;">{{ sendBtnLabel }}</button>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isAnalyticsView }}">
+      <div style="flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:4px 2px 12px;">
+
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:stretch;">
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(51,199,244,0.25);background:linear-gradient(135deg, rgba(51,199,244,0.1), rgba(16,24,39,0.4));display:flex;gap:12px;align-items:flex-start;">
+            <i data-lucide="sparkles" style="width:20px;height:20px;flex-shrink:0;color:#33C7F4;margin-top:2px;"></i>
+            <div>
+              <span style="display:block;font-size:11px;font-weight:700;color:#33C7F4;margin-bottom:4px;">الملخص الذكي لوضع الفريق الميداني</span>
+              <span style="font-size:13px;line-height:1.8;color:#EAF0FB;">{{ aiSummary }}</span>
+            </div>
+          </div>
+          <div style="padding:12px 18px;border-radius:14px;border:1px solid #202C40;background:#101827;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;">
+            <span style="font-size:10px;color:#4F5E76;margin-bottom:4px;">مؤشر استقرار الفريق</span>
+            <span style="font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:{{ stabilityColor }};">{{ stability }}</span>
+            <span style="font-size:10px;font-weight:700;color:{{ stabilityColor }};">{{ stabilityLabel }}</span>
+          </div>
+          <div style="padding:12px 18px;border-radius:14px;border:1px solid #202C40;background:#101827;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:120px;">
+            <span style="font-size:10px;color:#4F5E76;margin-bottom:4px;">تنبؤ النبض القادم</span>
+            <i data-lucide="{{ forecastArrow }}" style="width:20px;height:20px;color:{{ forecastColor }};"></i>
+            <span style="font-size:11px;font-weight:700;color:{{ forecastColor }};margin-top:2px;">{{ forecastDir }} {{ forecastPct }}%</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:12px;">
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">اتجاه متوسط النبض للفريق (آخر التحديثات)</span>
+            <svg width="100%" height="120" viewBox="0 0 480 120" preserveAspectRatio="none" style="display:block;">
+              <line x1="0" y1="30" x2="480" y2="30" stroke="#202C40" stroke-width="1"></line>
+              <line x1="0" y1="60" x2="480" y2="60" stroke="#202C40" stroke-width="1"></line>
+              <line x1="0" y1="90" x2="480" y2="90" stroke="#202C40" stroke-width="1"></line>
+              <path d="{{ trendAreaPath }}" fill="rgba(51,199,244,0.15)" stroke="none"></path>
+              <path d="{{ trendLinePath }}" fill="none" stroke="#33C7F4" stroke-width="2"></path>
+            </svg>
+          </div>
+
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;display:flex;flex-direction:column;align-items:center;">
+            <span style="align-self:flex-start;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:6px;">توزيع الحالات الحالي</span>
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <sc-for list="{{ donutSegments }}" as="seg" hint-placeholder-count="4">
+                <circle cx="70" cy="70" r="54" fill="none" stroke="{{ seg.color }}" stroke-width="18" stroke-dasharray="{{ seg.dash }}" stroke-dashoffset="{{ seg.offset }}" transform="rotate(-90 70 70)"></circle>
+              </sc-for>
+              <text x="70" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="#EAF0FB" font-family="JetBrains Mono, monospace">{{ statTotal }}</text>
+              <text x="70" y="84" text-anchor="middle" font-size="10" fill="#8291A8" font-family="Cairo, sans-serif">إجمالي</text>
+            </svg>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;">
+              <sc-for list="{{ donutLegend }}" as="leg" hint-placeholder-count="4">
+                <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#8291A8;"><span style="width:8px;height:8px;border-radius:50%;background:{{ leg.color }};"></span>{{ leg.label }} ({{ leg.count }})</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">حوادث الاستغاثة خلال آخر 6 ساعات</span>
+            <div style="display:flex;align-items:flex-end;gap:10px;height:90px;">
+              <sc-for list="{{ hourBuckets }}" as="b" hint-placeholder-count="6">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                  <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:#8291A8;">{{ b.count }}</span>
+                  <div style="width:100%;border-radius:5px 5px 0 0;background:#FF3B4E;height:{{ b.heightPx }}px;min-height:2px;"></div>
+                  <span style="font-size:9px;color:#4F5E76;">{{ b.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">لوحة صدارة الإرهاق التنبؤي</span>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <sc-if value="{{ hasFatigueBoard }}">
+              <sc-for list="{{ fatigueBoard }}" as="f" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
+                  <span style="width:90px;flex-shrink:0;color:#EAF0FB;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ f.name }}</span>
+                  <div style="flex:1;height:8px;border-radius:999px;background:#0B121E;overflow:hidden;"><div style="height:100%;width:{{ f.score }}%;background:{{ f.color }};border-radius:999px;"></div></div>
+                  <span style="width:34px;text-align:left;font-family:'JetBrains Mono',monospace;font-weight:700;color:{{ f.color }};">{{ f.score }}%</span>
+                </div>
+              </sc-for>
+              </sc-if>
+              <sc-if value="{{ noFatigueBoard }}"><span style="font-size:11px;color:#4F5E76;">لا توجد بيانات كافية بعد.</span></sc-if>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">كشف الانحرافات الحيوية الشاذة (تحليل z-score)</span>
+            <sc-if value="{{ hasAnomalies }}">
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <sc-for list="{{ anomalies }}" as="an" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;padding:7px 9px;border-radius:9px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);">
+                  <i data-lucide="waves" style="width:14px;height:14px;flex-shrink:0;color:#F5A623;"></i>
+                  <span style="color:#EAF0FB;font-weight:600;">{{ an.name }}</span><span style="color:#F5A623;">{{ an.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+            </sc-if>
+            <sc-if value="{{ noAnomalies }}"><span style="font-size:11px;color:#4F5E76;">لا توجد انحرافات غير معتادة حالياً في المؤشرات الحيوية.</span></sc-if>
+          </div>
+
+          <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+            <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">توصيات إجراءات فورية</span>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <sc-for list="{{ recommendations }}" as="rec" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;padding:7px 9px;">
+                  <i data-lucide="{{ rec.icon }}" style="width:14px;height:14px;flex-shrink:0;color:{{ rec.color }};"></i>
+                  <span style="color:#EAF0FB;">{{ rec.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:14px 16px;border-radius:14px;border:1px solid #202C40;background:#101827;">
+          <span style="display:block;font-size:12px;font-weight:700;color:#EAF0FB;margin-bottom:10px;">توصيات الاستجابة الذكية للحالات عالية الخطورة</span>
+          <sc-if value="{{ hasRiskList }}">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ riskList }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;border:1px solid {{ r.borderColor }};background:{{ r.bg }};">
+                <i data-lucide="alert-octagon" style="width:16px;height:16px;flex-shrink:0;color:{{ r.color }};"></i>
+                <div style="flex:1;">
+                  <span style="font-size:12px;font-weight:700;color:#EAF0FB;">{{ r.name }}</span>
+                  <span style="display:block;font-size:11px;color:{{ r.color }};">{{ r.reason }}</span>
+                </div>
+                <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ r.badgeBg }};color:{{ r.color }};flex-shrink:0;">{{ r.level }}</span>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+          <sc-if value="{{ noRiskList }}"><span style="font-size:11px;color:#4F5E76;">لا توجد حالات مصنّفة كخطر مرتفع حالياً — الوضع مستقر.</span></sc-if>
+        </div>
+
+      </div>
+      </sc-if>
     </main>
   </div>
 </div>
 
-<!-- AI BUTTON -->
-<button id="aiToggleBtn" type="button">
-  <i data-lucide="bot"></i>
-  <span>المساعد الأمني</span>
-</button>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:900},&quot;apiUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://script.google.com/macros/s/AKfycbxQO7RjW_Wxqviuizlk2bOJyqNxvbIuiTPFJhiAHgiIFgQikS7mOHfFQJW0lZhqsuGjwg/exec&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;enableGeofenceLayer&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;enableWeatherLayer&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const OFFLINE_THRESHOLD_MS = 90000;
+const HEART_HISTORY_LIMIT = 20;
+const ACTIVITY_LOG_LIMIT = 60;
+const SOS_RESOLVE_GRACE_MS = 120000;
+const SNAPSHOT_LIMIT = 24;
+const DEFAULT_ZONES = [
+  { id: 'z1', name: 'المنطقة التشغيلية الرئيسية', lat: 24.7136, lng: 46.6753, radius: 9000 },
+  { id: 'z2', name: 'نقطة الدعم الشمالية', lat: 24.79, lng: 46.70, radius: 4500 }
+];
+function loadZones() { try { const s = localStorage.getItem('opsroom_zones'); return s ? JSON.parse(s) : DEFAULT_ZONES.slice(); } catch (e) { return DEFAULT_ZONES.slice(); } }
+function loadZoneAssignments() { try { const s = localStorage.getItem('opsroom_zone_assignments'); return s ? JSON.parse(s) : {}; } catch (e) { return {}; } }
+const STATUS_COLORS = {
+  NORMAL: { label: 'طبيعي', dot: '#22D488', bg: 'rgba(34,212,136,0.12)', fg: '#22D488' },
+  WARNING: { label: 'تحذير', dot: '#F5A623', bg: 'rgba(245,166,35,0.14)', fg: '#F5A623' },
+  SOS: { label: 'SOS', dot: '#FF3B4E', bg: '#FF3B4E', fg: '#1a0405' },
+  OFFLINE: { label: 'غير متصل', dot: '#64748B', bg: 'rgba(100,116,139,0.14)', fg: '#64748B' },
+  RESOLVING: { label: 'قيد التأكيد', dot: '#33C7F4', bg: 'rgba(51,199,244,0.12)', fg: '#33C7F4' }
+};
 
-<!-- AI CHAT -->
-<div id="aiChatBox" class="hidden">
-  <div class="ai-hdr">
-    <div>
-      <div class="ai-hdr-title"><i data-lucide="sparkles" style="width:15px;height:15px;"></i> المساعد الأمني · Gemini</div>
-      <div class="ai-model">Gemini 2.5 Flash · مرتبط بالميدان</div>
-    </div>
-    <button id="aiCloseBtn" class="ai-x" type="button"><i data-lucide="x" style="width:13px;height:13px;"></i></button>
-  </div>
-  <div class="ai-keybar">
-    <i data-lucide="key" style="width:11px;height:11px;color:var(--amber);flex-shrink:0;"></i>
-    <input type="password" id="geminiApiKeyInput" placeholder="مفتاح Gemini API (AI Studio)...">
-  </div>
-  <div id="aiMessages">
-    <div class="ai-msg bot">مرحباً! أنا المساعد الأمني المعزز بـ Gemini. أدخل مفتاح API وابدأ الاستفسار.</div>
-  </div>
-  <div class="ai-ftr">
-    <input type="text" id="aiInput" placeholder="اكتب سؤالك...">
-    <button id="aiSendBtn" type="button"><i data-lucide="send-horizontal" style="width:13px;height:13px;"></i></button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     JAVASCRIPT
-══════════════════════════════════════════════ -->
-<script>
-// ─── CONFIG ──────────────────────────────────────────
-const API_URL = 'https://script.google.com/macros/s/AKfycbxQLye9JJxcY-O9UIObaXne5a7bMHocfmNq6a64qa3kmM1FlJFttSi7rhxJdEOgF984/exec';
-const REFRESH_INTERVAL = 30000; // 30 seconds
-const DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-
-// ─── STATE ───────────────────────────────────────────
-let employeesData = [];
-let map, markersGroup;
-let activeFilter = 'ALL';
-let chartsInstance = {};
-let refreshTimer = null;
-let refreshBarTimer = null;
-
-// ─── STATUS NORMALIZATION ─────────────────────────────
-function normalizeStatus(raw) {
-  if (!raw) return 'NORMAL';
-  const s = String(raw).toUpperCase().trim();
-  if (s === 'SOS' || s === 'EMERGENCY' || s === 'DANGER') return 'SOS';
-  if (s === 'WARNING' || s === 'WARN' || s === 'ALERT') return 'WARNING';
-  if (s === 'OFF-BODY' || s === 'OFFBODY' || s === 'OFF_BODY' || s === 'DETACHED') return 'OFFBODY';
-  if (s === 'NORMAL' || s === 'OK' || s === 'ACTIVE' || s === 'ONLINE') return 'NORMAL';
-  return 'NORMAL';
+function safeParseFloat(val, def) {
+  if (val === undefined || val === null || val === '') return def;
+  const n = parseFloat(val.toString().replace(/٫/g, '.').replace(/,/g, '.'));
+  return isNaN(n) ? def : n;
+}
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371e3, p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+  const dp = (lat2 - lat1) * Math.PI / 180, dl = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+function escapeHTML(s) {
+  if (!s) return '';
+  return s.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ─── DATA FETCHING ────────────────────────────────────
-async function fetchData() {
-  setRefreshBtnSpinning(true);
-  try {
-    const res = await fetch(API_URL + '?t=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const raw = await res.json();
+class Component extends DCLogic {
+  state = {
+    employees: [], filteredEmployees: [], selectedEmployeeId: null,
+    searchQuery: '', statusFilter: 'ALL', sidebarTab: 'list', activeView: 'map',
+    isMuted: false, autoRefresh: true, apiUrl: this.props.apiUrl || 'https://script.google.com/macros/s/AKfycbxQO7RjW_Wxqviuizlk2bOJyqNxvbIuiTPFJhiAHgiIFgQikS7mOHfFQJW0lZhqsuGjwg/exec',
+    refreshRate: 15000, heartHistory: {}, prevStatuses: {}, prevSteps: {},
+    activityLog: [], incidentsToday: 0, resolvedSuppression: {}, snapshots: [],
+    weather: null, showGeofence: this.props.enableGeofenceLayer !== false, showWeather: this.props.enableWeatherLayer !== false,
+    connectionError: false, lastUpdate: null, selectedCommand: 'ALERT', messageText: '', clockTick: 0, refreshing: false,
+    showHeat: true, incidentPoints: [], showTrails: true, trails: {},
+    zones: loadZones(), zoneAssignments: loadZoneAssignments(), showZonesPanel: false, zonePickMode: false, newZoneRadius: 3000,
+    showTraffic: false, trafficApiKey: localStorage.getItem('opsroom_traffic_key') || ''
+  };
 
-    employeesData = (Array.isArray(raw) ? raw : [raw]).map(r => ({
-      id:        r.emp_id || r.id || '—',
-      name:      r.emp_name || r.name || r.emp_id || 'موظف',
-      status:    normalizeStatus(r.status),
-      lat:       parseFloat(r.lat) || 0,
-      lng:       parseFloat(r.lng) || 0,
-      heartRate: parseInt(r.heart_rate) || 0,
-      spo2:      parseFloat(r.spo2) || null,
-      temperature: r.temperature || null,
-      battery:   Math.round(parseFloat(r.battery) * (parseFloat(r.battery) <= 1 ? 100 : 1)) || 0,
-      timestamp: r.timestamp || null,
+  componentDidMount() {
+    this.initMap();
+    this.fetchTelemetryData();
+    this.refreshTimer = null;
+    this.scheduleRefresh();
+    this.clockInterval = setInterval(() => this.setState({ clockTick: this.state.clockTick + 1 }), 1000);
+    this.fetchWeather();
+    this.weatherInterval = setInterval(() => this.fetchWeather(), 600000);
+    this.applyIcons();
+    const root = this.el || document.body;
+    this.iconObserver = new MutationObserver(() => this.applyIcons());
+    this.iconObserver.observe(root, { childList: true, subtree: true });
+  }
+  componentDidUpdate() {
+    if (this.state.activeView === 'map') this.updateMapMarkers();
+    this.applyIcons();
+  }
+  applyIcons() {
+    if (window.lucide) window.lucide.createIcons();
+  }
+  componentWillUnmount() {
+    clearTimeout(this.refreshTimer);
+    clearInterval(this.clockInterval);
+    clearInterval(this.weatherInterval);
+    if (this.iconObserver) this.iconObserver.disconnect();
+    if (this.controller) this.controller.abort();
+  }
+
+  initMap() {
+    const el = this.el || document.getElementById('map');
+    if (!el) return;
+    this.map = L.map(el, { zoomControl: false, attributionControl: false }).setView([24.7136, 46.6753], 12);
+    L.control.zoom({ position: 'topleft' }).addTo(this.map);
+    const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(this.map);
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    L.control.layers({ 'خريطة ليلية': dark, 'قمر صناعي': sat }, null, { position: 'topleft' }).addTo(this.map);
+    this.clusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      iconCreateFunction: c => L.divIcon({ html: `<div style="width:38px;height:38px;border-radius:50%;background:rgba(16,24,39,0.92);border:2px solid #33C7F4;box-shadow:0 0 12px rgba(51,199,244,0.35);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;font-family:'JetBrains Mono',monospace;color:#33C7F4;">${c.getChildCount()}</div>`, className: '', iconSize: [38, 38] })
+    }).addTo(this.map);
+    this.sosLayerGroup = L.layerGroup().addTo(this.map);
+    this.geofenceLayer = L.layerGroup().addTo(this.map);
+    this.routeLayer = L.layerGroup().addTo(this.map);
+    this.heatLayer = L.heatLayer([], { radius: 32, blur: 24, maxZoom: 17, gradient: { 0.2: '#33C7F4', 0.5: '#F5A623', 0.8: '#FF3B4E' } }).addTo(this.map);
+    this.trailLayer = L.layerGroup().addTo(this.map);
+    this.trafficLayer = null;
+    this.updateTrafficLayer();
+    this.markers = {};
+    this.drawZones();
+    this.map.on('click', e => {
+      if (this.state.zonePickMode) {
+        this.addZoneAt(e.latlng.lat, e.latlng.lng);
+      }
+    });
+  }
+
+  drawZones() {
+    this.geofenceLayer.clearLayers();
+    this.state.zones.forEach(z => {
+      L.circle([z.lat, z.lng], { radius: z.radius, color: '#33C7F4', weight: 1.5, dashArray: '6,6', fillOpacity: 0.04, interactive: false }).bindTooltip(z.name, { permanent: false }).addTo(this.geofenceLayer);
+    });
+  }
+  saveZones() { localStorage.setItem('opsroom_zones', JSON.stringify(this.state.zones)); }
+  saveZoneAssignments() { localStorage.setItem('opsroom_zone_assignments', JSON.stringify(this.state.zoneAssignments)); }
+  addZoneAt(lat, lng) {
+    const id = 'z' + Date.now();
+    this.state.zones.push({ id, name: `منطقة جديدة ${this.state.zones.length + 1}`, lat, lng, radius: this.state.newZoneRadius });
+    this.saveZones();
+    this.drawZones();
+    this.setState({ zonePickMode: false });
+  }
+
+  effectiveStatus(emp) {
+    if (emp.status === 'SOS') {
+      const r = this.state.resolvedSuppression[emp.emp_id];
+      if (r && (Date.now() - r) < SOS_RESOLVE_GRACE_MS) return 'RESOLVING';
+      return 'SOS';
+    }
+    const ts = new Date(emp.timestamp).getTime();
+    if (!isNaN(ts) && (Date.now() - ts) > OFFLINE_THRESHOLD_MS) return 'OFFLINE';
+    return emp.status;
+  }
+
+  computeFatigue(emp) {
+    const hr = emp.heart_rate || 0;
+    const hrPenalty = Math.min(45, Math.abs(hr - 82) / 60 * 45);
+    const prevSteps = this.state.prevSteps[emp.emp_id];
+    const stagnant = prevSteps !== undefined && Math.abs((emp.steps || 0) - prevSteps) < 5;
+    const inactivityPenalty = stagnant ? 28 : 0;
+    const battPenalty = parseInt(emp.battery) < 15 ? 8 : 0;
+    const gpsPenalty = (emp.gps_accuracy && emp.gps_accuracy > 75) ? 6 : 0;
+    const score = Math.round(Math.max(0, Math.min(100, hrPenalty + inactivityPenalty + battPenalty + gpsPenalty)));
+    let level = 'منخفض', reason = 'المؤشرات الحيوية ضمن النطاق الطبيعي ولا توجد علامات إرهاق.';
+    if (score >= 75) { level = 'حرج'; reason = 'نبض غير مستقر مع خمول حركي — يوصى بفحص فوري.'; }
+    else if (score >= 50) { level = 'مرتفع'; reason = 'انحراف واضح في النبض أو خمول حركي متكرر.'; }
+    else if (score >= 25) { level = 'متوسط'; reason = 'بعض مؤشرات الإجهاد بدأت بالظهور — تابع الحالة.'; }
+    return { score, level, reason };
+  }
+
+  detectAnomaly(emp) {
+    const hist = this.state.heartHistory[emp.emp_id] || [];
+    if (hist.length < 5) return null;
+    const mean = hist.reduce((a, b) => a + b, 0) / hist.length;
+    const variance = hist.reduce((a, b) => a + (b - mean) ** 2, 0) / hist.length;
+    const sd = Math.sqrt(variance) || 1;
+    const z = (emp.heart_rate - mean) / sd;
+    if (Math.abs(z) >= 2 && Math.abs(emp.heart_rate - mean) >= 12) {
+      return { z: z.toFixed(1), dir: z > 0 ? 'ارتفاع' : 'انخفاض', mean: Math.round(mean) };
+    }
+    return null;
+  }
+
+  deleteZone(id) {
+    this.state.zones = this.state.zones.filter(z => z.id !== id);
+    Object.keys(this.state.zoneAssignments).forEach(k => { if (this.state.zoneAssignments[k] === id) delete this.state.zoneAssignments[k]; });
+    this.saveZones(); this.saveZoneAssignments(); this.drawZones();
+    this.setState({});
+  }
+  renameZone(id, name) {
+    const z = this.state.zones.find(z => z.id === id); if (z) { z.name = name; this.saveZones(); this.drawZones(); }
+  }
+  resizeZone(id, radius) {
+    const z = this.state.zones.find(z => z.id === id); if (z) { z.radius = Math.max(200, radius); this.saveZones(); this.drawZones(); }
+  }
+  updateTrafficLayer() {
+    if (!this.map) return;
+    const want = this.state.showTraffic && this.state.trafficApiKey;
+    if (want && !this.trafficLayer) {
+      this.trafficLayer = L.tileLayer(`https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key=${this.state.trafficApiKey}&style=relative-light`, { maxZoom: 22, minZoom: 15, opacity: 0.7, zIndex: 5 });
+      this.trafficLayer.getContainer && this.trafficLayer.on('add', () => { const c = this.trafficLayer.getContainer(); if (c) c.style.filter = 'saturate(0.85) brightness(1.05)'; });
+      this.trafficLayer.addTo(this.map);
+    } else if (want && this.trafficLayer) {
+      if (!this.map.hasLayer(this.trafficLayer)) this.trafficLayer.addTo(this.map);
+    } else if (!want && this.trafficLayer && this.map.hasLayer(this.trafficLayer)) {
+      this.map.removeLayer(this.trafficLayer);
+    }
+  }
+  setTrafficKey(key) {
+    this.state.trafficApiKey = key;
+    localStorage.setItem('opsroom_traffic_key', key);
+    if (this.trafficLayer) { this.map.removeLayer(this.trafficLayer); this.trafficLayer = null; }
+    this.updateTrafficLayer();
+    this.setState({});
+  }
+  allLayersVisible() {
+    const s = this.state;
+    return s.showGeofence && s.showWeather && s.showHeat && s.showTrails && (s.showTraffic || !s.trafficApiKey);
+  }
+  toggleAllLayers() {
+    const show = !this.allLayersVisible();
+    this.setState({ showGeofence: show, showWeather: show, showHeat: show, showTrails: show, showTraffic: show && !!this.state.trafficApiKey });
+  }
+  assignZone(empId, zoneId) {
+    if (zoneId) this.state.zoneAssignments[empId] = zoneId; else delete this.state.zoneAssignments[empId];
+    this.saveZoneAssignments();
+    this.setState({});
+    this.filterEmployees();
+  }
+
+  insideAnyGeofence(emp) {
+    const assignedId = this.state.zoneAssignments[emp.emp_id];
+    if (assignedId) {
+      const z = this.state.zones.find(zz => zz.id === assignedId);
+      if (z) return haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius;
+    }
+    return this.state.zones.some(z => haversine(emp.lat, emp.lng, z.lat, z.lng) <= z.radius);
+  }
+  assignedZoneName(emp) {
+    const assignedId = this.state.zoneAssignments[emp.emp_id];
+    const z = assignedId ? this.state.zones.find(zz => zz.id === assignedId) : null;
+    return z ? z.name : 'أي منطقة معرّفة';
+  }
+
+  findNearestResponder(sosEmp, all) {
+    let nearest = null, min = Infinity;
+    all.forEach(o => {
+      if (o.emp_id === sosEmp.emp_id || o.status === 'SOS') return;
+      const d = haversine(sosEmp.lat, sosEmp.lng, o.lat, o.lng);
+      if (d < min) { min = d; nearest = o; }
+    });
+    if (!nearest) return { text: 'لا يوجد مستجيب قريب متاح حالياً', eta: '—', target: null };
+    const distStr = min < 1000 ? `${Math.round(min)} متر` : `${(min / 1000).toFixed(1)} كم`;
+    const etaMin = Math.max(1, Math.round(min / 80));
+    return { text: `${nearest.emp_name} (#${nearest.emp_id}) · على بعد ${distStr}`, eta: `${etaMin} دقيقة تقريباً`, target: nearest };
+  }
+
+  relTime(iso) {
+    const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (isNaN(s) || s < 5) return 'الآن';
+    if (s < 60) return `منذ ${s} ثانية`;
+    const m = Math.floor(s / 60);
+    if (m === 1) return 'منذ دقيقة';
+    if (m === 2) return 'منذ دقيقتين';
+    if (m <= 10) return `منذ ${m} دقائق`;
+    if (m < 60) return `منذ ${m} دقيقة`;
+    const h = Math.floor(m / 60);
+    if (h === 1) return 'منذ ساعة';
+    return `منذ ${h} ساعات`;
+  }
+
+  sparkPath(history, w, h) {
+    w = w || 44; h = h || 14;
+    if (!history || history.length < 2) return '';
+    const min = Math.min(...history), max = Math.max(...history), range = (max - min) || 1;
+    const stepX = w / (history.length - 1);
+    return history.map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * (h - 3) - 1.5).toFixed(1)}`).join(' ');
+  }
+
+  logEvent(type, message) {
+    this.state.activityLog.unshift({ time: new Date().toISOString(), type, message });
+    if (this.state.activityLog.length > ACTIVITY_LOG_LIMIT) this.state.activityLog.pop();
+  }
+
+  async fetchWeather() {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=24.7136&longitude=46.6753&current=temperature_2m,weather_code,wind_speed_10m');
+      const d = await r.json();
+      this.setState({ weather: d.current });
+    } catch (e) { /* silent */ }
+  }
+
+  async fetchTelemetryData() {
+    this.setState({ refreshing: true });
+    if (this.controller) this.controller.abort();
+    this.controller = new AbortController();
+    try {
+      const res = await fetch(this.state.apiUrl, { signal: this.controller.signal });
+      if (!res.ok) throw new Error('bad status');
+      const raw = await res.json();
+      const cleaned = raw.filter(e => (e.emp_id || '').toString().trim() || (e.emp_name || '').toString().trim()).map(e => ({
+        timestamp: e.timestamp || new Date().toISOString(),
+        emp_id: (e.emp_id || 'N/A').toString(), emp_name: e.emp_name || 'موظف غير معروف',
+        lat: safeParseFloat(e.lat, 24.7136), lng: safeParseFloat(e.lng, 46.6753),
+        heart_rate: (function () { const n = parseInt(e.heart_rate); return Number.isFinite(n) ? n : 0; })(),
+        blood_pressure: e.blood_pressure || '120/80', spo2: e.spo2 || '98%', temperature: e.temperature || '37.0°C',
+        steps: (function () { const n = parseInt(e.steps); return Number.isFinite(n) ? n : 0; })(), battery: e.battery ? e.battery.toString().replace('%', '') + '%' : '100%',
+        status: (e.status || 'NORMAL').toUpperCase(),
+        gps_accuracy: (e.gps_accuracy !== undefined && e.gps_accuracy !== '') ? safeParseFloat(e.gps_accuracy, null) : null,
+        gps_status: e.gps_status || 'مباشر', fcm_token: e.fcm_token || ''
+      }));
+
+      cleaned.forEach(e => {
+        e.fatigue = this.computeFatigue(e);
+        e.insideGeofence = this.insideAnyGeofence(e);
+        if (e.status === 'SOS') e.responder = this.findNearestResponder(e, cleaned);
+        if (!this.state.trails[e.emp_id]) this.state.trails[e.emp_id] = [];
+        const trail = this.state.trails[e.emp_id];
+        const lastPt = trail[trail.length - 1];
+        if (!lastPt || haversine(lastPt[0], lastPt[1], e.lat, e.lng) > 5) {
+          trail.push([e.lat, e.lng]);
+          if (trail.length > 40) trail.shift();
+        }
+        if (!this.state.heartHistory[e.emp_id]) this.state.heartHistory[e.emp_id] = [];
+        this.state.heartHistory[e.emp_id].push(e.heart_rate);
+        if (this.state.heartHistory[e.emp_id].length > HEART_HISTORY_LIMIT) this.state.heartHistory[e.emp_id].shift();
+      });
+
+      cleaned.forEach(e => {
+        const st = this.effectiveStatus(e);
+        const prev = this.state.prevStatuses[e.emp_id];
+        if (prev !== undefined && prev !== st) {
+          if (st === 'SOS') { this.state.incidentsToday += 1; this.logEvent('sos', `استغاثة SOS: ${e.emp_name} (#${e.emp_id})`); this.state.incidentPoints.push({ lat: e.lat, lng: e.lng, w: 1 }); }
+          else if (prev === 'SOS' || prev === 'RESOLVING') this.logEvent('resolved', `تم إنهاء حالة الطوارئ: ${e.emp_name} (#${e.emp_id})`);
+          else if (st === 'OFFLINE') this.logEvent('offline', `انقطع الاتصال: ${e.emp_name} (#${e.emp_id})`);
+          else if (prev === 'OFFLINE') this.logEvent('online', `عاد الاتصال: ${e.emp_name} (#${e.emp_id})`);
+          else if (st === 'WARNING') { this.logEvent('warning', `دخل حالة تحذير: ${e.emp_name} (#${e.emp_id})`); this.state.incidentPoints.push({ lat: e.lat, lng: e.lng, w: 0.5 }); }
+          if (this.state.incidentPoints.length > 300) this.state.incidentPoints.shift();
+        }
+        this.state.prevStatuses[e.emp_id] = st;
+        this.state.prevSteps[e.emp_id] = e.steps;
+      });
+
+      const avgHr = cleaned.length ? Math.round(cleaned.reduce((s, e) => s + e.heart_rate, 0) / cleaned.length) : 0;
+      this.state.snapshots.push({ t: Date.now(), avgHr });
+      if (this.state.snapshots.length > SNAPSHOT_LIMIT) this.state.snapshots.shift();
+
+      this.setState({ employees: cleaned, connectionError: false, lastUpdate: Date.now() });
+      this.filterEmployees();
+    } catch (err) {
+      if (err.name !== 'AbortError') this.setState({ connectionError: true });
+    } finally {
+      this.setState({ refreshing: false });
+    }
+  }
+
+  scheduleRefresh() {
+    clearTimeout(this.refreshTimer);
+    if (!this.state.autoRefresh) return;
+    this.refreshTimer = setTimeout(async () => { await this.fetchTelemetryData(); this.scheduleRefresh(); }, this.state.refreshRate);
+  }
+
+  filterEmployees() {
+    const q = this.state.searchQuery;
+    let list = this.state.employees.filter(e => {
+      const matchQ = !q || e.emp_name.toLowerCase().includes(q) || e.emp_id.toLowerCase().includes(q);
+      if (!matchQ) return false;
+      if (this.state.statusFilter === 'ALL') return true;
+      const st = this.effectiveStatus(e);
+      if (this.state.statusFilter === 'SOS') return st === 'SOS' || st === 'RESOLVING';
+      return st === this.state.statusFilter;
+    });
+    const prio = { SOS: 5, RESOLVING: 4, WARNING: 3, NORMAL: 2, OFFLINE: 1 };
+    list.sort((a, b) => (prio[this.effectiveStatus(b)] || 0) - (prio[this.effectiveStatus(a)] || 0));
+    this.setState({ filteredEmployees: list });
+  }
+
+  updateMapMarkers() {
+    if (!this.map) return;
+    this.geofenceLayer[this.state.showGeofence ? 'addTo' : 'remove'](this.map);
+    if (this.state.showHeat) {
+      this.heatLayer.addTo(this.map);
+      this.heatLayer.setLatLngs(this.state.incidentPoints.map(p => [p.lat, p.lng, p.w]));
+    } else {
+      this.map.removeLayer(this.heatLayer);
+    }
+    this.updateTrafficLayer();
+    const activeIds = new Set(this.state.filteredEmployees.map(e => e.emp_id));
+    Object.keys(this.markers).forEach(id => {
+      if (!activeIds.has(id)) {
+        const m = this.markers[id];
+        (m.status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).removeLayer(m.marker);
+        if (m.circle) (m.status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).removeLayer(m.circle);
+        delete this.markers[id];
+      }
+    });
+    this.state.filteredEmployees.forEach(emp => {
+      const status = this.effectiveStatus(emp);
+      const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+      const latLng = [emp.lat, emp.lng];
+      const anim = status === 'SOS' ? 'animation:pulseMarker 1s infinite;' : '';
+      const icon = L.divIcon({
+        className: '', iconSize: [26, 26], iconAnchor: [13, 24],
+        html: `<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #060911;background:${colors.dot};${anim}"></div>`
+      });
+      const popup = `<div dir="rtl" style="font-size:12px;">
+        <b style="display:block;font-size:13px;margin-bottom:4px;color:#EAF0FB;">${escapeHTML(emp.emp_name)}</b>
+        <span style="display:block;font-family:'JetBrains Mono',monospace;color:#4F5E76;">#${escapeHTML(emp.emp_id)}</span>
+        <span style="display:block;margin-top:3px;">الحالة: <b style="color:${colors.dot};">${colors.label}</b></span>
+        <span style="display:block;font-family:'JetBrains Mono',monospace;">${emp.heart_rate} BPM</span>
+      </div>`;
+      let entry = this.markers[emp.emp_id];
+      if (entry) {
+        entry.marker.setLatLng(latLng); entry.marker.setIcon(icon); entry.marker.setPopupContent(popup);
+        if (entry.status !== status) {
+          (entry.status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).removeLayer(entry.marker);
+          (status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).addLayer(entry.marker);
+        }
+        entry.status = status;
+      } else {
+        const marker = L.marker(latLng, { icon }).bindPopup(popup);
+        marker.on('click', () => this.setState({ selectedEmployeeId: emp.emp_id }));
+        entry = { marker, circle: null, status };
+        this.markers[emp.emp_id] = entry;
+        (status === 'SOS' ? this.sosLayerGroup : this.clusterGroup).addLayer(marker);
+      }
+    });
+
+    this.routeLayer.clearLayers();
+    const sel = this.state.employees.find(e => e.emp_id === this.state.selectedEmployeeId);
+    if (sel && sel.status === 'SOS' && sel.responder && sel.responder.target) {
+      L.polyline([[sel.lat, sel.lng], [sel.responder.target.lat, sel.responder.target.lng]], { color: '#22D488', weight: 2, dashArray: '4,8' }).addTo(this.routeLayer);
+    }
+
+    this.trailLayer.clearLayers();
+    if (this.state.showTrails && sel) {
+      const pts = this.state.trails[sel.emp_id] || [];
+      if (pts.length > 1) {
+        L.polyline(pts, { color: '#33C7F4', weight: 2.5, opacity: 0.7, dashArray: '1,7', lineCap: 'round' }).addTo(this.trailLayer);
+        pts.forEach((p, i) => { if (i < pts.length - 1) L.circleMarker(p, { radius: 2.5, color: '#33C7F4', weight: 0, fillOpacity: 0.5 }).addTo(this.trailLayer); });
+      }
+    }
+  }
+
+  weatherMeta(code) {
+    if (code === undefined || code === null) return { icon: 'cloud', label: 'غير متاح' };
+    if (code === 0) return { icon: 'sun', label: 'صافٍ' };
+    if (code <= 3) return { icon: 'cloud-sun', label: 'غائم جزئياً' };
+    if (code <= 48) return { icon: 'cloud-fog', label: 'ضباب' };
+    if (code <= 67) return { icon: 'cloud-rain', label: 'أمطار' };
+    if (code <= 77) return { icon: 'cloud-snow', label: 'ثلوج' };
+    if (code <= 82) return { icon: 'cloud-rain-wind', label: 'زخات مطر' };
+    return { icon: 'cloud-lightning', label: 'عاصفة رعدية' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const employees = s.employees;
+    const hasSos = employees.some(e => e.status === 'SOS' && this.effectiveStatus(e) === 'SOS');
+    const donutCounts = { NORMAL: 0, WARNING: 0, SOS: 0, OFFLINE: 0 };
+    employees.forEach(e => { const st = this.effectiveStatus(e); donutCounts[st === 'RESOLVING' ? 'SOS' : st] = (donutCounts[st === 'RESOLVING' ? 'SOS' : st] || 0) + 1; });
+    const total = employees.length || 1;
+    const circumference = 2 * Math.PI * 54;
+    let acc = 0;
+    const donutOrder = ['NORMAL', 'WARNING', 'SOS', 'OFFLINE'];
+    const donutSegments = donutOrder.filter(k => donutCounts[k] > 0).map(k => {
+      const frac = donutCounts[k] / total;
+      const dash = frac * circumference;
+      const seg = { color: STATUS_COLORS[k].dot, dash: `${dash} ${circumference - dash}`, offset: -acc };
+      acc += dash;
+      return seg;
+    });
+    const donutLegend = donutOrder.map(k => ({ color: STATUS_COLORS[k].dot, label: STATUS_COLORS[k].label, count: donutCounts[k] }));
+
+    const employeeItems = s.filteredEmployees.map(emp => {
+      const status = this.effectiveStatus(emp);
+      const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+      const active = s.selectedEmployeeId === emp.emp_id;
+      const fatigue = emp.fatigue || { score: 0, level: 'منخفض', reason: '' };
+      const fColor = fatigue.score >= 75 ? '#FF3B4E' : fatigue.score >= 50 ? '#F5A623' : fatigue.score >= 25 ? '#33C7F4' : '#22D488';
+      const hist = s.heartHistory[emp.emp_id] || [];
+      const rising = hist.length > 1 && hist[hist.length - 1] >= hist[0];
+      return {
+        id: emp.emp_id, name: emp.emp_name, statusLabel: colors.label, statusBg: colors.bg, statusFg: colors.fg,
+        accentColor: colors.dot, cardBg: active ? 'rgba(51,199,244,0.12)' : '#101827', cardBorder: active ? '#33C7F4' : '#202C40',
+        cardShadow: active ? '0 0 0 1px rgba(51,199,244,0.25)' : 'none',
+        heartRate: `${emp.heart_rate} BPM`, sparkPoints: this.sparkPath(hist), sparkColor: rising ? '#F5A623' : '#33C7F4',
+        battery: emp.battery, batteryColor: parseInt(emp.battery) < 15 ? '#F5A623' : '#8291A8',
+        relTime: this.relTime(emp.timestamp), fatigueScore: fatigue.score, riskLabel: fatigue.level, riskColor: fColor,
+        geofenceOut: !emp.insideGeofence, onClick: () => this.setState({ selectedEmployeeId: emp.emp_id })
+      };
+    });
+
+    const logItems = s.activityLog.slice(0, 30).map(en => ({
+      message: en.message, time: new Date(en.time).toLocaleTimeString('ar-SA', { hour12: false }),
+      color: { sos: '#FF3B4E', resolved: '#22D488', offline: '#64748B', online: '#33C7F4', warning: '#F5A623' }[en.type] || '#4F5E76'
     }));
 
-    renderStats();
-    renderEmployeeList();
-    updateMapMarkers();
-    updateLastUpdateLabel();
+    const statTotal = employees.length;
+    const statNormal = employees.filter(e => this.effectiveStatus(e) === 'NORMAL').length;
+    const statWarning = employees.filter(e => this.effectiveStatus(e) === 'WARNING').length;
+    const statSos = employees.filter(e => e.status === 'SOS' && this.effectiveStatus(e) === 'SOS').length;
+    const statRisk = employees.filter(e => e.fatigue && e.fatigue.score >= 50).length;
 
-    hideLoading();
-    startRefreshBar();
-  } catch (err) {
-    showError('فشل تحميل البيانات: ' + err.message);
-    hideLoading();
-  }
-  setRefreshBtnSpinning(false);
-}
+    let insightText = 'جميع الموظفين ضمن الحالة الطبيعية، ولا توجد حوادث نشطة حالياً.', insightIcon = 'activity', insightColor = '#22D488';
+    let systemChip = { label: 'تشغيل طبيعي', bg: STATUS_COLORS.NORMAL.bg, fg: STATUS_COLORS.NORMAL.fg };
+    const resolvingCount = employees.filter(e => this.effectiveStatus(e) === 'RESOLVING').length;
+    const offlineCount = employees.filter(e => this.effectiveStatus(e) === 'OFFLINE').length;
+    if (statSos > 0) { insightText = `تنبيه حرج: ${statSos} حالة استغاثة نشطة تتطلب استجابة فورية.`; insightIcon = 'siren'; insightColor = '#FF3B4E'; systemChip = { label: 'حالة طوارئ', bg: STATUS_COLORS.SOS.bg, fg: '#fff' }; }
+    else if (resolvingCount > 0) { insightText = `تم إنهاء ${resolvingCount} حالة استغاثة، بانتظار تأكيد إيقاف الجهاز ميدانياً.`; insightIcon = 'clock'; insightColor = '#33C7F4'; systemChip = { label: 'قيد التأكيد', bg: STATUS_COLORS.RESOLVING.bg, fg: STATUS_COLORS.RESOLVING.fg }; }
+    else if (statRisk > 0) { insightText = `الذكاء التحليلي رصد ${statRisk} حالة إرهاق مرتفع الخطورة — يوصى بالمتابعة الاستباقية.`; insightIcon = 'brain-circuit'; insightColor = '#33C7F4'; systemChip = { label: 'مراقبة استباقية', bg: 'rgba(51,199,244,0.12)', fg: '#33C7F4' }; }
+    else if (statWarning > 0) { insightText = `${statWarning} موظف في حالة تحذير حركة — يُنصح بالتحقق من حالتهم.`; insightIcon = 'alert-triangle'; insightColor = '#F5A623'; systemChip = { label: 'يتطلب متابعة', bg: STATUS_COLORS.WARNING.bg, fg: STATUS_COLORS.WARNING.fg }; }
+    else if (offlineCount > 0) { insightText = `${offlineCount} جهاز غير متصل حالياً — تحقق من تغطية الشبكة أو البطارية.`; insightIcon = 'wifi-off'; insightColor = '#64748B'; systemChip = { label: 'تغطية جزئية', bg: STATUS_COLORS.OFFLINE.bg, fg: STATUS_COLORS.OFFLINE.fg }; }
 
-function updateLastUpdateLabel() {
-  const el = document.getElementById('mapLastUpdate');
-  if (el) {
+    const outCount = employees.filter(e => !e.insideGeofence).length;
+    const aiSummary = `${insightText} ${outCount > 0 ? `كما رُصد ${outCount} موظف خارج نطاق المناطق التشغيلية المصرح بها. ` : ''}متوسط النبض العام للفريق ${statTotal ? Math.round(employees.reduce((a, e) => a + e.heart_rate, 0) / statTotal) : 0} نبضة/دقيقة، و${statRisk} حالة مصنّفة ضمن الإرهاق المرتفع بحسب النموذج التنبؤي.`;
+
+    const snaps = s.snapshots;
+    let trendLinePath = '', trendAreaPath = '';
+    if (snaps.length > 1) {
+      const vals = snaps.map(x => x.avgHr);
+      const min = Math.min(...vals), max = Math.max(...vals), range = (max - min) || 1;
+      const w = 480, h = 100, top = 10;
+      const pts = snaps.map((v, i) => [i * (w / (snaps.length - 1)), top + h - ((v.avgHr - min) / range) * h]);
+      trendLinePath = 'M' + pts.map(p => p.join(',')).join(' L');
+      trendAreaPath = trendLinePath + ` L${pts[pts.length - 1][0]},120 L0,120 Z`;
+    }
+
     const now = new Date();
-    el.textContent = 'آخر تحديث: ' + now.toLocaleTimeString('ar-SA', {hour12:false});
-  }
-}
+    const hourBuckets = [];
+    for (let i = 5; i >= 0; i--) {
+      const hourStart = new Date(now.getTime() - i * 3600000);
+      const count = s.activityLog.filter(en => en.type === 'sos' && Math.floor((now - new Date(en.time)) / 3600000) === i).length;
+      hourBuckets.push({ label: `${hourStart.getHours()}:00`, count, heightPx: Math.max(4, count * 22) });
+    }
 
-// ─── LOADING / ERROR UI ───────────────────────────────
-function hideLoading() {
-  const el = document.getElementById('loadingOverlay');
-  el.style.opacity = '0';
-  setTimeout(() => el.style.display = 'none', 500);
-}
+    const fatigueBoard = employees.filter(e => e.fatigue).slice().sort((a, b) => b.fatigue.score - a.fatigue.score).slice(0, 5).map(e => ({
+      name: e.emp_name, score: e.fatigue.score,
+      color: e.fatigue.score >= 75 ? '#FF3B4E' : e.fatigue.score >= 50 ? '#F5A623' : e.fatigue.score >= 25 ? '#33C7F4' : '#22D488'
+    }));
 
-function showError(msg) {
-  let toast = document.getElementById('errorToast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'errorToast';
-    document.body.appendChild(toast);
-  }
-  toast.innerHTML = `<i data-lucide="alert-circle" style="width:15px;height:15px;flex-shrink:0;"></i> ${msg}`;
-  toast.style.opacity = '1';
-  lucide.createIcons();
-  setTimeout(() => { toast.style.opacity = '0' }, 5000);
-}
+    const riskList = employees.filter(e => e.fatigue && e.fatigue.score >= 50).sort((a, b) => b.fatigue.score - a.fatigue.score).map(e => ({
+      name: e.emp_name, reason: e.fatigue.reason, level: e.fatigue.level,
+      color: e.fatigue.score >= 75 ? '#FF3B4E' : '#F5A623',
+      borderColor: e.fatigue.score >= 75 ? 'rgba(255,59,78,0.35)' : 'rgba(245,166,35,0.35)',
+      bg: e.fatigue.score >= 75 ? 'rgba(255,59,78,0.08)' : 'rgba(245,166,35,0.08)',
+      badgeBg: e.fatigue.score >= 75 ? 'rgba(255,59,78,0.16)' : 'rgba(245,166,35,0.16)'
+    }));
 
-function setRefreshBtnSpinning(on) {
-  const btn = document.getElementById('refreshBtn');
-  if (on) btn.classList.add('spinning'); else btn.classList.remove('spinning');
-}
+    const stability = Math.round(Math.max(0, 100 - (statSos * 35 + resolvingCount * 15 + statWarning * 8 + offlineCount * 6 + statRisk * 5)));
+    const stabilityColor = stability >= 80 ? '#22D488' : stability >= 55 ? '#F5A623' : '#FF3B4E';
+    const stabilityLabel = stability >= 80 ? 'مستقر' : stability >= 55 ? 'يتطلب انتباه' : 'حرج';
 
-// ─── AUTO-REFRESH BAR ─────────────────────────────────
-function startRefreshBar() {
-  const fill = document.getElementById('refreshBarFill');
-  fill.style.transition = 'none';
-  fill.style.transform = 'scaleX(1)';
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      fill.style.transition = `transform ${REFRESH_INTERVAL/1000}s linear`;
-      fill.style.transform = 'scaleX(0)';
+    let forecastDir = 'مستقر', forecastArrow = 'minus', forecastColor = '#8291A8', forecastPct = '0';
+    if (snaps.length >= 4) {
+      const recent = snaps.slice(-4).map(x => x.avgHr);
+      const delta = recent[recent.length - 1] - recent[0];
+      const pct = recent[0] ? (delta / recent[0] * 100) : 0;
+      forecastPct = Math.abs(pct).toFixed(1);
+      if (pct > 3) { forecastDir = 'تصاعدي'; forecastArrow = 'trending-up'; forecastColor = '#F5A623'; }
+      else if (pct < -3) { forecastDir = 'تنازلي'; forecastArrow = 'trending-down'; forecastColor = '#33C7F4'; }
+      else { forecastArrow = 'minus'; }
+    }
+
+    const anomalies = employees.map(e => ({ e, a: this.detectAnomaly(e) })).filter(x => x.a).map(x => ({
+      name: x.e.emp_name, text: `${x.a.dir} غير معتاد بالنبض (${x.e.heart_rate} مقابل متوسطه ${x.a.mean} BPM، z=${x.a.z})`
+    }));
+
+    const recommendations = [];
+    if (statSos > 0) recommendations.push({ icon: 'siren', text: `استدعِ فرق الدعم الميداني فوراً لـ ${statSos} حالة استغاثة نشطة.`, color: '#FF3B4E' });
+    if (outCount > 0) recommendations.push({ icon: 'map-pin-off', text: `تحقق من سبب خروج ${outCount} موظف عن المناطق التشغيلية المصرح بها.`, color: '#F5A623' });
+    if (statRisk > 0) recommendations.push({ icon: 'brain-circuit', text: `راجع الحالة الصحية لأصحاب الإرهاق المرتفع (${statRisk}) قبل تفاقم الحالة.`, color: '#33C7F4' });
+    if (offlineCount > 1) recommendations.push({ icon: 'battery-warning', text: `${offlineCount} جهاز غير متصل — تحقق من تغطية الشبكة أو شحن الأجهزة الميدانية.`, color: '#64748B' });
+    if (anomalies.length > 0) recommendations.push({ icon: 'activity', text: `رُصدت ${anomalies.length} حالة انحراف حيوي غير معتاد تستحق مراجعة يدوية.`, color: '#33C7F4' });
+    if (recommendations.length === 0) recommendations.push({ icon: 'check-circle-2', text: 'لا توجد إجراءات عاجلة مطلوبة — استمر بالمراقبة الدورية.', color: '#22D488' });
+
+    const filters = [
+      { key: 'ALL', label: 'الكل' }, { key: 'SOS', label: 'SOS' }, { key: 'WARNING', label: 'تحذير' },
+      { key: 'NORMAL', label: 'طبيعي' }, { key: 'OFFLINE', label: 'غير متصل' }
+    ].map(f => {
+      const active = s.statusFilter === f.key;
+      return { label: f.label, borderColor: active ? '#33C7F4' : '#202C40', bg: active ? '#33C7F4' : '#101827', fg: active ? '#04222c' : '#8291A8', onClick: () => { this.setState({ statusFilter: f.key }); this.filterEmployees(); } };
     });
-  });
-}
 
-// ─── MAP ──────────────────────────────────────────────
-function initMap() {
-  map = L.map('map', { zoomControl: true }).setView([24.7136, 46.6753], 12);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19,
-    attribution: '© CARTO'
-  }).addTo(map);
-  markersGroup = L.layerGroup().addTo(map);
-}
+    const detailEmp = s.selectedEmployeeId ? employees.find(e => e.emp_id === s.selectedEmployeeId) : null;
+    let detail = null;
+    if (detailEmp) {
+      const status = this.effectiveStatus(detailEmp);
+      const colors = STATUS_COLORS[status] || STATUS_COLORS.NORMAL;
+      const fatigue = detailEmp.fatigue || { score: 0, level: '', reason: '' };
+      detail = {
+        name: detailEmp.emp_name, id: detailEmp.emp_id, dotColor: colors.dot,
+        isSos: status === 'SOS', isOffline: status === 'OFFLINE',
+        responder: detailEmp.responder ? detailEmp.responder.text : '', responderEta: detailEmp.responder ? detailEmp.responder.eta : '',
+        fatigueScore: fatigue.score, fatigueColor: fatigue.score >= 75 ? '#FF3B4E' : fatigue.score >= 50 ? '#F5A623' : fatigue.score >= 25 ? '#33C7F4' : '#22D488',
+        fatigueReason: fatigue.reason,
+        sparkPoints: this.sparkPath(s.heartHistory[detailEmp.emp_id] || [], 52, 16),
+        heartRate: `${detailEmp.heart_rate} BPM`, bp: detailEmp.blood_pressure, spo2: detailEmp.spo2, temp: detailEmp.temperature,
+        steps: detailEmp.steps.toLocaleString(), battery: detailEmp.battery, relTime: this.relTime(detailEmp.timestamp),
+        geofenceOut: !detailEmp.insideGeofence, noToken: !detailEmp.fcm_token,
+        assignedZoneName: this.assignedZoneName(detailEmp),
+        zoneOptions: s.zones.map(z => ({ id: z.id, name: z.name })),
+        assignedZoneId: s.zoneAssignments[detailEmp.emp_id] || '',
+        onZoneAssign: e => this.assignZone(detailEmp.emp_id, e.target.value)
+      };
+    }
 
-function makeMarkerHtml(status) {
-  const colors = {
-    NORMAL: { dot:'#00F0A0', glow:'rgba(0,240,160,.7)', pulse:false },
-    WARNING:{ dot:'#FFB830', glow:'rgba(255,184,48,.6)', pulse:false },
-    SOS:    { dot:'#FF2D55', glow:'rgba(255,45,85,.8)',  pulse:true  },
-    OFFBODY:{ dot:'#9B6DFF', glow:'rgba(155,109,255,.6)',pulse:false },
-  };
-  const c = colors[status] || colors.NORMAL;
-  const ring = c.pulse
-    ? `<div style="position:absolute;inset:-7px;border-radius:50%;border:2px solid ${c.dot};opacity:.5;animation:mkPulse 1.5s ease-out infinite;"></div>` : '';
-  return `<div style="position:relative;width:18px;height:18px;">
-    ${ring}
-    <div style="width:18px;height:18px;border-radius:50%;background:${c.dot};border:2.5px solid rgba(255,255,255,.85);box-shadow:0 0 14px ${c.glow};"></div>
-  </div>`;
-}
+    const cmdColors = k => ({ borderKey: s.selectedCommand === k ? '#33C7F4' : '#202C40', bgKey: s.selectedCommand === k ? '#33C7F4' : '#0B121E', fgKey: s.selectedCommand === k ? '#04222c' : '#8291A8' });
+    const alertC = cmdColors('ALERT'), checkC = cmdColors('CHECK_IN'), recallC = cmdColors('RECALL');
+    const weather = s.weather;
+    const wMeta = this.weatherMeta(weather ? weather.weather_code : null);
 
-function updateMapMarkers() {
-  if (!markersGroup) return;
-  markersGroup.clearLayers();
-  employeesData.forEach(emp => {
-    if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
-    if (!emp.lat && !emp.lng) return;
-    const icon = L.divIcon({ html: makeMarkerHtml(emp.status), className:'', iconAnchor:[9,9] });
-    const m = L.marker([emp.lat, emp.lng], { icon }).addTo(markersGroup);
-    const battStr = emp.battery + '%';
-    const hrStr = emp.heartRate ? emp.heartRate + ' BPM' : '—';
-    const popHtml = `
-      <div style="min-width:150px;">
-        <div style="font-family:Cairo;font-weight:800;font-size:13px;margin-bottom:6px;">${emp.name}</div>
-        <div style="font-size:10px;color:#7B9DBF;margin-bottom:8px;font-family:JetBrains Mono;">${emp.id}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px;">
-          <div>❤️ ${hrStr}</div>
-          <div>🔋 ${battStr}</div>
-          ${emp.spo2 ? `<div>💧 ${emp.spo2}%</div>` : ''}
-          ${emp.temperature ? `<div>🌡 ${emp.temperature}</div>` : ''}
-        </div>
-      </div>`;
-    m.bindPopup(popHtml);
-    m.on('click', () => openDetailPanel(emp));
-  });
-}
-
-function openDetailPanel(emp) {
-  document.getElementById('detailPanel').classList.remove('hidden');
-  document.getElementById('detailName').textContent = emp.name;
-  document.getElementById('detailId').textContent = emp.id;
-  document.getElementById('detailHeartRate').textContent = emp.heartRate ? emp.heartRate + ' BPM' : '—';
-  document.getElementById('detailSpo2').textContent = emp.spo2 != null ? emp.spo2 + '%' : '—';
-  document.getElementById('detailTemp').textContent = emp.temperature || '—';
-  document.getElementById('detailBattery').textContent = emp.battery + '%';
-  map.flyTo([emp.lat, emp.lng], 15, { duration: 1.2 });
-}
-
-document.getElementById('closeDetailBtn').onclick = () =>
-  document.getElementById('detailPanel').classList.add('hidden');
-
-// ─── STATS ────────────────────────────────────────────
-function renderStats() {
-  const total   = employeesData.length;
-  const norm    = employeesData.filter(e => e.status === 'NORMAL').length;
-  const warn    = employeesData.filter(e => e.status === 'WARNING').length;
-  const sos     = employeesData.filter(e => e.status === 'SOS').length;
-  const offbody = employeesData.filter(e => e.status === 'OFFBODY').length;
-
-  document.getElementById('statTotal').textContent   = total;
-  document.getElementById('statNormal').textContent  = norm;
-  document.getElementById('statWarning').textContent = warn;
-  document.getElementById('statSos').textContent     = sos;
-  document.getElementById('statOffbody').textContent = offbody;
-
-  // Alert highlight
-  const kpiSos = document.getElementById('kpiSos');
-  sos > 0 ? kpiSos.classList.add('has-alert') : kpiSos.classList.remove('has-alert');
-}
-
-// ─── EMPLOYEE LIST ────────────────────────────────────
-function renderEmployeeList() {
-  const container = document.getElementById('employeeList');
-  container.innerHTML = '';
-
-  const filtered = employeesData.filter(e =>
-    activeFilter === 'ALL' || e.status === activeFilter
-  );
-
-  document.getElementById('listCount').textContent = filtered.length + ' / ' + employeesData.length;
-
-  if (filtered.length === 0) {
-    container.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--t3);font-size:12px;">لا توجد نتائج</div>`;
-    return;
-  }
-
-  filtered.forEach(emp => {
-    const battColor = emp.battery > 50 ? 'var(--green)' : emp.battery > 20 ? 'var(--amber)' : 'var(--red)';
-    const hrColor   = emp.status === 'SOS' ? 'var(--red)' : emp.status === 'WARNING' ? 'var(--amber)' : 'var(--green)';
-    const statusLabels = { NORMAL:'طبيعي', WARNING:'⚠ تحذير', SOS:'⚡ SOS', OFFBODY:'غير موصول' };
-
-    const card = document.createElement('div');
-    card.className = `employee-card st-${emp.status}`;
-    card.innerHTML = `
-      <div class="ec-top">
-        <div>
-          <div class="ec-name cairo">${emp.name}</div>
-          <div class="ec-id">${emp.id}</div>
-        </div>
-        <span class="status-pip pip-${emp.status}">${statusLabels[emp.status] || emp.status}</span>
-      </div>
-      <div class="ec-vitals">
-        <div class="vital">
-          <div class="vital-icon"><i data-lucide="heart-pulse" style="width:11px;height:11px;color:${hrColor};"></i></div>
-          <div class="vital-val mono" style="color:${hrColor};">${emp.heartRate || '—'}</div>
-          <div class="vital-lbl">BPM</div>
-        </div>
-        <div class="vital">
-          <div class="vital-icon"><i data-lucide="droplets" style="width:11px;height:11px;color:var(--cyan);"></i></div>
-          <div class="vital-val mono" style="color:var(--cyan);">${emp.spo2 != null ? emp.spo2 : '—'}</div>
-          <div class="vital-lbl">SpO₂</div>
-        </div>
-        <div class="vital">
-          <div class="vital-icon"><i data-lucide="thermometer" style="width:11px;height:11px;color:var(--amber);"></i></div>
-          <div class="vital-val mono" style="color:var(--amber);font-size:9.5px;">${emp.temperature || '—'}</div>
-          <div class="vital-lbl">درجة</div>
-        </div>
-        <div class="vital">
-          <div class="vital-icon"><i data-lucide="battery-medium" style="width:11px;height:11px;color:${battColor};"></i></div>
-          <div class="vital-val mono" style="color:${battColor};">${emp.battery}%</div>
-          <div class="vital-lbl">بطاريه</div>
-        </div>
-      </div>`;
-
-    card.onclick = () => {
-      document.getElementById('tabMapBtn').click();
-      setTimeout(() => openDetailPanel(emp), 80);
-    };
-
-    container.appendChild(card);
-  });
-
-  lucide.createIcons();
-}
-
-// ─── FILTER CHIPS ─────────────────────────────────────
-document.querySelectorAll('#filterChips .chip').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    activeFilter = btn.getAttribute('data-filter');
-    renderEmployeeList();
-    updateMapMarkers();
-  });
-});
-
-// ─── CLOCK ────────────────────────────────────────────
-function initClock() {
-  setInterval(() => {
-    const now = new Date();
-    document.getElementById('liveClock').textContent = now.toLocaleTimeString('ar-SA', {hour12:false});
-    document.getElementById('liveDate').textContent =
-      DAYS[now.getDay()] + ' · ' + now.toLocaleDateString('ar-SA',{year:'numeric',month:'short',day:'numeric'});
-  }, 1000);
-}
-
-// ─── TABS ─────────────────────────────────────────────
-function initTabs() {
-  const mapTab  = document.getElementById('tabMapBtn');
-  const anaTab  = document.getElementById('tabAnalyticsBtn');
-  const mapView = document.getElementById('mapView');
-  const anaView = document.getElementById('analyticsView');
-
-  mapTab.addEventListener('click', () => {
-    mapTab.classList.add('active'); anaTab.classList.remove('active');
-    mapView.style.display = 'flex'; anaView.style.display = 'none';
-    anaView.classList.add('hidden'); mapView.classList.remove('hidden');
-    setTimeout(() => map.invalidateSize(), 80);
-  });
-
-  anaTab.addEventListener('click', () => {
-    anaTab.classList.add('active'); mapTab.classList.remove('active');
-    anaView.style.display = 'flex'; mapView.style.display = 'none';
-    mapView.classList.add('hidden'); anaView.classList.remove('hidden');
-    updateAnalyticsData();
-  });
-}
-
-// ─── ANALYTICS ────────────────────────────────────────
-function updateAnalyticsData() {
-  const total = employeesData.length;
-  if (!total) return;
-
-  const avgHeart = Math.round(employeesData.filter(e=>e.heartRate).reduce((a,e) => a+e.heartRate,0) / (employeesData.filter(e=>e.heartRate).length||1));
-  const avgBatt  = Math.round(employeesData.reduce((a,e) => a+e.battery, 0) / total);
-  const sosC  = employeesData.filter(e => e.status === 'SOS').length;
-  const warnC = employeesData.filter(e => e.status === 'WARNING').length;
-  const normC = employeesData.filter(e => e.status === 'NORMAL').length;
-  const offC  = employeesData.filter(e => e.status === 'OFFBODY').length;
-  const riskIndex = Math.min(100, Math.round(((sosC*35)+(warnC*15)+(offC*8))/total*5));
-
-  document.getElementById('avgHeartRate').textContent  = avgHeart + ' BPM';
-  document.getElementById('avgBattery').textContent    = avgBatt + ' %';
-  document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
-
-  // Bar chart
-  const barCtx = document.getElementById('barChart').getContext('2d');
-  if (chartsInstance.bar) chartsInstance.bar.destroy();
-  chartsInstance.bar = new Chart(barCtx, {
-    type: 'bar',
-    data: {
-      labels: ['طبيعي','تحذير','SOS','غير موصول'],
-      datasets: [{
-        data: [normC, warnC, sosC, offC],
-        backgroundColor: ['rgba(0,240,160,.65)','rgba(255,184,48,.65)','rgba(255,45,85,.65)','rgba(155,109,255,.65)'],
-        borderColor: ['#00F0A0','#FFB830','#FF2D55','#9B6DFF'],
-        borderWidth: 1, borderRadius: 8, borderSkipped: false,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend:{ display:false },
-        tooltip:{
-          backgroundColor:'#0C1525',borderColor:'#1C2E46',borderWidth:1,
-          titleColor:'#E8F4FF',bodyColor:'#7B9DBF',padding:10,
-          callbacks:{ label: ctx => ` ${ctx.parsed.y} أفراد` }
-        }
+    return {
+      hasSos: hasSos ? '#FF3B4E' : '#22D488',
+      systemChip, connectionError: s.connectionError,
+      lastUpdateLabel: s.lastUpdate ? new Date(s.lastUpdate).toLocaleTimeString('ar-SA', { hour12: false }) : '--:--:--',
+      clockLabel: new Date().toLocaleTimeString('ar-SA', { hour12: false }),
+      apiUrl: s.apiUrl, onApiUrlChange: e => { this.setState({ apiUrl: e.target.value }); this.fetchTelemetryData(); },
+      toggleMute: () => this.setState({ isMuted: !s.isMuted }),
+      muteIconName: s.isMuted ? 'volume-x' : 'volume-2', muteIconColor: s.isMuted ? '#FF3B4E' : '#22D488',
+      muteLabel: s.isMuted ? 'مكتوم' : 'نشط',
+      autoRefresh: s.autoRefresh, onToggleAutoRefresh: e => { this.setState({ autoRefresh: e.target.checked }); this.scheduleRefresh(); },
+      onRefreshRateChange: e => { this.setState({ refreshRate: parseInt(e.target.value) }); this.scheduleRefresh(); },
+      manualRefresh: () => this.fetchTelemetryData(), refreshSpin: s.refreshing ? 'spinCw 1s linear infinite' : 'none',
+      setViewMap: () => this.setState({ activeView: 'map' }), setViewAnalytics: () => this.setState({ activeView: 'analytics' }),
+      tabMapBg: s.activeView === 'map' ? '#101827' : 'transparent', tabMapFg: s.activeView === 'map' ? '#33C7F4' : '#8291A8',
+      tabAnalyticsBg: s.activeView === 'analytics' ? '#101827' : 'transparent', tabAnalyticsFg: s.activeView === 'analytics' ? '#33C7F4' : '#8291A8',
+      isMapView: s.activeView === 'map', isAnalyticsView: s.activeView === 'analytics',
+      statTotal, statNormal, statWarning, statSos, statRisk,
+      insightIcon, insightColor, insightText,
+      searchQuery: s.searchQuery, onSearchChange: e => { this.setState({ searchQuery: e.target.value.toLowerCase() }); this.filterEmployees(); },
+      filterChips: filters,
+      setSidebarList: () => this.setState({ sidebarTab: 'list' }), setSidebarLog: () => this.setState({ sidebarTab: 'log' }),
+      tabListBorder: s.sidebarTab === 'list' ? '#33C7F4' : 'transparent', tabListBg: s.sidebarTab === 'list' ? 'rgba(51,199,244,0.12)' : '#0B121E', tabListFg: s.sidebarTab === 'list' ? '#33C7F4' : '#8291A8',
+      tabLogBorder: s.sidebarTab === 'log' ? '#33C7F4' : 'transparent', tabLogBg: s.sidebarTab === 'log' ? 'rgba(51,199,244,0.12)' : '#0B121E', tabLogFg: s.sidebarTab === 'log' ? '#33C7F4' : '#8291A8',
+      sidebarListVisible: s.sidebarTab === 'list', sidebarLogVisible: s.sidebarTab === 'log',
+      hasEmployees: employeeItems.length > 0, noEmployees: employeeItems.length === 0, employeeItems,
+      hasLog: logItems.length > 0, noLog: logItems.length === 0, logItems,
+      fitAll: () => { if (!this.map || !s.filteredEmployees.length) return; this.map.fitBounds(s.filteredEmployees.map(e => [e.lat, e.lng]), { padding: [50, 50], maxZoom: 16 }); },
+      toggleGeofence: () => this.setState({ showGeofence: !s.showGeofence }),
+      geofenceBtnBorder: s.showGeofence ? '#33C7F4' : '#202C40', geofenceBtnBg: s.showGeofence ? 'rgba(51,199,244,0.15)' : '#101827', geofenceBtnFg: s.showGeofence ? '#33C7F4' : '#8291A8',
+      toggleZonesPanel: () => this.setState({ showZonesPanel: !s.showZonesPanel, zonePickMode: false }),
+      zonesBtnBorder: s.showZonesPanel ? '#33C7F4' : '#202C40', zonesBtnBg: s.showZonesPanel ? 'rgba(51,199,244,0.15)' : '#101827', zonesBtnFg: s.showZonesPanel ? '#33C7F4' : '#8291A8',
+      zonesPanelVisible: s.showZonesPanel,
+      startPickZone: () => this.setState({ zonePickMode: true }),
+      zonePickMode: s.zonePickMode,
+      pickZoneLabel: s.zonePickMode ? 'انقر على الخريطة لتحديد مركز المنطقة الجديدة...' : '+ إضافة منطقة جديدة (بالنقر على الخريطة)',
+      newZoneRadius: s.newZoneRadius, onNewZoneRadiusChange: e => this.setState({ newZoneRadius: parseInt(e.target.value) || 3000 }),
+      zoneItems: s.zones.map(z => ({
+        id: z.id, name: z.name, radius: z.radius,
+        onNameChange: e => this.renameZone(z.id, e.target.value),
+        onRadiusChange: e => this.resizeZone(z.id, parseInt(e.target.value) || z.radius),
+        onDelete: () => this.deleteZone(z.id)
+      })),
+      hasZones: s.zones.length > 0, noZones: s.zones.length === 0,
+      toggleWeather: () => this.setState({ showWeather: !s.showWeather }),
+      weatherBtnBorder: s.showWeather ? '#33C7F4' : '#202C40', weatherBtnBg: s.showWeather ? 'rgba(51,199,244,0.15)' : '#101827', weatherBtnFg: s.showWeather ? '#33C7F4' : '#8291A8',
+      toggleHeat: () => this.setState({ showHeat: !s.showHeat }),
+      heatBtnBorder: s.showHeat ? '#FF3B4E' : '#202C40', heatBtnBg: s.showHeat ? 'rgba(255,59,78,0.15)' : '#101827', heatBtnFg: s.showHeat ? '#FF3B4E' : '#8291A8',
+      toggleTrails: () => this.setState({ showTrails: !s.showTrails }),
+      trailBtnBorder: s.showTrails ? '#33C7F4' : '#202C40', trailBtnBg: s.showTrails ? 'rgba(51,199,244,0.15)' : '#101827', trailBtnFg: s.showTrails ? '#33C7F4' : '#8291A8',
+      toggleTraffic: () => this.setState({ showTraffic: !s.showTraffic }),
+      trafficBtnBorder: s.showTraffic ? '#33C7F4' : '#202C40', trafficBtnBg: s.showTraffic ? 'rgba(51,199,244,0.15)' : '#101827', trafficBtnFg: s.showTraffic ? '#33C7F4' : '#8291A8',
+      trafficApiKey: s.trafficApiKey, onTrafficKeyChange: e => this.setTrafficKey(e.target.value),
+      needsTrafficKey: s.showTraffic && !s.trafficApiKey,
+      toggleAllLayers: () => this.toggleAllLayers(),
+      allLayersOn: this.allLayersVisible(),
+      allLayersIcon: this.allLayersVisible() ? 'eye' : 'eye-off',
+      allLayersBtnBorder: '#202C40', allLayersBtnBg: '#101827', allLayersBtnFg: '#8291A8',
+      showWeather: s.showWeather && !!weather, weatherIcon: wMeta.icon, weatherLabel: wMeta.label,
+      weatherTemp: weather ? `${Math.round(weather.temperature_2m)}°` : '--', weatherWind: weather ? `${Math.round(weather.wind_speed_10m)} كم/س` : '--',
+      isRaining: !!weather && weather.weather_code >= 51 && weather.weather_code <= 82,
+      hasDetail: !!detail, detail: detail || {}, closeDetail: () => this.setState({ selectedEmployeeId: null }),
+      resolveEmergency: () => {
+        if (!detailEmp) return;
+        this.state.resolvedSuppression[detailEmp.emp_id] = Date.now();
+        detailEmp.status = 'NORMAL';
+        this.filterEmployees();
+        const url = `${s.apiUrl}?action=resolve&emp_id=${encodeURIComponent(detailEmp.emp_id)}`;
+        fetch(url).then(() => this.fetchTelemetryData()).catch(() => {});
       },
-      scales: {
-        y:{ beginAtZero:true, ticks:{stepSize:1,color:'#3A5470'}, grid:{color:'rgba(0,180,255,.04)'}, border:{color:'transparent'} },
-        x:{ ticks:{color:'#3A5470'}, grid:{display:false}, border:{color:'transparent'} }
-      }
-    }
-  });
-
-  // Doughnut
-  const dCtx = document.getElementById('doughnutChart').getContext('2d');
-  if (chartsInstance.doughnut) chartsInstance.doughnut.destroy();
-  chartsInstance.doughnut = new Chart(dCtx, {
-    type: 'doughnut',
-    data: {
-      labels:['جاهز','تحذير','طوارئ','غير موصول'],
-      datasets:[{
-        data:[normC, warnC, sosC, offC],
-        backgroundColor:['rgba(0,212,255,.65)','rgba(255,184,48,.65)','rgba(255,45,85,.65)','rgba(155,109,255,.65)'],
-        borderColor:['#00D4FF','#FFB830','#FF2D55','#9B6DFF'],
-        borderWidth:2, cutout:'76%', hoverOffset:5,
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{ position:'bottom', labels:{ padding:14, boxWidth:10, color:'#7B9DBF', font:{size:11,family:'Cairo'} } },
-        tooltip:{ backgroundColor:'#0C1525', borderColor:'#1C2E46', borderWidth:1 }
-      }
-    }
-  });
-}
-
-// ─── REFRESH BTN ──────────────────────────────────────
-document.getElementById('refreshBtn').addEventListener('click', () => {
-  clearTimeout(refreshTimer);
-  fetchData();
-  refreshTimer = setInterval(fetchData, REFRESH_INTERVAL);
-});
-
-// ─── AI MODULE ────────────────────────────────────────
-function initAIModule() {
-  const apiKeyInput = document.getElementById('geminiApiKeyInput');
-  if (localStorage.getItem('gemini_api_key')) apiKeyInput.value = localStorage.getItem('gemini_api_key');
-
-  document.getElementById('aiToggleBtn').addEventListener('click', () =>
-    document.getElementById('aiChatBox').classList.toggle('hidden'));
-  document.getElementById('aiCloseBtn').addEventListener('click', () =>
-    document.getElementById('aiChatBox').classList.add('hidden'));
-  document.getElementById('aiSendBtn').addEventListener('click', handleAISend);
-  document.getElementById('aiInput').addEventListener('keypress', e => { if(e.key==='Enter') handleAISend(); });
-}
-
-async function fetchGeminiAPI(apiKey, promptText) {
-  const primary  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-  const fallback = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  const payload  = { contents:[{ parts:[{ text: promptText }] }] };
-  let res = await fetch(primary, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-  if (!res.ok) res = await fetch(fallback, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-  return res;
-}
-
-async function handleAISend() {
-  const input  = document.getElementById('aiInput');
-  const msgs   = document.getElementById('aiMessages');
-  const apiKey = document.getElementById('geminiApiKeyInput').value.trim();
-  const query  = input.value.trim();
-  if (!query) return;
-  if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
-
-  msgs.innerHTML += `<div class="ai-msg user">${query}</div>`;
-  input.value = '';
-  msgs.scrollTop = msgs.scrollHeight;
-
-  if (!apiKey) {
-    msgs.innerHTML += `<div class="ai-msg bot" style="color:var(--amber);">يرجى إدخال مفتاح Gemini API أولاً.</div>`;
-    msgs.scrollTop = msgs.scrollHeight; return;
+      setCmdAlert: () => this.setState({ selectedCommand: 'ALERT', messageText: 'تنبيه إداري من غرفة العمليات' }),
+      setCmdCheck: () => this.setState({ selectedCommand: 'CHECK_IN', messageText: 'يرجى تأكيد سلامتك الآن' }),
+      setCmdRecall: () => this.setState({ selectedCommand: 'RECALL', messageText: 'يرجى العودة فوراً لأقرب نقطة تجمع' }),
+      cmdAlertBorder: alertC.borderKey, cmdAlertBg: alertC.bgKey, cmdAlertFg: alertC.fgKey,
+      cmdCheckBorder: checkC.borderKey, cmdCheckBg: checkC.bgKey, cmdCheckFg: checkC.fgKey,
+      cmdRecallBorder: recallC.borderKey, cmdRecallBg: recallC.bgKey, cmdRecallFg: recallC.fgKey,
+      messageText: s.messageText, onMessageChange: e => this.setState({ messageText: e.target.value }),
+      sendBtnLabel: 'إرسال',
+      sendMessage: async () => {
+        if (!detailEmp || !detailEmp.fcm_token) return;
+        const url = `${s.apiUrl}?action=send_message&emp_id=${encodeURIComponent(detailEmp.emp_id)}&command=${encodeURIComponent(s.selectedCommand)}&message=${encodeURIComponent(s.messageText)}`;
+        try { await fetch(url); this.setState({ messageText: '' }); } catch (e) {}
+      },
+      aiSummary, trendLinePath, trendAreaPath, donutSegments, donutLegend, hourBuckets,
+      hasFatigueBoard: fatigueBoard.length > 0, noFatigueBoard: fatigueBoard.length === 0, fatigueBoard,
+      hasRiskList: riskList.length > 0, noRiskList: riskList.length === 0, riskList,
+      stability, stabilityColor, stabilityLabel,
+      forecastDir, forecastArrow, forecastColor, forecastPct,
+      hasAnomalies: anomalies.length > 0, noAnomalies: anomalies.length === 0, anomalies,
+      recommendations
+    };
   }
-
-  const lid = 'ld-' + Date.now();
-  msgs.innerHTML += `<div id="${lid}" class="ai-msg bot" style="color:var(--t3);">جاري التحليل ···</div>`;
-  msgs.scrollTop = msgs.scrollHeight;
-
-  const sos  = employeesData.filter(e=>e.status==='SOS').length;
-  const warn = employeesData.filter(e=>e.status==='WARNING').length;
-  const off  = employeesData.filter(e=>e.status==='OFFBODY').length;
-  const ctx  = `إجمالي: ${employeesData.length} | طوارئ: ${sos} | تحذير: ${warn} | غير موصول: ${off}`;
-  const prompt = `أنت المساعد الأمني الذكي في مركز المراقبة. أجب بإيجاز باللغة العربية.\nالبيانات الحالية: [${ctx}]\n\nسؤال: ${query}`;
-
-  try {
-    const res  = await fetchGeminiAPI(apiKey, prompt);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message || 'خطأ في الاتصال');
-    const reply = data.candidates[0].content.parts[0].text.replace(/\n/g,'<br>');
-    document.getElementById(lid).outerHTML = `<div class="ai-msg bot">${reply}</div>`;
-  } catch(err) {
-    document.getElementById(lid).outerHTML = `<div class="ai-msg bot" style="color:var(--red);">خطأ: ${err.message}</div>`;
-  }
-  msgs.scrollTop = msgs.scrollHeight;
 }
-
-// ─── INIT ─────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  lucide.createIcons();
-  initClock();
-  initMap();
-  initTabs();
-  initAIModule();
-
-  Chart.defaults.color = '#7B9DBF';
-  Chart.defaults.font.family = 'Cairo';
-
-  // Inject marker animation
-  const s = document.createElement('style');
-  s.textContent = `@keyframes mkPulse{0%{transform:scale(.8);opacity:.9}100%{transform:scale(2.8);opacity:0}}`;
-  document.head.appendChild(s);
-
-  // Initial fetch + auto-refresh
-  fetchData();
-  refreshTimer = setInterval(fetchData, REFRESH_INTERVAL);
-});
 </script>
 </body>
 </html>
