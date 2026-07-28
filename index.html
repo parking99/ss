@@ -1,1501 +1,1375 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مركز القيادة والمراقبة الأمنية الذكي</title>
-    
-    <!-- Leaflet & MarkerCluster -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <style>
-        /* ====================================================
-           CSS CUSTOM PROPERTIES - DESIGN TOKENS
-        ==================================================== */
-        :root {
-            /* Core Surfaces */
-            --bg-void: #03060D;
-            --bg-base: #060C18;
-            --bg-panel: #0A1220;
-            --bg-card: #0D1628;
-            --bg-elevated: #111E30;
-            --bg-hover: #162236;
-            --bg-overlay: rgba(6, 12, 24, 0.92);
-
-            /* Borders */
-            --border-1: rgba(255,255,255,0.04);
-            --border-2: rgba(255,255,255,0.08);
-            --border-3: rgba(255,255,255,0.14);
-
-            /* Text */
-            --text-1: #F0F6FF;
-            --text-2: #8CA0BE;
-            --text-3: #4A607E;
-            --text-4: #2A3E58;
-
-            /* Brand Accent */
-            --cyan: #00D4FF;
-            --cyan-dim: rgba(0,212,255,0.08);
-            --cyan-mid: rgba(0,212,255,0.18);
-            --cyan-glow: rgba(0,212,255,0.35);
-
-            /* Status */
-            --green: #00E896;
-            --green-dim: rgba(0,232,150,0.08);
-            --green-mid: rgba(0,232,150,0.2);
-            --green-glow: 0 0 16px rgba(0,232,150,0.4);
-
-            --amber: #FFB020;
-            --amber-dim: rgba(255,176,32,0.08);
-            --amber-mid: rgba(255,176,32,0.2);
-            --amber-glow: 0 0 16px rgba(255,176,32,0.4);
-
-            --red: #FF3358;
-            --red-dim: rgba(255,51,88,0.08);
-            --red-mid: rgba(255,51,88,0.2);
-            --red-glow: 0 0 16px rgba(255,51,88,0.5);
-
-            --navy: #2979FF;
-            --navy-dim: rgba(41,121,255,0.1);
-
-            /* Glows & Shadows */
-            --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
-            --shadow-md: 0 8px 32px rgba(0,0,0,0.6);
-            --shadow-lg: 0 24px 64px rgba(0,0,0,0.75);
-            --shadow-cyan: 0 0 32px rgba(0,212,255,0.15);
-        }
-
-        /* ====================================================
-           RESET & BASE
-        ==================================================== */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        html, body {
-            height: 100vh; width: 100%; overflow: hidden;
-            font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
-            font-size: 14px;
-            background: var(--bg-void);
-            color: var(--text-1);
-        }
-
-        .font-display { font-family: 'Cairo', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; direction: ltr; unicode-bidi: isolate; }
-
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--border-3); border-radius: 99px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-
-        .hidden { display: none !important; }
-
-        /* ====================================================
-           GLOBAL GRID BACKGROUND
-        ==================================================== */
-        body::before {
-            content: '';
-            position: fixed; inset: 0; z-index: 0; pointer-events: none;
-            background-image:
-                repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(0,212,255,0.022) 60px),
-                repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(0,212,255,0.022) 60px);
-        }
-
-        body::after {
-            content: '';
-            position: fixed; top: -50%; left: -20%; width: 60%; height: 60%;
-            background: radial-gradient(ellipse, rgba(0,80,160,0.12) 0%, transparent 65%);
-            pointer-events: none; z-index: 0;
-        }
-
-        /* ====================================================
-           LAYOUT SHELL
-        ==================================================== */
-        #app-shell {
-            position: relative; z-index: 1;
-            display: flex; flex-direction: column;
-            height: 100vh; overflow: hidden;
-        }
-
-        /* ====================================================
-           HEADER
-        ==================================================== */
-        #main-header {
-            position: relative;
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 20px;
-            height: 64px; flex-shrink: 0;
-            background: rgba(10, 18, 32, 0.85);
-            border-bottom: 1px solid var(--border-2);
-            backdrop-filter: blur(16px);
-            z-index: 50;
-        }
-
-        #main-header::after {
-            content: '';
-            position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-            background: linear-gradient(90deg, transparent, var(--cyan-glow), transparent);
-        }
-
-        .header-brand {
-            display: flex; align-items: center; gap: 12px;
-        }
-
-        .brand-icon {
-            width: 42px; height: 42px; border-radius: 12px;
-            background: var(--navy-dim);
-            border: 1px solid rgba(41,121,255,0.3);
-            display: flex; align-items: center; justify-content: center;
-            color: var(--navy);
-            position: relative; overflow: hidden;
-            box-shadow: 0 0 20px rgba(41,121,255,0.2);
-        }
-
-        .brand-icon::before {
-            content: '';
-            position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(41,121,255,0.15) 0%, transparent 60%);
-        }
-
-        .brand-title {
-            font-family: 'Cairo', sans-serif;
-            font-size: 15px; font-weight: 800;
-            color: var(--text-1);
-            letter-spacing: -0.3px;
-            display: flex; align-items: center; gap: 8px;
-        }
-
-        .brand-subtitle {
-            font-size: 11px; color: var(--text-3);
-            margin-top: 2px;
-            display: flex; align-items: center; gap: 6px;
-        }
-
-        /* Live Pulse */
-        .live-badge {
-            display: inline-flex; align-items: center; gap: 5px;
-            padding: 3px 8px 3px 6px; border-radius: 99px;
-            background: var(--green-dim);
-            border: 1px solid rgba(0,232,150,0.25);
-            font-size: 10px; font-weight: 700; color: var(--green);
-            font-family: 'Cairo', sans-serif;
-        }
-
-        .live-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--green);
-            position: relative;
-            animation: dotPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes dotPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(0,232,150,0.5); }
-            50% { box-shadow: 0 0 0 5px transparent; }
-        }
-
-        .header-center {
-            display: flex; align-items: center; gap: 6px;
-        }
-
-        .header-right {
-            display: flex; align-items: center; gap: 8px;
-        }
-
-        .header-clock {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 18px; font-weight: 600;
-            color: var(--cyan);
-            letter-spacing: 2px;
-            text-shadow: 0 0 16px rgba(0,212,255,0.4);
-        }
-
-        .header-date {
-            font-size: 11px; color: var(--text-3);
-            text-align: center; letter-spacing: 0.3px;
-        }
-
-        .header-clock-wrap {
-            display: flex; flex-direction: column; align-items: center;
-            padding: 6px 14px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-2);
-            border-radius: 10px;
-        }
-
-        /* Alert count pill */
-        .alert-pill {
-            display: flex; align-items: center; gap: 6px;
-            padding: 6px 12px; border-radius: 99px;
-            font-size: 11px; font-weight: 700;
-            font-family: 'Cairo', sans-serif;
-            cursor: default;
-        }
-        .alert-pill.red {
-            background: var(--red-dim);
-            border: 1px solid rgba(255,51,88,0.3);
-            color: var(--red);
-            animation: alertPulse 2.5s ease-in-out infinite;
-        }
-        .alert-pill.amber {
-            background: var(--amber-dim);
-            border: 1px solid rgba(255,176,32,0.3);
-            color: var(--amber);
-        }
-
-        @keyframes alertPulse {
-            0%, 100% { box-shadow: none; }
-            50% { box-shadow: 0 0 12px rgba(255,51,88,0.4); }
-        }
-
-        /* ====================================================
-           NAV TABS
-        ==================================================== */
-        #nav-tabs {
-            display: flex; gap: 2px;
-            padding: 8px 20px 0;
-            background: var(--bg-panel);
-            border-bottom: 1px solid var(--border-2);
-            flex-shrink: 0;
-        }
-
-        .view-tab {
-            display: flex; align-items: center; gap: 7px;
-            padding: 9px 18px 10px;
-            border: 1px solid transparent;
-            border-bottom: none;
-            border-radius: 10px 10px 0 0;
-            background: transparent;
-            color: var(--text-3);
-            font-family: 'Cairo', sans-serif;
-            font-size: 12.5px; font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .view-tab:hover {
-            color: var(--text-2);
-            background: var(--bg-card);
-        }
-
-        .view-tab.active {
-            background: var(--bg-base);
-            border-color: var(--border-2);
-            color: var(--cyan);
-        }
-
-        .view-tab.active::after {
-            content: '';
-            position: absolute; bottom: -1px; left: 0; right: 0; height: 2px;
-            background: var(--cyan);
-            border-radius: 99px 99px 0 0;
-        }
-
-        /* ====================================================
-           WORKSPACE
-        ==================================================== */
-        #workspace {
-            flex: 1; display: flex; overflow: hidden;
-            padding: 14px; gap: 12px;
-            background: var(--bg-base);
-        }
-
-        /* ====================================================
-           SIDEBAR
-        ==================================================== */
-        #sidebar {
-            width: 300px; min-width: 300px; flex-shrink: 0;
-            display: flex; flex-direction: column; gap: 10px;
-            height: 100%; overflow: hidden;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr);
-            gap: 1px;
-            background: var(--border-2);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--border-2);
-        }
-
-        .stat-cell {
-            background: var(--bg-card);
-            padding: 10px 8px;
-            text-align: center;
-            position: relative;
-            transition: background 0.2s;
-        }
-
-        .stat-cell:hover { background: var(--bg-hover); }
-
-        .stat-cell-label {
-            font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
-            text-transform: uppercase;
-            color: var(--text-3); margin-bottom: 5px;
-        }
-
-        .stat-cell-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 22px; font-weight: 700;
-            line-height: 1;
-        }
-
-        .stat-cell-value.c-all { color: var(--text-1); }
-        .stat-cell-value.c-green { color: var(--green); text-shadow: 0 0 12px rgba(0,232,150,0.5); }
-        .stat-cell-value.c-amber { color: var(--amber); text-shadow: 0 0 12px rgba(255,176,32,0.5); }
-        .stat-cell-value.c-red { color: var(--red); text-shadow: 0 0 12px rgba(255,51,88,0.5); }
-
-        /* Filter Chips */
-        .filter-bar {
-            display: flex; align-items: center; gap: 5px;
-            overflow-x: auto; padding-bottom: 2px;
-        }
-        .filter-bar::-webkit-scrollbar { height: 0; }
-
-        .chip {
-            flex-shrink: 0;
-            display: inline-flex; align-items: center; gap: 5px;
-            padding: 5px 12px; border-radius: 99px;
-            border: 1px solid var(--border-2);
-            background: var(--bg-card);
-            color: var(--text-3);
-            font-family: 'Cairo', sans-serif;
-            font-size: 11px; font-weight: 700;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            white-space: nowrap;
-        }
-
-        .chip:hover { border-color: var(--border-3); color: var(--text-2); }
-
-        .chip.active {
-            background: var(--cyan-dim);
-            border-color: var(--cyan-mid);
-            color: var(--cyan);
-        }
-
-        .chip[data-filter="SOS"].active {
-            background: var(--red-dim);
-            border-color: rgba(255,51,88,0.3);
-            color: var(--red);
-        }
-
-        .chip[data-filter="WARNING"].active {
-            background: var(--amber-dim);
-            border-color: rgba(255,176,32,0.3);
-            color: var(--amber);
-        }
-
-        .chip[data-filter="NORMAL"].active {
-            background: var(--green-dim);
-            border-color: rgba(0,232,150,0.3);
-            color: var(--green);
-        }
-
-        /* Sidebar section header */
-        .section-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 2px;
-        }
-
-        .section-title {
-            font-size: 10px; font-weight: 700; letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--text-3);
-        }
-
-        .section-count {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 10px; color: var(--text-4);
-        }
-
-        /* Employee List */
-        #employeeList {
-            flex: 1; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 5px;
-        }
-
-        .employee-card {
-            position: relative;
-            background: var(--bg-card);
-            border: 1px solid var(--border-2);
-            border-radius: 10px;
-            padding: 10px 12px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            overflow: hidden;
-        }
-
-        .employee-card::before {
-            content: '';
-            position: absolute; top: 0; bottom: 0; right: 0; width: 3px;
-            border-radius: 0 3px 3px 0;
-            transition: background 0.15s ease;
-        }
-
-        .employee-card.status-NORMAL::before { background: var(--green); }
-        .employee-card.status-WARNING::before { background: var(--amber); }
-        .employee-card.status-SOS::before {
-            background: var(--red);
-            animation: sidePulse 1.8s ease-in-out infinite;
-        }
-
-        @keyframes sidePulse {
-            0%, 100% { opacity: 1; box-shadow: none; }
-            50% { opacity: 0.6; box-shadow: inset 0 0 8px var(--red); }
-        }
-
-        .employee-card:hover {
-            background: var(--bg-hover);
-            border-color: var(--border-3);
-            transform: translateX(-2px);
-        }
-
-        .employee-card.status-SOS {
-            background: rgba(255,51,88,0.05);
-            border-color: rgba(255,51,88,0.2);
-        }
-
-        .employee-card.status-WARNING {
-            background: rgba(255,176,32,0.04);
-        }
-
-        .emp-name {
-            font-size: 12px; font-weight: 700;
-            color: var(--text-1); margin-bottom: 6px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-
-        .emp-meta {
-            display: flex; align-items: center; gap: 10px;
-        }
-
-        .emp-meta-item {
-            display: flex; align-items: center; gap: 4px;
-            font-size: 10.5px;
-            color: var(--text-3);
-        }
-
-        .status-badge {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 2px 8px; border-radius: 99px;
-            font-size: 9.5px; font-weight: 800;
-            letter-spacing: 0.5px; font-family: 'Cairo', sans-serif;
-        }
-
-        .status-badge.NORMAL { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,232,150,0.25); }
-        .status-badge.SOS {
-            background: var(--red-dim); color: var(--red);
-            border: 1px solid rgba(255,51,88,0.25);
-            animation: badgePulse 1.5s ease-in-out infinite;
-        }
-        .status-badge.WARNING { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,176,32,0.25); }
-
-        @keyframes badgePulse {
-            0%, 100% { box-shadow: none; }
-            50% { box-shadow: 0 0 8px rgba(255,51,88,0.5); }
-        }
-
-        /* ====================================================
-           MAIN CONTENT AREA
-        ==================================================== */
-        #content-area {
-            flex: 1; min-width: 0; position: relative;
-            display: flex; flex-direction: column; overflow: hidden;
-        }
-
-        /* ====================================================
-           MAP VIEW
-        ==================================================== */
-        #mapView {
-            position: relative; flex: 1;
-            border-radius: 14px; overflow: hidden;
-            border: 1px solid var(--border-2);
-            display: flex;
-            box-shadow: var(--shadow-md);
-        }
-
-        #map {
-            height: 100%; width: 100%;
-            z-index: 1; background: var(--bg-card);
-        }
-
-        /* Map corner branding */
-        .map-corner-label {
-            position: absolute; top: 12px; right: 12px;
-            z-index: 10; pointer-events: none;
-            display: flex; align-items: center; gap: 6px;
-            padding: 6px 12px;
-            background: rgba(6,12,24,0.8);
-            border: 1px solid var(--border-2);
-            border-radius: 8px; backdrop-filter: blur(8px);
-            font-size: 10px; font-weight: 700; color: var(--text-3);
-            letter-spacing: 0.8px; text-transform: uppercase;
-        }
-
-        /* Leaflet overrides */
-        .leaflet-control-zoom { border: none !important; }
-        .leaflet-control-zoom a {
-            background-color: var(--bg-card) !important;
-            color: var(--text-2) !important;
-            border: 1px solid var(--border-2) !important;
-            border-radius: 8px !important;
-            margin-bottom: 2px !important;
-        }
-        .leaflet-control-zoom a:hover { background-color: var(--bg-hover) !important; color: var(--cyan) !important; }
-        .leaflet-popup-content-wrapper {
-            background-color: var(--bg-elevated) !important;
-            color: var(--text-1) !important;
-            border-radius: 12px !important;
-            border: 1px solid var(--border-2) !important;
-            box-shadow: var(--shadow-md) !important;
-        }
-        .leaflet-popup-tip { background-color: var(--bg-elevated) !important; }
-
-        /* ====================================================
-           DETAIL PANEL
-        ==================================================== */
-        #detailPanel {
-            position: absolute; bottom: 16px; left: 50%;
-            transform: translateX(-50%);
-            width: 400px; z-index: 20;
-            background: rgba(10, 18, 32, 0.96);
-            border: 1px solid var(--border-3);
-            border-radius: 16px;
-            padding: 0;
-            box-shadow: var(--shadow-lg), var(--shadow-cyan);
-            backdrop-filter: blur(20px);
-            overflow: hidden;
-        }
-
-        .detail-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 14px 16px;
-            background: linear-gradient(135deg, rgba(0,212,255,0.06) 0%, transparent 60%);
-            border-bottom: 1px solid var(--border-2);
-        }
-
-        .detail-name {
-            font-family: 'Cairo', sans-serif;
-            font-size: 14px; font-weight: 800;
-            color: var(--text-1);
-        }
-
-        .detail-id {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 10px; color: var(--text-3);
-            margin-top: 2px;
-        }
-
-        .detail-close {
-            background: var(--bg-hover); border: 1px solid var(--border-2);
-            border-radius: 8px; width: 28px; height: 28px;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--text-3); cursor: pointer;
-            transition: all 0.15s ease;
-        }
-        .detail-close:hover { border-color: var(--red); color: var(--red); }
-
-        .detail-body {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 8px; padding: 14px 16px;
-        }
-
-        .detail-metric {
-            background: var(--bg-base);
-            border: 1px solid var(--border-2);
-            border-radius: 10px; padding: 10px 12px;
-            position: relative; overflow: hidden;
-        }
-
-        .detail-metric::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-        }
-
-        .detail-metric.metric-heart::before { background: var(--red); opacity: 0.6; }
-        .detail-metric.metric-battery::before { background: var(--green); opacity: 0.5; }
-
-        .detail-metric-label {
-            font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px;
-            text-transform: uppercase; color: var(--text-3); margin-bottom: 6px;
-            display: flex; align-items: center; gap: 5px;
-        }
-
-        .detail-metric-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 20px; font-weight: 700;
-        }
-
-        .detail-metric.metric-heart .detail-metric-value { color: var(--red); }
-        .detail-metric.metric-battery .detail-metric-value { color: var(--green); }
-
-        /* ====================================================
-           ANALYTICS VIEW
-        ==================================================== */
-        #analyticsView {
-            flex: 1; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 12px;
-        }
-
-        .kpi-row {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-        }
-
-        .kpi-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-2);
-            border-radius: 14px; padding: 16px;
-            position: relative; overflow: hidden;
-            transition: border-color 0.2s;
-        }
-
-        .kpi-card:hover { border-color: var(--border-3); }
-
-        .kpi-card::before {
-            content: '';
-            position: absolute; top: 0; left: 0; right: 0; height: 2px;
-        }
-
-        .kpi-card.kpi-cyan::before { background: linear-gradient(90deg, var(--cyan), transparent); }
-        .kpi-card.kpi-green::before { background: linear-gradient(90deg, var(--green), transparent); }
-        .kpi-card.kpi-red::before { background: linear-gradient(90deg, var(--red), transparent); }
-
-        .kpi-icon-wrap {
-            width: 36px; height: 36px; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 12px;
-        }
-        .kpi-cyan .kpi-icon-wrap { background: var(--cyan-dim); color: var(--cyan); }
-        .kpi-green .kpi-icon-wrap { background: var(--green-dim); color: var(--green); }
-        .kpi-red .kpi-icon-wrap { background: var(--red-dim); color: var(--red); }
-
-        .kpi-label {
-            font-size: 11px; font-weight: 600; color: var(--text-3);
-            margin-bottom: 6px;
-        }
-
-        .analytics-card .stat-value,
-        .kpi-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 28px; font-weight: 700;
-            color: var(--text-1); line-height: 1.1;
-        }
-
-        .kpi-trend {
-            font-size: 10px; color: var(--text-4); margin-top: 4px;
-        }
-
-        .charts-row {
-            display: grid; grid-template-columns: 3fr 2fr; gap: 12px;
-            flex: 1;
-        }
-
-        .chart-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-2);
-            border-radius: 14px; padding: 16px;
-            display: flex; flex-direction: column;
-            min-height: 240px;
-        }
-
-        .chart-title {
-            font-size: 12px; font-weight: 700; color: var(--text-2);
-            margin-bottom: 14px;
-            display: flex; align-items: center; gap: 7px;
-        }
-
-        .chart-title-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--cyan);
-        }
-
-        .chart-wrap {
-            flex: 1; position: relative; min-height: 0;
-        }
-
-        /* Analytics KPI stats for backward compat */
-        .analytics-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-2);
-            border-radius: 14px; padding: 16px;
-        }
-
-        #avgHeartRate, #avgBattery, #totalRiskIndex {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 26px; font-weight: 700;
-            color: var(--text-1); margin-top: 8px;
-        }
-
-        #totalRiskIndex { color: var(--red); }
-
-        /* ====================================================
-           AI CHAT BUTTON & PANEL
-        ==================================================== */
-        #aiToggleBtn {
-            position: fixed; bottom: 22px; left: 22px; z-index: 998;
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 16px; border-radius: 99px;
-            background: rgba(10, 18, 32, 0.95);
-            border: 1px solid var(--cyan-mid);
-            color: var(--cyan);
-            font-family: 'Cairo', sans-serif;
-            font-size: 12px; font-weight: 700;
-            cursor: pointer;
-            backdrop-filter: blur(12px);
-            box-shadow: var(--shadow-md), 0 0 24px rgba(0,212,255,0.15);
-            transition: all 0.2s ease;
-        }
-
-        #aiToggleBtn:hover {
-            background: var(--cyan);
-            color: #011820;
-            box-shadow: var(--shadow-md), 0 0 32px rgba(0,212,255,0.45);
-        }
-
-        #aiToggleBtn svg { width: 16px; height: 16px; }
-
-        #aiChatBox {
-            position: fixed; bottom: 72px; left: 22px; z-index: 999;
-            width: 370px; height: 520px;
-            display: flex; flex-direction: column; overflow: hidden;
-            border-radius: 18px;
-            border: 1px solid var(--border-3);
-            background: rgba(10, 18, 32, 0.97);
-            box-shadow: var(--shadow-lg), var(--shadow-cyan);
-            backdrop-filter: blur(20px);
-        }
-
-        .ai-header {
-            padding: 14px 16px;
-            background: linear-gradient(135deg, rgba(0,212,255,0.08) 0%, transparent 70%);
-            border-bottom: 1px solid var(--border-2);
-            display: flex; justify-content: space-between; align-items: center;
-            flex-shrink: 0;
-        }
-
-        .ai-header-title {
-            display: flex; align-items: center; gap: 8px;
-            font-family: 'Cairo', sans-serif;
-            font-size: 13px; font-weight: 800; color: var(--cyan);
-        }
-
-        .ai-header-title svg { width: 16px; height: 16px; }
-
-        .ai-status {
-            font-size: 9.5px; font-weight: 700; color: var(--text-3);
-            letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px;
-        }
-
-        .ai-close-btn {
-            background: var(--bg-hover); border: 1px solid var(--border-2);
-            border-radius: 8px; width: 28px; height: 28px;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--text-3); cursor: pointer;
-            transition: all 0.15s ease;
-        }
-        .ai-close-btn:hover { border-color: var(--red); color: var(--red); }
-
-        .ai-key-bar {
-            display: flex; align-items: center; gap: 8px;
-            padding: 8px 12px;
-            background: rgba(0,0,0,0.2);
-            border-bottom: 1px solid var(--border-1);
-            flex-shrink: 0;
-        }
-        .ai-key-bar svg { width: 12px; height: 12px; color: var(--amber); flex-shrink: 0; }
-
-        #geminiApiKeyInput {
-            flex: 1; background: transparent; border: none; outline: none;
-            font-size: 11px; color: var(--text-2);
-            font-family: 'JetBrains Mono', monospace;
-        }
-        #geminiApiKeyInput::placeholder { color: var(--text-4); }
-
-        #aiMessages {
-            flex: 1; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 8px;
-            padding: 12px;
-        }
-
-        .ai-msg {
-            padding: 10px 13px; border-radius: 12px;
-            font-size: 12px; line-height: 1.6;
-            max-width: 90%; word-break: break-word;
-            animation: msgIn 0.2s ease;
-        }
-
-        @keyframes msgIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .ai-msg.user {
-            align-self: flex-end;
-            background: var(--cyan-dim);
-            border: 1px solid var(--cyan-mid);
-            color: var(--text-1);
-            border-bottom-left-radius: 3px;
-        }
-
-        .ai-msg.bot {
-            align-self: flex-start;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border-2);
-            color: var(--text-2);
-            border-bottom-right-radius: 3px;
-        }
-
-        .ai-footer {
-            padding: 10px 12px;
-            border-top: 1px solid var(--border-2);
-            background: var(--bg-panel);
-            display: flex; gap: 8px; flex-shrink: 0;
-        }
-
-        #aiInput {
-            flex: 1;
-            background: var(--bg-card);
-            border: 1px solid var(--border-2);
-            border-radius: 10px; padding: 9px 12px;
-            color: var(--text-1); font-size: 12px;
-            font-family: 'IBM Plex Sans Arabic', sans-serif;
-            outline: none; transition: border-color 0.15s;
-        }
-        #aiInput::placeholder { color: var(--text-4); }
-        #aiInput:focus { border-color: var(--cyan-mid); }
-
-        #aiSendBtn {
-            background: var(--cyan);
-            border: none; border-radius: 10px;
-            padding: 9px 14px; cursor: pointer;
-            color: #011820; display: flex; align-items: center; justify-content: center;
-            transition: all 0.15s ease;
-        }
-        #aiSendBtn:hover { background: #00eaff; box-shadow: 0 0 16px rgba(0,212,255,0.5); }
-        #aiSendBtn svg { width: 14px; height: 14px; }
-
-        /* ====================================================
-           SCAN LINE EFFECT (decorative)
-        ==================================================== */
-        .scan-line {
-            position: fixed; top: 0; left: 0; right: 0; height: 2px;
-            background: linear-gradient(90deg, transparent 0%, rgba(0,212,255,0.4) 50%, transparent 100%);
-            animation: scanDown 8s linear infinite; z-index: 999; pointer-events: none;
-        }
-
-        @keyframes scanDown {
-            0% { top: 0; opacity: 0; }
-            5% { opacity: 1; }
-            95% { opacity: 0.3; }
-            100% { top: 100vh; opacity: 0; }
-        }
-
-        /* ====================================================
-           CORNER DECORATIONS
-        ==================================================== */
-        .corner-decor {
-            position: fixed; z-index: 0; pointer-events: none;
-        }
-        .corner-tl { top: 0; left: 0; width: 200px; height: 200px;
-            background: radial-gradient(circle at top left, rgba(41,121,255,0.08) 0%, transparent 60%); }
-        .corner-br { bottom: 0; right: 0; width: 280px; height: 280px;
-            background: radial-gradient(circle at bottom right, rgba(0,100,160,0.07) 0%, transparent 65%); }
-
-        /* ====================================================
-           RESPONSIVE TWEAKS
-        ==================================================== */
-        @media (max-width: 900px) {
-            #sidebar { width: 260px; min-width: 260px; }
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
-            .charts-row { grid-template-columns: 1fr; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مركز القيادة الأمنية · SHIELD OPS</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --void:    #020408;
+  --base:    #050B14;
+  --surface: #080F1C;
+  --card:    #0C1525;
+  --lift:    #101D30;
+  --hover:   #14223A;
+
+  --b1: rgba(0,180,255,.05);
+  --b2: rgba(0,180,255,.10);
+  --b3: rgba(0,180,255,.18);
+
+  --cyan:    #00D4FF;
+  --cyan-a:  rgba(0,212,255,.12);
+  --cyan-b:  rgba(0,212,255,.25);
+  --cyan-glow: 0 0 28px rgba(0,212,255,.35);
+
+  --green:   #00F0A0;
+  --green-a: rgba(0,240,160,.10);
+  --green-b: rgba(0,240,160,.22);
+
+  --amber:   #FFB830;
+  --amber-a: rgba(255,184,48,.10);
+  --amber-b: rgba(255,184,48,.22);
+
+  --red:     #FF2D55;
+  --red-a:   rgba(255,45,85,.10);
+  --red-b:   rgba(255,45,85,.22);
+
+  --purple:  #9B6DFF;
+  --purple-a:rgba(155,109,255,.10);
+
+  --t1: #E8F4FF;
+  --t2: #7B9DBF;
+  --t3: #3A5470;
+  --t4: #1C3048;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+
+  --sh-sm: 0 2px 8px rgba(0,0,0,.5);
+  --sh-md: 0 8px 32px rgba(0,0,0,.65);
+  --sh-lg: 0 20px 60px rgba(0,0,0,.8);
+}
+
+/* ═══════════════════════════════════════════
+   RESET
+═══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100vh;width:100%;overflow:hidden;background:var(--void);color:var(--t1);
+  font-family:'IBM Plex Sans Arabic','Cairo',sans-serif;font-size:13px}
+.mono{font-family:'JetBrains Mono',monospace;direction:ltr;unicode-bidi:isolate}
+.cairo{font-family:'Cairo',sans-serif}
+
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--b3);border-radius:99px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ═══════════════════════════════════════════
+   AMBIENT GLOW LAYERS
+═══════════════════════════════════════════ */
+#bg-canvas{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,80,160,.18) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 100% 100%, rgba(0,40,100,.12) 0%, transparent 55%),
+    repeating-linear-gradient(0deg, transparent 0px, transparent 47px, rgba(0,180,255,.02) 48px),
+    repeating-linear-gradient(90deg,transparent 0px, transparent 47px, rgba(0,180,255,.02) 48px);
+}
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+#shell{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ═══════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════ */
+#topbar{
+  display:flex;align-items:stretch;gap:0;
+  height:58px;flex-shrink:0;
+  background:rgba(8,15,28,.9);
+  border-bottom:1px solid var(--b2);
+  backdrop-filter:blur(20px);
+  position:relative;z-index:50;
+}
+
+#topbar::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent 0%,var(--cyan-b) 30%,var(--cyan-b) 70%,transparent 100%);
+}
+
+/* Brand block */
+.tb-brand{
+  display:flex;align-items:center;gap:12px;
+  padding:0 20px 0 16px;
+  border-left:1px solid var(--b2);
+  min-width:280px;
+}
+
+.brand-shield{
+  width:38px;height:38px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(0,80,160,.5) 0%,rgba(0,40,100,.3) 100%);
+  border:1px solid rgba(0,120,220,.35);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--cyan);
+  box-shadow:0 0 18px rgba(0,120,220,.25);
+  position:relative;overflow:hidden;
+}
+.brand-shield::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(0,212,255,.12) 0%,transparent 60%);
+}
+
+.brand-text-main{
+  font-family:'Cairo',sans-serif;
+  font-size:14px;font-weight:900;
+  color:var(--t1);letter-spacing:-.3px;
+}
+.brand-text-sub{
+  font-size:9.5px;font-weight:600;color:var(--t3);
+  letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;
+}
+
+/* Center KPI strip */
+.tb-kpis{
+  display:flex;align-items:stretch;flex:1;
+  overflow:hidden;
+}
+
+.tb-kpi{
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  padding:0 18px;border-left:1px solid var(--b1);
+  position:relative;cursor:default;transition:background .15s;min-width:90px;
+}
+.tb-kpi:hover{background:rgba(0,212,255,.04)}
+
+.tb-kpi-label{
+  font-size:8.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--t3);margin-bottom:4px;white-space:nowrap;
+}
+.tb-kpi-val{
+  font-family:'JetBrains Mono',monospace;
+  font-size:20px;font-weight:700;line-height:1;
+}
+.tb-kpi-val.c-all{color:var(--t1)}
+.tb-kpi-val.c-green{color:var(--green);text-shadow:0 0 12px rgba(0,240,160,.5)}
+.tb-kpi-val.c-amber{color:var(--amber);text-shadow:0 0 12px rgba(255,184,48,.5)}
+.tb-kpi-val.c-red{color:var(--red);text-shadow:0 0 14px rgba(255,45,85,.6)}
+
+/* Alert badge */
+.tb-kpi.has-alert::after{
+  content:'';position:absolute;top:8px;left:8px;
+  width:5px;height:5px;border-radius:50%;
+  background:var(--red);
+  animation:dotBlink 1.4s ease-in-out infinite;
+}
+@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* Right block */
+.tb-right{
+  display:flex;align-items:center;gap:10px;
+  padding:0 16px 0 20px;
+  border-right:1px solid var(--b2);
+}
+
+.clock-block{
+  display:flex;flex-direction:column;align-items:flex-start;
+  padding:6px 12px;
+  background:rgba(0,212,255,.04);
+  border:1px solid var(--b2);
+  border-radius:var(--r-sm);
+}
+.clock-time{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;font-weight:700;color:var(--cyan);
+  letter-spacing:2px;line-height:1.1;
+  text-shadow:0 0 16px rgba(0,212,255,.4);
+}
+.clock-date{font-size:9px;color:var(--t3);letter-spacing:.3px;margin-top:1px}
+
+.live-chip{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:99px;
+  background:var(--green-a);border:1px solid var(--green-b);
+  font-family:'Cairo',sans-serif;
+  font-size:10px;font-weight:800;color:var(--green);
+}
+.live-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);
+  animation:livePop 2s ease-in-out infinite;
+}
+@keyframes livePop{0%,100%{box-shadow:0 0 0 0 rgba(0,240,160,.6)}50%{box-shadow:0 0 0 5px rgba(0,240,160,0)}}
+
+.refresh-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:34px;height:34px;border-radius:var(--r-sm);
+  background:var(--card);border:1px solid var(--b2);
+  color:var(--t3);cursor:pointer;transition:all .15s;
+}
+.refresh-btn:hover{border-color:var(--cyan-b);color:var(--cyan)}
+.refresh-btn.spinning svg{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ═══════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════ */
+#tabs{
+  display:flex;align-items:flex-end;gap:2px;
+  padding:8px 16px 0;
+  background:rgba(8,15,28,.7);
+  border-bottom:1px solid var(--b2);
+  flex-shrink:0;
+}
+
+.tab{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 16px 9px;
+  border-radius:var(--r-sm) var(--r-sm) 0 0;
+  border:1px solid transparent;border-bottom:none;
+  background:transparent;
+  color:var(--t3);
+  font-family:'Cairo',sans-serif;
+  font-size:12px;font-weight:700;
+  cursor:pointer;transition:all .15s;
+  position:relative;
+}
+.tab:hover{color:var(--t2);background:rgba(0,212,255,.04)}
+.tab.active{
+  background:var(--base);
+  border-color:var(--b2);
+  color:var(--cyan);
+}
+.tab.active::after{
+  content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;
+  background:var(--cyan);border-radius:99px 99px 0 0;
+}
+
+/* ═══════════════════════════════════════════
+   WORKSPACE
+═══════════════════════════════════════════ */
+#workspace{
+  flex:1;display:flex;overflow:hidden;
+  padding:12px;gap:10px;
+  background:var(--base);
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════ */
+#sidebar{
+  width:290px;min-width:290px;flex-shrink:0;
+  display:flex;flex-direction:column;gap:8px;
+  height:100%;overflow:hidden;
+}
+
+/* Filter bar */
+.filter-row{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
+.filter-row::-webkit-scrollbar{height:0}
+
+.chip{
+  flex-shrink:0;display:inline-flex;align-items:center;gap:4px;
+  padding:5px 11px;border-radius:99px;
+  border:1px solid var(--b2);background:var(--card);
+  color:var(--t3);
+  font-family:'Cairo',sans-serif;font-size:10.5px;font-weight:700;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.chip:hover{border-color:var(--b3);color:var(--t2)}
+.chip.active{background:var(--cyan-a);border-color:var(--cyan-b);color:var(--cyan)}
+.chip[data-filter="SOS"].active{background:var(--red-a);border-color:var(--red-b);color:var(--red)}
+.chip[data-filter="WARNING"].active{background:var(--amber-a);border-color:var(--amber-b);color:var(--amber)}
+.chip[data-filter="NORMAL"].active{background:var(--green-a);border-color:var(--green-b);color:var(--green)}
+
+/* Section label */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:0 2px}
+.sec-lbl{font-size:9px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--t3)}
+.sec-cnt{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--t4)}
+
+/* Cards */
+#employeeList{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+
+.employee-card{
+  position:relative;
+  background:var(--card);
+  border:1px solid var(--b1);
+  border-radius:var(--r-md);
+  padding:10px 12px 10px 14px;
+  cursor:pointer;overflow:hidden;
+  transition:all .15s ease;
+}
+.employee-card::before{
+  content:'';position:absolute;
+  top:0;bottom:0;right:0;width:3px;
+  transition:background .15s;
+}
+.employee-card.st-NORMAL::before{background:var(--green)}
+.employee-card.st-WARNING::before{background:var(--amber)}
+.employee-card.st-SOS::before{background:var(--red);animation:stripePulse 1.6s ease-in-out infinite}
+.employee-card.st-OFFBODY::before{background:var(--purple)}
+
+@keyframes stripePulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.employee-card:hover{
+  background:var(--lift);border-color:var(--b2);
+  transform:translateX(-2px);box-shadow:var(--sh-sm);
+}
+.employee-card.st-SOS{
+  background:rgba(255,45,85,.04);border-color:rgba(255,45,85,.15);
+}
+
+/* Card internals */
+.ec-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.ec-name{font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;color:var(--t1);line-height:1.3}
+.ec-id{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);margin-top:1px}
+
+.status-pip{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:2px 7px;border-radius:99px;
+  font-family:'Cairo',sans-serif;font-size:9px;font-weight:800;
+  white-space:nowrap;flex-shrink:0;margin-top:1px;
+}
+.pip-NORMAL{background:var(--green-a);color:var(--green);border:1px solid var(--green-b)}
+.pip-WARNING{background:var(--amber-a);color:var(--amber);border:1px solid var(--amber-b)}
+.pip-SOS{background:var(--red-a);color:var(--red);border:1px solid var(--red-b);animation:pipGlow 1.5s ease-in-out infinite}
+.pip-OFFBODY{background:var(--purple-a);color:var(--purple);border:1px solid rgba(155,109,255,.3)}
+@keyframes pipGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(255,45,85,.6)}}
+
+.ec-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.vital{
+  display:flex;flex-direction:column;align-items:center;
+  background:var(--surface);border:1px solid var(--b1);
+  border-radius:6px;padding:5px 4px;
+}
+.vital-icon{margin-bottom:3px;opacity:.6}
+.vital-val{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;font-weight:700;color:var(--t1);
+  line-height:1;white-space:nowrap;
+}
+.vital-lbl{font-size:8px;color:var(--t3);margin-top:2px;white-space:nowrap}
+
+/* ═══════════════════════════════════════════
+   MAP VIEW
+═══════════════════════════════════════════ */
+#mapView{
+  position:relative;flex:1;min-width:0;
+  border-radius:var(--r-lg);overflow:hidden;
+  border:1px solid var(--b2);display:flex;
+  box-shadow:var(--sh-md);
+}
+#map{height:100%;width:100%;z-index:1;background:var(--card)}
+
+/* Map overlay labels */
+.map-badge{
+  position:absolute;z-index:10;pointer-events:none;
+  display:flex;align-items:center;gap:6px;
+  padding:5px 11px;background:rgba(5,11,20,.85);
+  border:1px solid var(--b2);border-radius:var(--r-sm);
+  backdrop-filter:blur(8px);
+  font-size:9.5px;font-weight:700;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;
+}
+.map-badge.top-right{top:12px;right:12px}
+.map-badge.top-left{top:12px;left:12px}
+
+/* Auto-refresh progress bar */
+#refreshBar{
+  position:absolute;bottom:0;left:0;right:0;z-index:10;height:2px;
+  background:rgba(0,212,255,.12);
+}
+#refreshBarFill{
+  height:100%;width:100%;
+  background:linear-gradient(90deg,var(--cyan),rgba(0,212,255,.3));
+  transform-origin:right;
+  transition:transform linear;
+}
+
+/* Leaflet overrides */
+.leaflet-control-zoom{border:none!important}
+.leaflet-control-zoom a{
+  background:rgba(8,15,28,.9)!important;color:var(--t2)!important;
+  border:1px solid var(--b2)!important;border-radius:8px!important;margin-bottom:3px!important;
+  backdrop-filter:blur(8px);
+}
+.leaflet-control-zoom a:hover{color:var(--cyan)!important;border-color:var(--cyan-b)!important}
+.leaflet-popup-content-wrapper{
+  background:rgba(12,21,37,.96)!important;color:var(--t1)!important;
+  border-radius:var(--r-md)!important;border:1px solid var(--b2)!important;
+  box-shadow:var(--sh-md)!important;backdrop-filter:blur(16px);
+}
+.leaflet-popup-tip{background:rgba(12,21,37,.96)!important}
+.leaflet-popup-content{margin:12px 14px!important;font-family:'Cairo',sans-serif;font-size:12px}
+
+/* ═══════════════════════════════════════════
+   DETAIL PANEL
+═══════════════════════════════════════════ */
+#detailPanel{
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  width:430px;z-index:20;
+  background:rgba(8,15,28,.97);
+  border:1px solid var(--b3);border-radius:var(--r-xl);
+  box-shadow:var(--sh-lg),var(--cyan-glow);
+  backdrop-filter:blur(24px);
+  overflow:hidden;
+}
+
+.dp-header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 16px;
+  background:linear-gradient(135deg,rgba(0,212,255,.07) 0%,transparent 55%);
+  border-bottom:1px solid var(--b2);
+}
+.dp-name{font-family:'Cairo',sans-serif;font-size:14px;font-weight:800;color:var(--t1)}
+.dp-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3);margin-top:2px}
+.dp-close{
+  display:flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:8px;
+  background:var(--lift);border:1px solid var(--b2);
+  color:var(--t3);cursor:pointer;transition:all .15s;
+}
+.dp-close:hover{border-color:var(--red);color:var(--red)}
+
+.dp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 16px}
+
+.dp-metric{
+  background:var(--surface);border:1px solid var(--b2);
+  border-radius:var(--r-md);padding:10px;
+  position:relative;overflow:hidden;text-align:center;
+}
+.dp-metric::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+}
+.dp-m-heart::before{background:linear-gradient(90deg,var(--red),transparent)}
+.dp-m-spo2::before{background:linear-gradient(90deg,var(--cyan),transparent)}
+.dp-m-temp::before{background:linear-gradient(90deg,var(--amber),transparent)}
+.dp-m-batt::before{background:linear-gradient(90deg,var(--green),transparent)}
+
+.dp-m-icon{margin:0 auto 6px;opacity:.7;display:flex;justify-content:center}
+.dp-m-val{
+  font-family:'JetBrains Mono',monospace;
+  font-size:17px;font-weight:700;line-height:1;
+}
+.dp-m-heart .dp-m-val{color:var(--red)}
+.dp-m-spo2 .dp-m-val{color:var(--cyan)}
+.dp-m-temp .dp-m-val{color:var(--amber)}
+.dp-m-batt .dp-m-val{color:var(--green)}
+.dp-m-lbl{font-size:9px;color:var(--t3);margin-top:4px;letter-spacing:.5px}
+
+/* ═══════════════════════════════════════════
+   ANALYTICS VIEW
+═══════════════════════════════════════════ */
+#analyticsView{
+  flex:1;min-width:0;overflow-y:auto;
+  display:flex;flex-direction:column;gap:10px;
+}
+
+.kpi-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+
+.kpi-card{
+  background:var(--card);border:1px solid var(--b1);
+  border-radius:var(--r-lg);padding:16px;
+  position:relative;overflow:hidden;transition:border-color .2s;
+}
+.kpi-card:hover{border-color:var(--b2)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi-c .kpi-card::before,.kpi-card.kpi-c::before{background:linear-gradient(90deg,var(--cyan),transparent)}
+.kpi-g .kpi-card::before,.kpi-card.kpi-g::before{background:linear-gradient(90deg,var(--green),transparent)}
+.kpi-r .kpi-card::before,.kpi-card.kpi-r::before{background:linear-gradient(90deg,var(--red),transparent)}
+
+.kpi-icon{
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:10px;
+}
+.kpi-c .kpi-icon,.kpi-card.kpi-c .kpi-icon{background:var(--cyan-a);color:var(--cyan)}
+.kpi-g .kpi-icon,.kpi-card.kpi-g .kpi-icon{background:var(--green-a);color:var(--green)}
+.kpi-r .kpi-icon,.kpi-card.kpi-r .kpi-icon{background:var(--red-a);color:var(--red)}
+
+.kpi-lbl{font-size:10.5px;font-weight:600;color:var(--t3);margin-bottom:5px}
+.kpi-val{
+  font-family:'JetBrains Mono',monospace;
+  font-size:26px;font-weight:700;color:var(--t1);line-height:1.1;
+}
+.kpi-sub{font-size:9.5px;color:var(--t4);margin-top:4px}
+
+/* Backward compat for JS analytics ids */
+#avgHeartRate{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--t1);margin-top:5px}
+#avgBattery{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--t1);margin-top:5px}
+#totalRiskIndex{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:var(--red);margin-top:5px}
+
+.charts-row{display:grid;grid-template-columns:3fr 2fr;gap:10px;flex:1}
+
+.chart-card{
+  background:var(--card);border:1px solid var(--b1);
+  border-radius:var(--r-lg);padding:14px;
+  display:flex;flex-direction:column;min-height:220px;
+}
+.chart-hdr{
+  display:flex;align-items:center;gap:7px;
+  font-size:11.5px;font-weight:700;color:var(--t2);
+  margin-bottom:12px;
+}
+.chart-dot{width:6px;height:6px;border-radius:50%}
+.chart-wrap{flex:1;position:relative;min-height:0}
+
+/* ═══════════════════════════════════════════
+   AI ASSISTANT
+═══════════════════════════════════════════ */
+#aiToggleBtn{
+  position:fixed;bottom:20px;left:20px;z-index:998;
+  display:flex;align-items:center;gap:7px;
+  padding:9px 15px;border-radius:99px;
+  background:rgba(8,15,28,.95);
+  border:1px solid var(--cyan-b);
+  color:var(--cyan);
+  font-family:'Cairo',sans-serif;font-size:11.5px;font-weight:700;
+  cursor:pointer;backdrop-filter:blur(14px);
+  box-shadow:var(--sh-md),0 0 24px rgba(0,212,255,.12);
+  transition:all .2s;
+}
+#aiToggleBtn:hover{background:var(--cyan);color:#011015;box-shadow:var(--sh-md),0 0 32px rgba(0,212,255,.5)}
+#aiToggleBtn svg{width:15px;height:15px}
+
+#aiChatBox{
+  position:fixed;bottom:68px;left:20px;z-index:999;
+  width:360px;height:500px;
+  display:flex;flex-direction:column;overflow:hidden;
+  border-radius:18px;border:1px solid var(--b3);
+  background:rgba(8,15,28,.98);
+  box-shadow:var(--sh-lg),0 0 40px rgba(0,212,255,.12);
+  backdrop-filter:blur(24px);
+}
+
+.ai-hdr{
+  padding:12px 14px;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(0,212,255,.07) 0%,transparent 60%);
+  border-bottom:1px solid var(--b2);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.ai-hdr-title{
+  display:flex;align-items:center;gap:7px;
+  font-family:'Cairo',sans-serif;font-size:13px;font-weight:800;color:var(--cyan);
+}
+.ai-model{font-size:9.5px;font-weight:600;color:var(--t3);letter-spacing:.5px;margin-top:1px}
+.ai-x{
+  display:flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:7px;
+  background:var(--lift);border:1px solid var(--b2);
+  color:var(--t3);cursor:pointer;transition:all .15s;
+}
+.ai-x:hover{border-color:var(--red);color:var(--red)}
+
+.ai-keybar{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 12px;background:rgba(0,0,0,.2);
+  border-bottom:1px solid var(--b1);flex-shrink:0;
+}
+#geminiApiKeyInput{
+  flex:1;background:transparent;border:none;outline:none;
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--t2);
+}
+#geminiApiKeyInput::placeholder{color:var(--t4)}
+
+#aiMessages{
+  flex:1;overflow-y:auto;
+  display:flex;flex-direction:column;gap:8px;padding:10px 12px;
+}
+
+.ai-msg{
+  padding:9px 12px;border-radius:11px;
+  font-size:11.5px;line-height:1.6;max-width:90%;word-break:break-word;
+  animation:msgIn .2s ease;
+}
+@keyframes msgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.ai-msg.user{
+  align-self:flex-end;
+  background:var(--cyan-a);border:1px solid var(--cyan-b);
+  color:var(--t1);border-bottom-left-radius:3px;
+}
+.ai-msg.bot{
+  align-self:flex-start;
+  background:var(--lift);border:1px solid var(--b2);
+  color:var(--t2);border-bottom-right-radius:3px;
+}
+
+.ai-ftr{
+  padding:9px 10px;border-top:1px solid var(--b2);
+  background:var(--surface);
+  display:flex;gap:7px;flex-shrink:0;
+}
+#aiInput{
+  flex:1;background:var(--card);border:1px solid var(--b2);
+  border-radius:9px;padding:8px 11px;
+  color:var(--t1);font-size:11.5px;
+  font-family:'IBM Plex Sans Arabic',sans-serif;outline:none;
+  transition:border-color .15s;
+}
+#aiInput::placeholder{color:var(--t4)}
+#aiInput:focus{border-color:var(--cyan-b)}
+#aiSendBtn{
+  background:var(--cyan);border:none;border-radius:9px;
+  padding:8px 13px;cursor:pointer;color:#011015;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+#aiSendBtn:hover{background:#00eaff;box-shadow:0 0 16px rgba(0,212,255,.55)}
+#aiSendBtn svg{width:13px;height:13px}
+
+/* ═══════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════ */
+.hidden{display:none!important}
+
+/* ═══════════════════════════════════════════
+   LOADING OVERLAY
+═══════════════════════════════════════════ */
+#loadingOverlay{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--void);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  transition:opacity .5s ease;
+}
+.loader-ring{
+  width:56px;height:56px;border-radius:50%;
+  border:3px solid var(--b2);
+  border-top-color:var(--cyan);
+  animation:spin .9s linear infinite;
+}
+.loader-text{
+  font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;
+  color:var(--t3);letter-spacing:1px;
+}
+.loader-sub{font-size:10px;color:var(--t4)}
+
+/* Error toast */
+#errorToast{
+  position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  z-index:9000;
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;border-radius:var(--r-md);
+  background:rgba(255,45,85,.12);border:1px solid rgba(255,45,85,.3);
+  color:var(--red);font-size:12px;font-family:'Cairo',sans-serif;font-weight:700;
+  box-shadow:var(--sh-md);backdrop-filter:blur(12px);
+  transition:opacity .3s;
+}
+</style>
 </head>
 <body>
 
-    <!-- Decorative elements -->
-    <div class="scan-line"></div>
-    <div class="corner-decor corner-tl"></div>
-    <div class="corner-decor corner-br"></div>
+<div id="bg-canvas"></div>
 
-    <div id="app-shell">
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay">
+  <div class="loader-ring"></div>
+  <div>
+    <div class="loader-text">جاري تحميل البيانات الميدانية</div>
+    <div class="loader-sub" style="text-align:center;margin-top:4px">الاتصال بـ Google Sheets API ···</div>
+  </div>
+</div>
 
-        <!-- ================================================
-             HEADER
-        ================================================ -->
-        <header id="main-header">
-            <div class="header-brand">
-                <div class="brand-icon">
-                    <i data-lucide="shield-check" style="width:22px;height:22px;"></i>
-                </div>
-                <div>
-                    <div class="brand-title font-display">
-                        مركز القيادة والمراقبة الأمنية
-                    </div>
-                    <div class="brand-subtitle">
-                        <span class="live-badge">
-                            <span class="live-dot"></span>
-                            بث مباشر
-                        </span>
-                        <span>تتبع حي · تحليل ذكي · استجابة فورية</span>
-                    </div>
-                </div>
-            </div>
+<!-- APP SHELL -->
+<div id="shell">
 
-            <div class="header-center" id="header-alerts">
-                <!-- dynamically filled -->
-            </div>
-
-            <div class="header-right">
-                <div class="header-clock-wrap">
-                    <div id="liveClock" class="header-clock font-mono">--:--:--</div>
-                    <div class="header-date" id="liveDate">—</div>
-                </div>
-            </div>
-        </header>
-
-        <!-- ================================================
-             NAV TABS
-        ================================================ -->
-        <div id="nav-tabs">
-            <button id="tabMapBtn" class="view-tab active" type="button">
-                <i data-lucide="map-pin" style="width:14px;height:14px;"></i>
-                الخريطة الحية
-            </button>
-            <button id="tabAnalyticsBtn" class="view-tab" type="button">
-                <i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i>
-                لوحة التحليلات
-            </button>
-        </div>
-
-        <!-- ================================================
-             WORKSPACE
-        ================================================ -->
-        <div id="workspace">
-
-            <!-- SIDEBAR -->
-            <aside id="sidebar">
-
-                <!-- Stats Grid -->
-                <div class="stats-grid">
-                    <div class="stat-cell">
-                        <div class="stat-cell-label">الكل</div>
-                        <div id="statTotal" class="stat-cell-value c-all">0</div>
-                    </div>
-                    <div class="stat-cell">
-                        <div class="stat-cell-label">طبيعي</div>
-                        <div id="statNormal" class="stat-cell-value c-green">0</div>
-                    </div>
-                    <div class="stat-cell">
-                        <div class="stat-cell-label">تحذير</div>
-                        <div id="statWarning" class="stat-cell-value c-amber">0</div>
-                    </div>
-                    <div class="stat-cell">
-                        <div class="stat-cell-label">SOS</div>
-                        <div id="statSos" class="stat-cell-value c-red">0</div>
-                    </div>
-                </div>
-
-                <!-- Filter Chips -->
-                <div id="filterChips" class="filter-bar">
-                    <button class="chip active" data-filter="ALL">
-                        <i data-lucide="layout-grid" style="width:10px;height:10px;"></i>
-                        الكل
-                    </button>
-                    <button class="chip" data-filter="SOS">
-                        <i data-lucide="siren" style="width:10px;height:10px;"></i>
-                        SOS
-                    </button>
-                    <button class="chip" data-filter="WARNING">
-                        <i data-lucide="triangle-alert" style="width:10px;height:10px;"></i>
-                        تحذير
-                    </button>
-                    <button class="chip" data-filter="NORMAL">
-                        <i data-lucide="check-circle" style="width:10px;height:10px;"></i>
-                        طبيعي
-                    </button>
-                </div>
-
-                <!-- Employee List Header -->
-                <div class="section-header">
-                    <span class="section-title">الأفراد الميدانيون</span>
-                    <span class="section-count" id="listCount">—</span>
-                </div>
-
-                <!-- Employee Cards -->
-                <div id="employeeList"></div>
-
-            </aside>
-
-            <!-- MAIN CONTENT -->
-            <main id="content-area">
-
-                <!-- MAP VIEW -->
-                <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-2);display:flex;">
-                    <div id="map"></div>
-
-                    <!-- Corner label -->
-                    <div class="map-corner-label">
-                        <i data-lucide="navigation" style="width:10px;height:10px;color:var(--cyan);"></i>
-                        خريطة التتبع الحي
-                    </div>
-
-                    <!-- Detail Panel -->
-                    <div id="detailPanel" class="hidden">
-                        <div class="detail-header">
-                            <div>
-                                <div id="detailName" class="detail-name font-display">—</div>
-                                <div id="detailId" class="detail-id font-mono">#—</div>
-                            </div>
-                            <button id="closeDetailBtn" class="detail-close" type="button">
-                                <i data-lucide="x" style="width:14px;height:14px;"></i>
-                            </button>
-                        </div>
-                        <div class="detail-body">
-                            <div class="detail-metric metric-heart">
-                                <div class="detail-metric-label">
-                                    <i data-lucide="heart-pulse" style="width:11px;height:11px;color:var(--red);"></i>
-                                    معدل النبض
-                                </div>
-                                <div id="detailHeartRate" class="detail-metric-value font-mono">--</div>
-                            </div>
-                            <div class="detail-metric metric-battery">
-                                <div class="detail-metric-label">
-                                    <i data-lucide="battery-medium" style="width:11px;height:11px;color:var(--green);"></i>
-                                    البطارية
-                                </div>
-                                <div id="detailBattery" class="detail-metric-value font-mono">--</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ANALYTICS VIEW -->
-                <div id="analyticsView" class="hidden" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
-
-                    <!-- KPI Row -->
-                    <div class="kpi-row">
-                        <div class="kpi-card kpi-cyan">
-                            <div class="kpi-icon-wrap">
-                                <i data-lucide="activity" style="width:18px;height:18px;"></i>
-                            </div>
-                            <div class="kpi-label">متوسط النبض العام</div>
-                            <div id="avgHeartRate" style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--text-1);">-- BPM</div>
-                            <div class="kpi-trend">آخر قراءة من جميع الأجهزة</div>
-                        </div>
-                        <div class="kpi-card kpi-green">
-                            <div class="kpi-icon-wrap">
-                                <i data-lucide="battery-medium" style="width:18px;height:18px;"></i>
-                            </div>
-                            <div class="kpi-label">متوسط شحن الأجهزة</div>
-                            <div id="avgBattery" style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--text-1);">-- %</div>
-                            <div class="kpi-trend">متوسط بطاريات الأجهزة الميدانية</div>
-                        </div>
-                        <div class="kpi-card kpi-red">
-                            <div class="kpi-icon-wrap">
-                                <i data-lucide="flame" style="width:18px;height:18px;"></i>
-                            </div>
-                            <div class="kpi-label">مؤشر الخطر الإجمالي</div>
-                            <div id="totalRiskIndex" style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--red);">-- / 100</div>
-                            <div class="kpi-trend">مشتق من حالات الطوارئ والتحذيرات</div>
-                        </div>
-                    </div>
-
-                    <!-- Charts Row -->
-                    <div class="charts-row" style="flex:1;">
-                        <div class="chart-card">
-                            <div class="chart-title">
-                                <span class="chart-title-dot"></span>
-                                توزيع الحالات الأمنية
-                            </div>
-                            <div class="chart-wrap">
-                                <canvas id="barChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-card">
-                            <div class="chart-title">
-                                <span class="chart-title-dot" style="background:var(--green);"></span>
-                                نسبة الجاهزية التشغيلية
-                            </div>
-                            <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;">
-                                <canvas id="doughnutChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-            </main>
-        </div>
+  <!-- ══ TOP BAR ══ -->
+  <div id="topbar">
+    <div class="tb-brand">
+      <div class="brand-shield">
+        <i data-lucide="shield-check" style="width:20px;height:20px;"></i>
+      </div>
+      <div>
+        <div class="brand-text-main cairo">مركز القيادة الأمنية</div>
+        <div class="brand-text-sub">SHIELD OPS · COMMAND CENTER</div>
+      </div>
     </div>
 
-    <!-- AI TOGGLE BUTTON -->
-    <button id="aiToggleBtn" type="button">
-        <i data-lucide="bot"></i>
-        <span>المساعد الأمني</span>
+    <div class="tb-kpis">
+      <div class="tb-kpi">
+        <div class="tb-kpi-label">الإجمالي</div>
+        <div id="statTotal" class="tb-kpi-val c-all">—</div>
+      </div>
+      <div class="tb-kpi">
+        <div class="tb-kpi-label">طبيعي</div>
+        <div id="statNormal" class="tb-kpi-val c-green">—</div>
+      </div>
+      <div class="tb-kpi">
+        <div class="tb-kpi-label">تحذير</div>
+        <div id="statWarning" class="tb-kpi-val c-amber">—</div>
+      </div>
+      <div class="tb-kpi" id="kpiSos">
+        <div class="tb-kpi-label">SOS</div>
+        <div id="statSos" class="tb-kpi-val c-red">—</div>
+      </div>
+      <div class="tb-kpi" id="kpiOffbody">
+        <div class="tb-kpi-label">OFF-BODY</div>
+        <div id="statOffbody" class="tb-kpi-val" style="color:var(--purple)">—</div>
+      </div>
+    </div>
+
+    <div class="tb-right">
+      <div class="live-chip">
+        <div class="live-dot"></div>
+        بث مباشر
+      </div>
+      <button class="refresh-btn" id="refreshBtn" title="تحديث البيانات">
+        <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
+      </button>
+      <div class="clock-block">
+        <div id="liveClock" class="clock-time mono">--:--:--</div>
+        <div id="liveDate" class="clock-date">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TABS ══ -->
+  <div id="tabs">
+    <button id="tabMapBtn" class="tab active" type="button">
+      <i data-lucide="map-pin" style="width:13px;height:13px;"></i>
+      الخريطة الحية
     </button>
+    <button id="tabAnalyticsBtn" class="tab" type="button">
+      <i data-lucide="bar-chart-3" style="width:13px;height:13px;"></i>
+      التحليلات
+    </button>
+  </div>
 
-    <!-- AI CHAT BOX -->
-    <div id="aiChatBox" class="hidden">
-        <div class="ai-header">
+  <!-- ══ WORKSPACE ══ -->
+  <div id="workspace">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar">
+
+      <!-- Filter chips -->
+      <div id="filterChips" class="filter-row">
+        <button class="chip active" data-filter="ALL">
+          <i data-lucide="layers" style="width:9px;height:9px;"></i> الكل
+        </button>
+        <button class="chip" data-filter="SOS">
+          <i data-lucide="siren" style="width:9px;height:9px;"></i> SOS
+        </button>
+        <button class="chip" data-filter="WARNING">
+          <i data-lucide="triangle-alert" style="width:9px;height:9px;"></i> تحذير
+        </button>
+        <button class="chip" data-filter="NORMAL">
+          <i data-lucide="check-circle-2" style="width:9px;height:9px;"></i> طبيعي
+        </button>
+        <button class="chip" data-filter="OFFBODY">
+          <i data-lucide="wifi-off" style="width:9px;height:9px;"></i> غير موصول
+        </button>
+      </div>
+
+      <!-- List header -->
+      <div class="sec-hdr">
+        <span class="sec-lbl">الأفراد الميدانيون</span>
+        <span class="sec-cnt" id="listCount">—</span>
+      </div>
+
+      <!-- Employee cards -->
+      <div id="employeeList"></div>
+    </aside>
+
+    <!-- MAIN -->
+    <main id="content-area" style="flex:1;min-width:0;position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;">
+
+      <!-- MAP -->
+      <div id="mapView" style="position:relative;flex:1;border-radius:16px;overflow:hidden;border:1px solid var(--b2);display:flex;">
+        <div id="map"></div>
+
+        <div class="map-badge top-right">
+          <i data-lucide="navigation" style="width:10px;height:10px;color:var(--cyan);"></i>
+          خريطة التتبع الحي
+        </div>
+        <div class="map-badge top-left" id="mapLastUpdate" style="font-family:'JetBrains Mono',monospace;font-size:9px;">
+          آخر تحديث: —
+        </div>
+
+        <!-- Auto-refresh bar -->
+        <div id="refreshBar"><div id="refreshBarFill"></div></div>
+
+        <!-- Detail panel -->
+        <div id="detailPanel" class="hidden">
+          <div class="dp-header">
             <div>
-                <div class="ai-header-title">
-                    <i data-lucide="sparkles"></i>
-                    المساعد الأمني · Gemini
-                </div>
-                <div class="ai-status">نموذج Gemini 2.5 Flash · متصل بالميدان</div>
+              <div id="detailName" class="dp-name">—</div>
+              <div id="detailId" class="dp-id mono">#—</div>
             </div>
-            <button id="aiCloseBtn" class="ai-close-btn" type="button">
-                <i data-lucide="x" style="width:14px;height:14px;"></i>
+            <button id="closeDetailBtn" class="dp-close" type="button">
+              <i data-lucide="x" style="width:13px;height:13px;"></i>
             </button>
+          </div>
+          <div class="dp-grid">
+            <div class="dp-metric dp-m-heart">
+              <div class="dp-m-icon"><i data-lucide="heart-pulse" style="width:16px;height:16px;color:var(--red);"></i></div>
+              <div id="detailHeartRate" class="dp-m-val mono">--</div>
+              <div class="dp-m-lbl">النبض</div>
+            </div>
+            <div class="dp-metric dp-m-spo2">
+              <div class="dp-m-icon"><i data-lucide="droplets" style="width:16px;height:16px;color:var(--cyan);"></i></div>
+              <div id="detailSpo2" class="dp-m-val mono">--</div>
+              <div class="dp-m-lbl">SpO₂</div>
+            </div>
+            <div class="dp-metric dp-m-temp">
+              <div class="dp-m-icon"><i data-lucide="thermometer" style="width:16px;height:16px;color:var(--amber);"></i></div>
+              <div id="detailTemp" class="dp-m-val mono">--</div>
+              <div class="dp-m-lbl">الحرارة</div>
+            </div>
+            <div class="dp-metric dp-m-batt">
+              <div class="dp-m-icon"><i data-lucide="battery-medium" style="width:16px;height:16px;color:var(--green);"></i></div>
+              <div id="detailBattery" class="dp-m-val mono">--</div>
+              <div class="dp-m-lbl">البطارية</div>
+            </div>
+          </div>
         </div>
-        <div class="ai-key-bar">
-            <i data-lucide="key"></i>
-            <input type="password" id="geminiApiKeyInput" placeholder="مفتاح Gemini API (AI Studio)...">
+      </div>
+
+      <!-- ANALYTICS VIEW -->
+      <div id="analyticsView" class="hidden" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
+        <div class="kpi-strip">
+          <div class="kpi-card kpi-c">
+            <div class="kpi-icon"><i data-lucide="activity" style="width:17px;height:17px;"></i></div>
+            <div class="kpi-lbl">متوسط النبض العام</div>
+            <div id="avgHeartRate">-- BPM</div>
+            <div class="kpi-sub">قراءة من الأجهزة الميدانية</div>
+          </div>
+          <div class="kpi-card kpi-g">
+            <div class="kpi-icon"><i data-lucide="battery-medium" style="width:17px;height:17px;"></i></div>
+            <div class="kpi-lbl">متوسط شحن الأجهزة</div>
+            <div id="avgBattery">-- %</div>
+            <div class="kpi-sub">متوسط بطاريات الوحدات</div>
+          </div>
+          <div class="kpi-card kpi-r">
+            <div class="kpi-icon"><i data-lucide="flame" style="width:17px;height:17px;"></i></div>
+            <div class="kpi-lbl">مؤشر الخطر الإجمالي</div>
+            <div id="totalRiskIndex">-- / 100</div>
+            <div class="kpi-sub">مشتق من حالات الطوارئ</div>
+          </div>
         </div>
-        <div id="aiMessages">
-            <div class="ai-msg bot">مرحباً! أنا المساعد الأمني المعزز بنماذج Gemini. ضع المفتاح في الخانة أعلاه وأرسل سؤالك.</div>
+        <div class="charts-row" style="flex:1;">
+          <div class="chart-card">
+            <div class="chart-hdr">
+              <div class="chart-dot" style="background:var(--cyan)"></div>
+              توزيع الحالات الأمنية
+            </div>
+            <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-hdr">
+              <div class="chart-dot" style="background:var(--green)"></div>
+              نسبة الجاهزية التشغيلية
+            </div>
+            <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;">
+              <canvas id="doughnutChart"></canvas>
+            </div>
+          </div>
         </div>
-        <div class="ai-footer">
-            <input type="text" id="aiInput" placeholder="اكتب سؤالك للمساعد...">
-            <button id="aiSendBtn" type="button">
-                <i data-lucide="send-horizontal"></i>
-            </button>
-        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- AI BUTTON -->
+<button id="aiToggleBtn" type="button">
+  <i data-lucide="bot"></i>
+  <span>المساعد الأمني</span>
+</button>
+
+<!-- AI CHAT -->
+<div id="aiChatBox" class="hidden">
+  <div class="ai-hdr">
+    <div>
+      <div class="ai-hdr-title"><i data-lucide="sparkles" style="width:15px;height:15px;"></i> المساعد الأمني · Gemini</div>
+      <div class="ai-model">Gemini 2.5 Flash · مرتبط بالميدان</div>
     </div>
+    <button id="aiCloseBtn" class="ai-x" type="button"><i data-lucide="x" style="width:13px;height:13px;"></i></button>
+  </div>
+  <div class="ai-keybar">
+    <i data-lucide="key" style="width:11px;height:11px;color:var(--amber);flex-shrink:0;"></i>
+    <input type="password" id="geminiApiKeyInput" placeholder="مفتاح Gemini API (AI Studio)...">
+  </div>
+  <div id="aiMessages">
+    <div class="ai-msg bot">مرحباً! أنا المساعد الأمني المعزز بـ Gemini. أدخل مفتاح API وابدأ الاستفسار.</div>
+  </div>
+  <div class="ai-ftr">
+    <input type="text" id="aiInput" placeholder="اكتب سؤالك...">
+    <button id="aiSendBtn" type="button"><i data-lucide="send-horizontal" style="width:13px;height:13px;"></i></button>
+  </div>
+</div>
 
-    <!-- ================================================
-         JAVASCRIPT (logic unchanged, presentation enhanced)
-    ================================================ -->
-    <script>
-        let employeesData = [
-            { id: "EMP-101", name: "النقيب/ خالد العتيبي", status: "NORMAL", lat: 24.7136, lng: 46.6753, heartRate: 74, battery: 85 },
-            { id: "EMP-102", name: "الملازم/ فهد الشمري", status: "SOS", lat: 24.7200, lng: 46.6800, heartRate: 135, battery: 18 },
-            { id: "EMP-103", name: "العريف/ سارة الدوسري", status: "WARNING", lat: 24.7050, lng: 46.6600, heartRate: 105, battery: 42 },
-            { id: "EMP-104", name: "جندي/ أحمد الزهراني", status: "NORMAL", lat: 24.7300, lng: 46.6900, heartRate: 80, battery: 90 },
-            { id: "EMP-105", name: "رقيب/ محمد الشهراني", status: "NORMAL", lat: 24.6950, lng: 46.6500, heartRate: 78, battery: 75 },
-        ];
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script>
+// ─── CONFIG ──────────────────────────────────────────
+const API_URL = 'https://script.google.com/macros/s/AKfycbxQLye9JJxcY-O9UIObaXne5a7bMHocfmNq6a64qa3kmM1FlJFttSi7rhxJdEOgF984/exec';
+const REFRESH_INTERVAL = 30000; // 30 seconds
+const DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
-        let map, markersGroup;
-        let activeFilter = 'ALL';
-        let chartsInstance = {};
+// ─── STATE ───────────────────────────────────────────
+let employeesData = [];
+let map, markersGroup;
+let activeFilter = 'ALL';
+let chartsInstance = {};
+let refreshTimer = null;
+let refreshBarTimer = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            initClock();
-            initMap();
-            renderStats();
-            renderEmployeeList();
-            renderHeaderAlerts();
-            initTabs();
-            initAIModule();
+// ─── STATUS NORMALIZATION ─────────────────────────────
+function normalizeStatus(raw) {
+  if (!raw) return 'NORMAL';
+  const s = String(raw).toUpperCase().trim();
+  if (s === 'SOS' || s === 'EMERGENCY' || s === 'DANGER') return 'SOS';
+  if (s === 'WARNING' || s === 'WARN' || s === 'ALERT') return 'WARNING';
+  if (s === 'OFF-BODY' || s === 'OFFBODY' || s === 'OFF_BODY' || s === 'DETACHED') return 'OFFBODY';
+  if (s === 'NORMAL' || s === 'OK' || s === 'ACTIVE' || s === 'ONLINE') return 'NORMAL';
+  return 'NORMAL';
+}
 
-            Chart.defaults.color = '#8CA0BE';
-            Chart.defaults.font.family = 'Cairo';
-        });
+// ─── DATA FETCHING ────────────────────────────────────
+async function fetchData() {
+  setRefreshBtnSpinning(true);
+  try {
+    const res = await fetch(API_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const raw = await res.json();
 
-        function initMap() {
-            map = L.map('map').setView([24.7136, 46.6753], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
-            markersGroup = L.layerGroup().addTo(map);
-            updateMapMarkers();
+    employeesData = (Array.isArray(raw) ? raw : [raw]).map(r => ({
+      id:        r.emp_id || r.id || '—',
+      name:      r.emp_name || r.name || r.emp_id || 'موظف',
+      status:    normalizeStatus(r.status),
+      lat:       parseFloat(r.lat) || 0,
+      lng:       parseFloat(r.lng) || 0,
+      heartRate: parseInt(r.heart_rate) || 0,
+      spo2:      parseFloat(r.spo2) || null,
+      temperature: r.temperature || null,
+      battery:   Math.round(parseFloat(r.battery) * (parseFloat(r.battery) <= 1 ? 100 : 1)) || 0,
+      timestamp: r.timestamp || null,
+    }));
+
+    renderStats();
+    renderEmployeeList();
+    updateMapMarkers();
+    updateLastUpdateLabel();
+
+    hideLoading();
+    startRefreshBar();
+  } catch (err) {
+    showError('فشل تحميل البيانات: ' + err.message);
+    hideLoading();
+  }
+  setRefreshBtnSpinning(false);
+}
+
+function updateLastUpdateLabel() {
+  const el = document.getElementById('mapLastUpdate');
+  if (el) {
+    const now = new Date();
+    el.textContent = 'آخر تحديث: ' + now.toLocaleTimeString('ar-SA', {hour12:false});
+  }
+}
+
+// ─── LOADING / ERROR UI ───────────────────────────────
+function hideLoading() {
+  const el = document.getElementById('loadingOverlay');
+  el.style.opacity = '0';
+  setTimeout(() => el.style.display = 'none', 500);
+}
+
+function showError(msg) {
+  let toast = document.getElementById('errorToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'errorToast';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<i data-lucide="alert-circle" style="width:15px;height:15px;flex-shrink:0;"></i> ${msg}`;
+  toast.style.opacity = '1';
+  lucide.createIcons();
+  setTimeout(() => { toast.style.opacity = '0' }, 5000);
+}
+
+function setRefreshBtnSpinning(on) {
+  const btn = document.getElementById('refreshBtn');
+  if (on) btn.classList.add('spinning'); else btn.classList.remove('spinning');
+}
+
+// ─── AUTO-REFRESH BAR ─────────────────────────────────
+function startRefreshBar() {
+  const fill = document.getElementById('refreshBarFill');
+  fill.style.transition = 'none';
+  fill.style.transform = 'scaleX(1)';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fill.style.transition = `transform ${REFRESH_INTERVAL/1000}s linear`;
+      fill.style.transform = 'scaleX(0)';
+    });
+  });
+}
+
+// ─── MAP ──────────────────────────────────────────────
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([24.7136, 46.6753], 12);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    attribution: '© CARTO'
+  }).addTo(map);
+  markersGroup = L.layerGroup().addTo(map);
+}
+
+function makeMarkerHtml(status) {
+  const colors = {
+    NORMAL: { dot:'#00F0A0', glow:'rgba(0,240,160,.7)', pulse:false },
+    WARNING:{ dot:'#FFB830', glow:'rgba(255,184,48,.6)', pulse:false },
+    SOS:    { dot:'#FF2D55', glow:'rgba(255,45,85,.8)',  pulse:true  },
+    OFFBODY:{ dot:'#9B6DFF', glow:'rgba(155,109,255,.6)',pulse:false },
+  };
+  const c = colors[status] || colors.NORMAL;
+  const ring = c.pulse
+    ? `<div style="position:absolute;inset:-7px;border-radius:50%;border:2px solid ${c.dot};opacity:.5;animation:mkPulse 1.5s ease-out infinite;"></div>` : '';
+  return `<div style="position:relative;width:18px;height:18px;">
+    ${ring}
+    <div style="width:18px;height:18px;border-radius:50%;background:${c.dot};border:2.5px solid rgba(255,255,255,.85);box-shadow:0 0 14px ${c.glow};"></div>
+  </div>`;
+}
+
+function updateMapMarkers() {
+  if (!markersGroup) return;
+  markersGroup.clearLayers();
+  employeesData.forEach(emp => {
+    if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
+    if (!emp.lat && !emp.lng) return;
+    const icon = L.divIcon({ html: makeMarkerHtml(emp.status), className:'', iconAnchor:[9,9] });
+    const m = L.marker([emp.lat, emp.lng], { icon }).addTo(markersGroup);
+    const battStr = emp.battery + '%';
+    const hrStr = emp.heartRate ? emp.heartRate + ' BPM' : '—';
+    const popHtml = `
+      <div style="min-width:150px;">
+        <div style="font-family:Cairo;font-weight:800;font-size:13px;margin-bottom:6px;">${emp.name}</div>
+        <div style="font-size:10px;color:#7B9DBF;margin-bottom:8px;font-family:JetBrains Mono;">${emp.id}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px;">
+          <div>❤️ ${hrStr}</div>
+          <div>🔋 ${battStr}</div>
+          ${emp.spo2 ? `<div>💧 ${emp.spo2}%</div>` : ''}
+          ${emp.temperature ? `<div>🌡 ${emp.temperature}</div>` : ''}
+        </div>
+      </div>`;
+    m.bindPopup(popHtml);
+    m.on('click', () => openDetailPanel(emp));
+  });
+}
+
+function openDetailPanel(emp) {
+  document.getElementById('detailPanel').classList.remove('hidden');
+  document.getElementById('detailName').textContent = emp.name;
+  document.getElementById('detailId').textContent = emp.id;
+  document.getElementById('detailHeartRate').textContent = emp.heartRate ? emp.heartRate + ' BPM' : '—';
+  document.getElementById('detailSpo2').textContent = emp.spo2 != null ? emp.spo2 + '%' : '—';
+  document.getElementById('detailTemp').textContent = emp.temperature || '—';
+  document.getElementById('detailBattery').textContent = emp.battery + '%';
+  map.flyTo([emp.lat, emp.lng], 15, { duration: 1.2 });
+}
+
+document.getElementById('closeDetailBtn').onclick = () =>
+  document.getElementById('detailPanel').classList.add('hidden');
+
+// ─── STATS ────────────────────────────────────────────
+function renderStats() {
+  const total   = employeesData.length;
+  const norm    = employeesData.filter(e => e.status === 'NORMAL').length;
+  const warn    = employeesData.filter(e => e.status === 'WARNING').length;
+  const sos     = employeesData.filter(e => e.status === 'SOS').length;
+  const offbody = employeesData.filter(e => e.status === 'OFFBODY').length;
+
+  document.getElementById('statTotal').textContent   = total;
+  document.getElementById('statNormal').textContent  = norm;
+  document.getElementById('statWarning').textContent = warn;
+  document.getElementById('statSos').textContent     = sos;
+  document.getElementById('statOffbody').textContent = offbody;
+
+  // Alert highlight
+  const kpiSos = document.getElementById('kpiSos');
+  sos > 0 ? kpiSos.classList.add('has-alert') : kpiSos.classList.remove('has-alert');
+}
+
+// ─── EMPLOYEE LIST ────────────────────────────────────
+function renderEmployeeList() {
+  const container = document.getElementById('employeeList');
+  container.innerHTML = '';
+
+  const filtered = employeesData.filter(e =>
+    activeFilter === 'ALL' || e.status === activeFilter
+  );
+
+  document.getElementById('listCount').textContent = filtered.length + ' / ' + employeesData.length;
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--t3);font-size:12px;">لا توجد نتائج</div>`;
+    return;
+  }
+
+  filtered.forEach(emp => {
+    const battColor = emp.battery > 50 ? 'var(--green)' : emp.battery > 20 ? 'var(--amber)' : 'var(--red)';
+    const hrColor   = emp.status === 'SOS' ? 'var(--red)' : emp.status === 'WARNING' ? 'var(--amber)' : 'var(--green)';
+    const statusLabels = { NORMAL:'طبيعي', WARNING:'⚠ تحذير', SOS:'⚡ SOS', OFFBODY:'غير موصول' };
+
+    const card = document.createElement('div');
+    card.className = `employee-card st-${emp.status}`;
+    card.innerHTML = `
+      <div class="ec-top">
+        <div>
+          <div class="ec-name cairo">${emp.name}</div>
+          <div class="ec-id">${emp.id}</div>
+        </div>
+        <span class="status-pip pip-${emp.status}">${statusLabels[emp.status] || emp.status}</span>
+      </div>
+      <div class="ec-vitals">
+        <div class="vital">
+          <div class="vital-icon"><i data-lucide="heart-pulse" style="width:11px;height:11px;color:${hrColor};"></i></div>
+          <div class="vital-val mono" style="color:${hrColor};">${emp.heartRate || '—'}</div>
+          <div class="vital-lbl">BPM</div>
+        </div>
+        <div class="vital">
+          <div class="vital-icon"><i data-lucide="droplets" style="width:11px;height:11px;color:var(--cyan);"></i></div>
+          <div class="vital-val mono" style="color:var(--cyan);">${emp.spo2 != null ? emp.spo2 : '—'}</div>
+          <div class="vital-lbl">SpO₂</div>
+        </div>
+        <div class="vital">
+          <div class="vital-icon"><i data-lucide="thermometer" style="width:11px;height:11px;color:var(--amber);"></i></div>
+          <div class="vital-val mono" style="color:var(--amber);font-size:9.5px;">${emp.temperature || '—'}</div>
+          <div class="vital-lbl">درجة</div>
+        </div>
+        <div class="vital">
+          <div class="vital-icon"><i data-lucide="battery-medium" style="width:11px;height:11px;color:${battColor};"></i></div>
+          <div class="vital-val mono" style="color:${battColor};">${emp.battery}%</div>
+          <div class="vital-lbl">بطاريه</div>
+        </div>
+      </div>`;
+
+    card.onclick = () => {
+      document.getElementById('tabMapBtn').click();
+      setTimeout(() => openDetailPanel(emp), 80);
+    };
+
+    container.appendChild(card);
+  });
+
+  lucide.createIcons();
+}
+
+// ─── FILTER CHIPS ─────────────────────────────────────
+document.querySelectorAll('#filterChips .chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.getAttribute('data-filter');
+    renderEmployeeList();
+    updateMapMarkers();
+  });
+});
+
+// ─── CLOCK ────────────────────────────────────────────
+function initClock() {
+  setInterval(() => {
+    const now = new Date();
+    document.getElementById('liveClock').textContent = now.toLocaleTimeString('ar-SA', {hour12:false});
+    document.getElementById('liveDate').textContent =
+      DAYS[now.getDay()] + ' · ' + now.toLocaleDateString('ar-SA',{year:'numeric',month:'short',day:'numeric'});
+  }, 1000);
+}
+
+// ─── TABS ─────────────────────────────────────────────
+function initTabs() {
+  const mapTab  = document.getElementById('tabMapBtn');
+  const anaTab  = document.getElementById('tabAnalyticsBtn');
+  const mapView = document.getElementById('mapView');
+  const anaView = document.getElementById('analyticsView');
+
+  mapTab.addEventListener('click', () => {
+    mapTab.classList.add('active'); anaTab.classList.remove('active');
+    mapView.style.display = 'flex'; anaView.style.display = 'none';
+    anaView.classList.add('hidden'); mapView.classList.remove('hidden');
+    setTimeout(() => map.invalidateSize(), 80);
+  });
+
+  anaTab.addEventListener('click', () => {
+    anaTab.classList.add('active'); mapTab.classList.remove('active');
+    anaView.style.display = 'flex'; mapView.style.display = 'none';
+    mapView.classList.add('hidden'); anaView.classList.remove('hidden');
+    updateAnalyticsData();
+  });
+}
+
+// ─── ANALYTICS ────────────────────────────────────────
+function updateAnalyticsData() {
+  const total = employeesData.length;
+  if (!total) return;
+
+  const avgHeart = Math.round(employeesData.filter(e=>e.heartRate).reduce((a,e) => a+e.heartRate,0) / (employeesData.filter(e=>e.heartRate).length||1));
+  const avgBatt  = Math.round(employeesData.reduce((a,e) => a+e.battery, 0) / total);
+  const sosC  = employeesData.filter(e => e.status === 'SOS').length;
+  const warnC = employeesData.filter(e => e.status === 'WARNING').length;
+  const normC = employeesData.filter(e => e.status === 'NORMAL').length;
+  const offC  = employeesData.filter(e => e.status === 'OFFBODY').length;
+  const riskIndex = Math.min(100, Math.round(((sosC*35)+(warnC*15)+(offC*8))/total*5));
+
+  document.getElementById('avgHeartRate').textContent  = avgHeart + ' BPM';
+  document.getElementById('avgBattery').textContent    = avgBatt + ' %';
+  document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
+
+  // Bar chart
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  if (chartsInstance.bar) chartsInstance.bar.destroy();
+  chartsInstance.bar = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: ['طبيعي','تحذير','SOS','غير موصول'],
+      datasets: [{
+        data: [normC, warnC, sosC, offC],
+        backgroundColor: ['rgba(0,240,160,.65)','rgba(255,184,48,.65)','rgba(255,45,85,.65)','rgba(155,109,255,.65)'],
+        borderColor: ['#00F0A0','#FFB830','#FF2D55','#9B6DFF'],
+        borderWidth: 1, borderRadius: 8, borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#0C1525',borderColor:'#1C2E46',borderWidth:1,
+          titleColor:'#E8F4FF',bodyColor:'#7B9DBF',padding:10,
+          callbacks:{ label: ctx => ` ${ctx.parsed.y} أفراد` }
         }
+      },
+      scales: {
+        y:{ beginAtZero:true, ticks:{stepSize:1,color:'#3A5470'}, grid:{color:'rgba(0,180,255,.04)'}, border:{color:'transparent'} },
+        x:{ ticks:{color:'#3A5470'}, grid:{display:false}, border:{color:'transparent'} }
+      }
+    }
+  });
 
-        function updateMapMarkers() {
-            markersGroup.clearLayers();
-            employeesData.forEach(emp => {
-                if (activeFilter !== 'ALL' && emp.status !== activeFilter) return;
-                const color = emp.status === 'SOS' ? '#FF3358' : emp.status === 'WARNING' ? '#FFB020' : '#00E896';
-                const glow = emp.status === 'SOS' ? 'rgba(255,51,88,0.7)' : emp.status === 'WARNING' ? 'rgba(255,176,32,0.5)' : 'rgba(0,232,150,0.5)';
-                const pulse = emp.status === 'SOS' ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${color};opacity:0.4;animation:livePulseMarker 1.5s ease-out infinite;"></div>` : '';
-                const customIcon = L.divIcon({
-                    html: `<div style="position:relative;width:16px;height:16px;">${pulse}<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,0.9);box-shadow:0 0 14px ${glow};"></div></div>`,
-                    className: '', iconAnchor: [8, 8]
-                });
-                const marker = L.marker([emp.lat, emp.lng], { icon: customIcon }).addTo(markersGroup);
-                marker.bindTooltip(`<strong>${emp.name}</strong><br><small>${emp.id}</small>`, { direction: 'top', offset: [0, -12] });
-                marker.on('click', () => {
-                    document.getElementById('detailPanel').classList.remove('hidden');
-                    document.getElementById('detailName').textContent = emp.name;
-                    document.getElementById('detailId').textContent = emp.id;
-                    document.getElementById('detailHeartRate').textContent = emp.heartRate + ' BPM';
-                    document.getElementById('detailBattery').textContent = emp.battery + '%';
-                    map.flyTo([emp.lat, emp.lng], 15, { duration: 1.2 });
-                });
-            });
-        }
+  // Doughnut
+  const dCtx = document.getElementById('doughnutChart').getContext('2d');
+  if (chartsInstance.doughnut) chartsInstance.doughnut.destroy();
+  chartsInstance.doughnut = new Chart(dCtx, {
+    type: 'doughnut',
+    data: {
+      labels:['جاهز','تحذير','طوارئ','غير موصول'],
+      datasets:[{
+        data:[normC, warnC, sosC, offC],
+        backgroundColor:['rgba(0,212,255,.65)','rgba(255,184,48,.65)','rgba(255,45,85,.65)','rgba(155,109,255,.65)'],
+        borderColor:['#00D4FF','#FFB830','#FF2D55','#9B6DFF'],
+        borderWidth:2, cutout:'76%', hoverOffset:5,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'bottom', labels:{ padding:14, boxWidth:10, color:'#7B9DBF', font:{size:11,family:'Cairo'} } },
+        tooltip:{ backgroundColor:'#0C1525', borderColor:'#1C2E46', borderWidth:1 }
+      }
+    }
+  });
+}
 
-        document.getElementById('closeDetailBtn').onclick = () => document.getElementById('detailPanel').classList.add('hidden');
+// ─── REFRESH BTN ──────────────────────────────────────
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  clearTimeout(refreshTimer);
+  fetchData();
+  refreshTimer = setInterval(fetchData, REFRESH_INTERVAL);
+});
 
-        function renderStats() {
-            document.getElementById('statTotal').textContent = employeesData.length;
-            document.getElementById('statNormal').textContent = employeesData.filter(e => e.status === 'NORMAL').length;
-            document.getElementById('statWarning').textContent = employeesData.filter(e => e.status === 'WARNING').length;
-            document.getElementById('statSos').textContent = employeesData.filter(e => e.status === 'SOS').length;
-        }
+// ─── AI MODULE ────────────────────────────────────────
+function initAIModule() {
+  const apiKeyInput = document.getElementById('geminiApiKeyInput');
+  if (localStorage.getItem('gemini_api_key')) apiKeyInput.value = localStorage.getItem('gemini_api_key');
 
-        function renderHeaderAlerts() {
-            const container = document.getElementById('header-alerts');
-            const sosCount = employeesData.filter(e => e.status === 'SOS').length;
-            const warnCount = employeesData.filter(e => e.status === 'WARNING').length;
-            container.innerHTML = '';
-            if (sosCount > 0) {
-                container.innerHTML += `<span class="alert-pill red"><i data-lucide="siren" style="width:12px;height:12px;"></i> ${sosCount} طوارئ نشطة</span>`;
-            }
-            if (warnCount > 0) {
-                container.innerHTML += `<span class="alert-pill amber"><i data-lucide="triangle-alert" style="width:12px;height:12px;"></i> ${warnCount} تحذير</span>`;
-            }
-            lucide.createIcons();
-        }
+  document.getElementById('aiToggleBtn').addEventListener('click', () =>
+    document.getElementById('aiChatBox').classList.toggle('hidden'));
+  document.getElementById('aiCloseBtn').addEventListener('click', () =>
+    document.getElementById('aiChatBox').classList.add('hidden'));
+  document.getElementById('aiSendBtn').addEventListener('click', handleAISend);
+  document.getElementById('aiInput').addEventListener('keypress', e => { if(e.key==='Enter') handleAISend(); });
+}
 
-        function renderEmployeeList() {
-            const container = document.getElementById('employeeList');
-            container.innerHTML = '';
-            const filtered = employeesData.filter(emp => activeFilter === 'ALL' || emp.status === activeFilter);
-            document.getElementById('listCount').textContent = filtered.length + ' / ' + employeesData.length;
+async function fetchGeminiAPI(apiKey, promptText) {
+  const primary  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const fallback = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const payload  = { contents:[{ parts:[{ text: promptText }] }] };
+  let res = await fetch(primary, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  if (!res.ok) res = await fetch(fallback, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  return res;
+}
 
-            filtered.forEach(emp => {
-                const card = document.createElement('div');
-                card.className = `employee-card status-${emp.status}`;
-                const battColor = emp.battery > 60 ? 'var(--green)' : emp.battery > 25 ? 'var(--amber)' : 'var(--red)';
-                const hrColor = emp.status === 'SOS' ? 'var(--red)' : emp.status === 'WARNING' ? 'var(--amber)' : 'var(--green)';
-                card.innerHTML = `
-                    <div class="emp-name font-display">
-                        <span>${emp.name}</span>
-                        <span class="status-badge ${emp.status}">${emp.status === 'NORMAL' ? 'طبيعي' : emp.status === 'SOS' ? '⚡ SOS' : '⚠ تحذير'}</span>
-                    </div>
-                    <div class="emp-meta">
-                        <span class="emp-meta-item">
-                            <i data-lucide="heart-pulse" style="width:11px;height:11px;color:${hrColor};"></i>
-                            <span class="font-mono" style="color:${hrColor};">${emp.heartRate} BPM</span>
-                        </span>
-                        <span class="emp-meta-item">
-                            <i data-lucide="battery-medium" style="width:11px;height:11px;color:${battColor};"></i>
-                            <span class="font-mono" style="color:${battColor};">${emp.battery}%</span>
-                        </span>
-                        <span class="emp-meta-item" style="margin-right:auto;">
-                            <i data-lucide="hash" style="width:9px;height:9px;"></i>
-                            <span class="font-mono" style="font-size:9.5px;">${emp.id}</span>
-                        </span>
-                    </div>
-                `;
-                card.onclick = () => {
-                    // Switch to map view first
-                    document.getElementById('tabMapBtn').click();
-                    setTimeout(() => { map.flyTo([emp.lat, emp.lng], 15, { duration: 1.2 }); }, 100);
-                };
-                container.appendChild(card);
-            });
-            lucide.createIcons();
-        }
+async function handleAISend() {
+  const input  = document.getElementById('aiInput');
+  const msgs   = document.getElementById('aiMessages');
+  const apiKey = document.getElementById('geminiApiKeyInput').value.trim();
+  const query  = input.value.trim();
+  if (!query) return;
+  if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
 
-        document.querySelectorAll('#filterChips .chip').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('#filterChips .chip').forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-                activeFilter = btn.getAttribute('data-filter');
-                renderEmployeeList();
-                updateMapMarkers();
-            });
-        });
+  msgs.innerHTML += `<div class="ai-msg user">${query}</div>`;
+  input.value = '';
+  msgs.scrollTop = msgs.scrollHeight;
 
-        function initClock() {
-            const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-            setInterval(() => {
-                const now = new Date();
-                document.getElementById('liveClock').textContent = now.toLocaleTimeString('ar-SA', {hour12: false});
-                const day = days[now.getDay()];
-                const dateStr = now.toLocaleDateString('ar-SA', {year:'numeric',month:'short',day:'numeric'});
-                document.getElementById('liveDate').textContent = day + ' · ' + dateStr;
-            }, 1000);
-        }
+  if (!apiKey) {
+    msgs.innerHTML += `<div class="ai-msg bot" style="color:var(--amber);">يرجى إدخال مفتاح Gemini API أولاً.</div>`;
+    msgs.scrollTop = msgs.scrollHeight; return;
+  }
 
-        function initTabs() {
-            const mapTab = document.getElementById('tabMapBtn');
-            const analyticsTab = document.getElementById('tabAnalyticsBtn');
-            const mapView = document.getElementById('mapView');
-            const analyticsView = document.getElementById('analyticsView');
+  const lid = 'ld-' + Date.now();
+  msgs.innerHTML += `<div id="${lid}" class="ai-msg bot" style="color:var(--t3);">جاري التحليل ···</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
 
-            mapTab.addEventListener('click', () => {
-                mapTab.classList.add('active');
-                analyticsTab.classList.remove('active');
-                mapView.classList.remove('hidden');
-                mapView.style.display = 'flex';
-                analyticsView.classList.add('hidden');
-                setTimeout(() => map.invalidateSize(), 100);
-            });
+  const sos  = employeesData.filter(e=>e.status==='SOS').length;
+  const warn = employeesData.filter(e=>e.status==='WARNING').length;
+  const off  = employeesData.filter(e=>e.status==='OFFBODY').length;
+  const ctx  = `إجمالي: ${employeesData.length} | طوارئ: ${sos} | تحذير: ${warn} | غير موصول: ${off}`;
+  const prompt = `أنت المساعد الأمني الذكي في مركز المراقبة. أجب بإيجاز باللغة العربية.\nالبيانات الحالية: [${ctx}]\n\nسؤال: ${query}`;
 
-            analyticsTab.addEventListener('click', () => {
-                analyticsTab.classList.add('active');
-                mapTab.classList.remove('active');
-                analyticsView.classList.remove('hidden');
-                analyticsView.style.display = 'flex';
-                mapView.classList.add('hidden');
-                updateAnalyticsData();
-            });
-        }
+  try {
+    const res  = await fetchGeminiAPI(apiKey, prompt);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'خطأ في الاتصال');
+    const reply = data.candidates[0].content.parts[0].text.replace(/\n/g,'<br>');
+    document.getElementById(lid).outerHTML = `<div class="ai-msg bot">${reply}</div>`;
+  } catch(err) {
+    document.getElementById(lid).outerHTML = `<div class="ai-msg bot" style="color:var(--red);">خطأ: ${err.message}</div>`;
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
 
-        function updateAnalyticsData() {
-            const total = employeesData.length;
-            const avgHeart = Math.round(employeesData.reduce((acc, val) => acc + val.heartRate, 0) / total);
-            const avgBatt = Math.round(employeesData.reduce((acc, val) => acc + val.battery, 0) / total);
-            const sosCount = employeesData.filter(e => e.status === 'SOS').length;
-            const warnCount = employeesData.filter(e => e.status === 'WARNING').length;
-            const normCount = employeesData.filter(e => e.status === 'NORMAL').length;
-            const riskIndex = Math.min(100, Math.round(((sosCount * 30) + (warnCount * 10)) / total * 10));
+// ─── INIT ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+  initClock();
+  initMap();
+  initTabs();
+  initAIModule();
 
-            document.getElementById('avgHeartRate').textContent = avgHeart + ' BPM';
-            document.getElementById('avgBattery').textContent = avgBatt + ' %';
-            document.getElementById('totalRiskIndex').textContent = riskIndex + ' / 100';
+  Chart.defaults.color = '#7B9DBF';
+  Chart.defaults.font.family = 'Cairo';
 
-            const barCtx = document.getElementById('barChart').getContext('2d');
-            if (chartsInstance.bar) chartsInstance.bar.destroy();
-            chartsInstance.bar = new Chart(barCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['طبيعي', 'تحذير', 'طوارئ SOS'],
-                    datasets: [{
-                        label: 'عدد الأفراد',
-                        data: [normCount, warnCount, sosCount],
-                        backgroundColor: ['rgba(0,232,150,0.7)', 'rgba(255,176,32,0.7)', 'rgba(255,51,88,0.7)'],
-                        borderColor: ['#00E896', '#FFB020', '#FF3358'],
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        borderSkipped: false,
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0D1628', borderColor: '#1A2A3E', borderWidth: 1, titleColor: '#F0F6FF', bodyColor: '#8CA0BE', padding: 10 } },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { color: 'transparent' } },
-                        x: { grid: { display: false }, border: { color: 'transparent' } }
-                    }
-                }
-            });
+  // Inject marker animation
+  const s = document.createElement('style');
+  s.textContent = `@keyframes mkPulse{0%{transform:scale(.8);opacity:.9}100%{transform:scale(2.8);opacity:0}}`;
+  document.head.appendChild(s);
 
-            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
-            if (chartsInstance.doughnut) chartsInstance.doughnut.destroy();
-            chartsInstance.doughnut = new Chart(doughnutCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['جاهز', 'غير متاح'],
-                    datasets: [{
-                        data: [normCount, warnCount + sosCount],
-                        backgroundColor: ['rgba(0,212,255,0.7)', 'rgba(30,45,70,0.8)'],
-                        borderColor: ['#00D4FF', '#1A2A3E'],
-                        borderWidth: 2,
-                        cutout: '78%',
-                        hoverOffset: 4,
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { padding: 16, boxWidth: 10, font: { size: 11 } } },
-                        tooltip: { backgroundColor: '#0D1628', borderColor: '#1A2A3E', borderWidth: 1 }
-                    }
-                }
-            });
-        }
-
-        // ==========================================
-        // Gemini AI API
-        // ==========================================
-        function initAIModule() {
-            const aiToggleBtn = document.getElementById('aiToggleBtn');
-            const aiChatBox = document.getElementById('aiChatBox');
-            const aiCloseBtn = document.getElementById('aiCloseBtn');
-            const aiSendBtn = document.getElementById('aiSendBtn');
-            const aiInput = document.getElementById('aiInput');
-            const apiKeyInput = document.getElementById('geminiApiKeyInput');
-
-            if (localStorage.getItem('gemini_api_key')) apiKeyInput.value = localStorage.getItem('gemini_api_key');
-
-            aiToggleBtn.addEventListener('click', () => aiChatBox.classList.toggle('hidden'));
-            aiCloseBtn.addEventListener('click', () => aiChatBox.classList.add('hidden'));
-            aiSendBtn.addEventListener('click', handleAISend);
-            aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAISend(); });
-        }
-
-        async function fetchGeminiAPI(apiKey, promptText) {
-            const primaryEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const fallbackEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-            const payload = { contents: [{ parts: [{ text: promptText }] }] };
-
-            let response = await fetch(primaryEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                response = await fetch(fallbackEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            }
-            return response;
-        }
-
-        async function handleAISend() {
-            const aiInput = document.getElementById('aiInput');
-            const aiMessages = document.getElementById('aiMessages');
-            const apiKeyInput = document.getElementById('geminiApiKeyInput');
-            const query = aiInput.value.trim();
-            const apiKey = apiKeyInput.value.trim();
-
-            if (!query) return;
-            if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
-
-            aiMessages.innerHTML += `<div class="ai-msg user">${query}</div>`;
-            aiInput.value = '';
-            aiMessages.scrollTop = aiMessages.scrollHeight;
-
-            if (!apiKey) {
-                aiMessages.innerHTML += `<div class="ai-msg bot" style="border-color:var(--amber);">يرجى إدخال مفتاح Gemini API في الخانة أعلاه.</div>`;
-                aiMessages.scrollTop = aiMessages.scrollHeight;
-                return;
-            }
-
-            const loadingId = 'loading-' + Date.now();
-            aiMessages.innerHTML += `<div id="${loadingId}" class="ai-msg bot" style="color:var(--text-3);">جاري تحليل الميدان والإجابة ···</div>`;
-            aiMessages.scrollTop = aiMessages.scrollHeight;
-
-            const context = `إجمالي الأفراد: ${employeesData.length} | حالات الطوارئ: ${employeesData.filter(e=>e.status==='SOS').length} | تحذيرات: ${employeesData.filter(e=>e.status==='WARNING').length}`;
-            const promptText = `أنت المساعد الأمني الذكي في مركز المراقبة. أجب باختصار باللغة العربية.\nبيانات الميدان الحالية: [${context}]\n\nسؤال المشرف: ${query}`;
-
-            try {
-                const response = await fetchGeminiAPI(apiKey, promptText);
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.error?.message || "خطأ في المصادقة أو المفتاح.");
-
-                const reply = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot">${reply}</div>`;
-            } catch (err) {
-                document.getElementById(loadingId).outerHTML = `<div class="ai-msg bot" style="color:var(--red);">خطأ أثناء الاتصال بالذكاء الاصطناعي:<br><small style="color:var(--text-3);">${err.message}</small></div>`;
-            }
-            aiMessages.scrollTop = aiMessages.scrollHeight;
-        }
-
-        // Marker pulse animation injection
-        const style = document.createElement('style');
-        style.textContent = `@keyframes livePulseMarker { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(2.4); opacity: 0; } }`;
-        document.head.appendChild(style);
-    </script>
+  // Initial fetch + auto-refresh
+  fetchData();
+  refreshTimer = setInterval(fetchData, REFRESH_INTERVAL);
+});
+</script>
 </body>
 </html>
