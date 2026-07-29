@@ -1,583 +1,481 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منظومة القيادة والمراقبة الأمنية والطبية المتقدمة (Tactical HSE Center)</title>
-    
-    <!-- External CSS & JS Libraries -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            --bg-void: #050811; --bg-page: #090E17; --bg-panel: #0F172A; --bg-subtle: #162032; --bg-elevated: #1E293B;
-            --border-soft: #1E293B; --border-strong: #334155;
-            --text-primary: #F8FAFC; --text-secondary: #94A3B8; --text-muted: #64748B;
-            --navy: #38BDF8; --navy-soft: rgba(56,189,248,0.12);
-            --accent: #0EA5E9; --accent-soft: rgba(14,165,233,0.15);
-            --normal: #10B981; --normal-soft: rgba(16,185,129,0.15);
-            --warning: #F59E0B; --warning-soft: rgba(245,158,11,0.15);
-            --sos: #EF4444; --sos-soft: rgba(239,68,68,0.2);
-            --critical: #8B5CF6; --critical-soft: rgba(139,92,246,0.2);
-            --shadow-md: 0 20px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5);
-        }
-        * { box-sizing: border-box; font-family: 'IBM Plex Sans Arabic', 'Cairo', sans-serif; }
-        .font-display { font-family: 'Cairo', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; direction: ltr; unicode-bidi: isolate; }
-        
-        html, body { margin: 0; padding: 0; height: 100vh; width: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-void); color: var(--text-primary); }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
-
-        #map { height: 100%; width: 100%; z-index: 1; background: var(--bg-subtle); }
-        
-        /* Badges & Status */
-        .badge { font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .badge.normal { background: var(--normal-soft); color: var(--normal); border: 1px solid rgba(16,185,129,0.3); }
-        .badge.sos { background: var(--sos-soft); color: var(--sos); border: 1px solid rgba(239,68,68,0.5); animation: pulse-red 1.5s infinite; }
-        .badge.warning { background: var(--warning-soft); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
-        .badge.breach { background: rgba(239, 68, 68, 0.25); color: #FCA5A5; border: 1px solid var(--sos); }
-        
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
-        .view-tab { padding: 10px 22px; border-radius: 10px 10px 0 0; border: 1px solid var(--border-soft); border-bottom: none; font-size: 13px; font-weight: 700; cursor: pointer; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
-        .view-tab.active { background: var(--bg-panel); color: var(--navy); border-color: var(--border-strong); border-bottom: 2px solid var(--navy); }
-
-        .employee-card { background: var(--bg-panel); border: 1px solid var(--border-soft); border-inline-start: 4px solid var(--border-strong); border-radius: 10px; padding: 12px; cursor: pointer; transition: all .15s ease; }
-        .employee-card:hover, .employee-card.active-focus { border-color: var(--navy); border-inline-start-color: var(--navy); background: var(--bg-elevated); transform: translateY(-1px); }
-
-        /* Tactical AI Floating Panel */
-        .ai-fab-btn { position: absolute; bottom: 20px; left: 20px; z-index: 30; background: linear-gradient(135deg, #0284C7, #0EA5E9); color: #FFFFFF; border: none; padding: 12px 20px; border-radius: 999px; font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 10px 25px -5px rgba(14,165,233,0.5); transition: all 0.2s; }
-        .ai-fab-btn:hover { transform: scale(1.03); }
-        
-        .ai-chat-panel { position: absolute; bottom: 80px; left: 20px; z-index: 30; width: 420px; max-width: calc(100vw - 40px); height: 560px; background: rgba(15, 23, 42, 0.97); backdrop-filter: blur(16px); border: 1px solid var(--border-strong); border-radius: 16px; box-shadow: var(--shadow-md); display: flex; flex-direction: column; overflow: hidden; }
-        .ai-chat-header { padding: 14px 16px; background: var(--bg-elevated); border-bottom: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center; }
-        .ai-chat-messages { flex: 1; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 12px; }
-        
-        .ai-msg { padding: 12px 14px; border-radius: 12px; max-width: 90%; line-height: 1.6; white-space: pre-wrap; font-size: 12px; }
-        .ai-msg.bot { background: var(--bg-subtle); border: 1px solid var(--border-soft); color: var(--text-primary); align-self: flex-start; }
-        .ai-msg.user { background: var(--navy-soft); border: 1px solid rgba(56,189,248,0.4); color: var(--navy); align-self: flex-end; font-weight: 600; }
-        
-        .ai-chat-input-area { padding: 12px; border-top: 1px solid var(--border-soft); background: var(--bg-panel); display: flex; gap: 8px; }
-        .ai-quick-btn { font-size: 10.5px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-soft); background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
-        .ai-quick-btn:hover { border-color: var(--navy); color: var(--navy); }
-
-        .kpi-card { background: var(--bg-subtle); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
-        .hidden { display: none !important; }
-    </style>
-</head>
-<body>
-
-    <!-- Tactical Top Bar -->
-    <header style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);z-index:40;">
-        <div style="display:flex;align-items:center;gap:14px;">
-            <div style="padding:10px;border-radius:12px;background:var(--navy-soft);color:var(--navy);border:1px solid rgba(56,189,248,0.2);">
-                <i data-lucide="shield-alert" style="width:24px;height:24px;"></i>
-            </div>
-            <div>
-                <h1 class="font-display" style="margin:0;font-size:18px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:10px;">
-                    مركز القيادة الميداني وإدارة الأزمات الطبية والحرجة
-                </h1>
-                <p style="margin:2px 0 0;font-size:11px;color:var(--text-secondary);">نظام المراقبة والتحليل التكتيكي المباشر المعزز بالذكاء الاصطناعي الطاقي (HSE-AI)</p>
-            </div>
-        </div>
-
-        <div style="display:flex;align-items:center;gap:10px;">
-            <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);font-size:11px;">
-                <i data-lucide="server" style="width:14px;height:14px;color:var(--text-muted);"></i>
-                <input type="password" id="apiUrlInput" style="background:transparent;outline:none;border:none;width:210px;color:var(--text-primary);font-family:monospace;" value="https://script.google.com/macros/s/AKfycbyU6-3zlytVBxthPtVQU3qlMsZuksauuMqtPUF32pMvKM18fCqoxLg9q6hyH1qgSw/exec">
-            </div>
-            <button id="manualRefreshBtn" type="button" title="تحديث حي" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-subtle);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;">
-                <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> تحديث
-            </button>
-        </div>
-    </header>
-
-    <!-- Navigation View Switcher -->
-    <div style="display:flex;gap:10px;padding:12px 20px 0;background:var(--bg-page);">
-        <button id="tabMapBtn" class="view-tab active" type="button"><i data-lucide="map-pin" style="width:16px;height:16px;"></i> الخريطة الحية والتتبع الجغرافي</button>
-        <button id="tabAnalyticsBtn" class="view-tab" type="button"><i data-lucide="activity" style="width:16px;height:16px;"></i> التحليلات الحيوية والتقييم الطبي</button>
-    </div>
-
-    <!-- Main Workspace -->
-    <div style="flex:1;display:flex;overflow:hidden;padding:0 20px 16px;gap:16px;background:var(--bg-page);">
-        
-        <!-- Sidebar: Personnel Matrix -->
-        <aside style="width:360px;min-width:360px;display:flex;flex-direction:column;gap:12px;padding-top:12px;">
-            <!-- Status Matrix Summary -->
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:12px;border-radius:12px;border:1px solid var(--border-soft);background:var(--bg-panel);text-align:center;">
-                <div><span style="font-size:10px;color:var(--text-muted);display:block;">الإجمالي</span><div id="statTotal" class="font-mono" style="font-weight:800;font-size:16px;color:var(--text-primary);">0</div></div>
-                <div><span style="font-size:10px;color:var(--text-muted);display:block;">مستقر</span><div id="statNormal" class="font-mono" style="font-weight:800;font-size:16px;color:var(--normal);">0</div></div>
-                <div><span style="font-size:10px;color:var(--text-muted);display:block;">تجاوز نطاق</span><div id="statBreach" class="font-mono" style="font-weight:800;font-size:16px;color:var(--warning);">0</div></div>
-                <div><span style="font-size:10px;color:var(--text-muted);display:block;">طوارئ SOS</span><div id="statSos" class="font-mono" style="font-weight:800;font-size:16px;color:var(--sos);">0</div></div>
-            </div>
-
-            <!-- Search and Filter -->
-            <div style="position:relative;">
-                <i data-lucide="search" style="position:absolute;right:12px;top:10px;width:16px;height:16px;color:var(--text-muted);"></i>
-                <input type="text" id="searchInput" placeholder="تصفية بالاسم، المعرّف، أو الحالة..." style="width:100%;border-radius:10px;padding:9px 38px 9px 12px;font-size:12px;outline:none;border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-primary);">
-            </div>
-
-            <!-- Roster Container -->
-            <div id="employeeList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
-                <div style="text-align:center;padding:30px;color:var(--text-muted);font-size:12px;">جاري استقبال المؤشرات الحيوية والإحداثيات...</div>
-            </div>
-        </aside>
-
-        <!-- Dynamic Main Content -->
-        <main style="flex:1;position:relative;display:flex;flex-direction:column;padding-top:12px;overflow:hidden;">
-            
-            <!-- View 1: Map Dashboard -->
-            <div id="mapView" style="position:relative;flex:1;border-radius:14px;overflow:hidden;border:1px solid var(--border-soft);">
-                <div id="map"></div>
-
-                <!-- Tactical AI Assistant Floating Button & Panel -->
-                <button id="toggleAiChatBtn" class="ai-fab-btn" type="button">
-                    <i data-lucide="bot" style="width:18px;height:18px;"></i>
-                    <span>مساعد المستشار الطبي والأمني (AI)</span>
-                </button>
-
-                <div id="aiChatPanel" class="ai-chat-panel hidden">
-                    <div class="ai-chat-header">
-                        <div style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:13px;color:var(--text-primary);">
-                            <i data-lucide="cpu" style="color:var(--navy);width:18px;height:18px;"></i> المحلل الطبي والأمني التكتيكي
-                        </div>
-                        <button id="closeAiChatBtn" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;"><i data-lucide="x"></i></button>
-                    </div>
-
-                    <!-- Chat Output Stream -->
-                    <div id="aiChatMessages" class="ai-chat-messages">
-                        <div class="ai-msg bot">
-أهلاً بك في وحدة التحليل الاصطناعي الميداني.
-أنا متصل حياً بقاعدة بيانات الموظفين، وأقوم بفرز الحالات الحيوية، المخاطر الطبية، وخروقات النطاق الجغرافي (Geofence) وفق بروتوكولات السلامة والصحة المهنية.
-
-يمكنك الاستفسار فوراً أو اختيار إحدى المهام السريعة أدناه:
-                        </div>
-                    </div>
-
-                    <!-- Quick Command Chips -->
-                    <div style="padding:6px 12px;display:flex;gap:6px;overflow-x:auto;border-top:1px solid var(--border-soft);background:var(--bg-panel);">
-                        <button class="ai-quick-btn" onclick="triggerQuickAi('triage')">الفرز الطبي الحرِج</button>
-                        <button class="ai-quick-btn" onclick="triggerQuickAi('geofence')">تقرير التجاوزات الجغرافية</button>
-                        <button class="ai-quick-btn" onclick="triggerQuickAi('sop')">توجيهات الاستجابة الطارئة</button>
-                    </div>
-
-                    <!-- Input Box -->
-                    <div class="ai-chat-input-area">
-                        <input type="text" id="aiInput" placeholder="اطلب تقريراً عن موظف، أو استفسر عن حالة طوارئ..." style="flex:1;background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-primary);outline:none;">
-                        <button id="sendAiBtn" style="background:var(--navy);border:none;border-radius:8px;padding:8px 14px;color:#041421;cursor:pointer;font-weight:800;"><i data-lucide="send" style="width:15px;height:15px;"></i></button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- View 2: Health & Safety Analytics View -->
-            <div id="analyticsView" class="hidden" style="flex:1;overflow-y:auto;padding:24px;background:var(--bg-panel);border-radius:14px;border:1px solid var(--border-soft);display:flex;flex-direction:column;gap:20px;">
-                <div>
-                    <h2 class="font-display" style="font-size:20px;margin:0 0 4px 0;color:var(--text-primary);">التحليلات الحيوية ومصفوفة تقييم المخاطر الميدانية</h2>
-                    <p style="font-size:12px;margin:0;color:var(--text-secondary);">مراقبة أداء المستشعرات الحيوية والتأكد من ملاءمة البيئة التشغيلية وصحة الكوادر الميدانية.</p>
-                </div>
-
-                <!-- KPI Metric Cards -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;">
-                    <div class="kpi-card">
-                        <span style="font-size:11px;color:var(--text-muted);font-weight:700;">متوسط النبض الميداني</span>
-                        <span id="kpiAvgHr" class="font-mono" style="font-size:22px;font-weight:800;color:var(--navy);">-- BPM</span>
-                    </div>
-                    <div class="kpi-card">
-                        <span style="font-size:11px;color:var(--text-muted);font-weight:700;">متوسط مستوى الأكسجين SpO2</span>
-                        <span id="kpiAvgSpo2" class="font-mono" style="font-size:22px;font-weight:800;color:var(--normal);">--%</span>
-                    </div>
-                    <div class="kpi-card">
-                        <span style="font-size:11px;color:var(--text-muted);font-weight:700;">التجاوزات الجغرافية النشطة</span>
-                        <span id="kpiBreaches" class="font-mono" style="font-size:22px;font-weight:800;color:var(--warning);">0</span>
-                    </div>
-                    <div class="kpi-card">
-                        <span style="font-size:11px;color:var(--text-muted);font-weight:700;">حالات الإجهاد الخطر (High Risk)</span>
-                        <span id="kpiCriticalRisk" class="font-mono" style="font-size:22px;font-weight:800;color:var(--sos);">0</span>
-                    </div>
-                </div>
-
-                <!-- Analytical Charts Container -->
-                <div style="display:grid;grid-template-columns: 1fr 1.2fr; gap:16px; min-height:320px;">
-                    <div style="background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:12px;padding:18px;display:flex;flex-direction:column;">
-                        <h4 style="margin:0 0 14px 0;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
-                            <i data-lucide="pie-chart" style="width:16px;height:16px;color:var(--navy);"></i> تصنيف الحالات التشغيلية
-                        </h4>
-                        <div style="flex:1;position:relative;"><canvas id="statusChart"></canvas></div>
-                    </div>
-
-                    <div style="background:var(--bg-subtle);border:1px solid var(--border-soft);border-radius:12px;padding:18px;display:flex;flex-direction:column;">
-                        <h4 style="margin:0 0 14px 0;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
-                            <i data-lucide="bar-chart-2" style="width:16px;height:16px;color:var(--navy);"></i> قياس النبض والأكسجين للكوادر
-                        </h4>
-                        <div style="flex:1;position:relative;"><canvas id="vitalsChart"></canvas></div>
-                    </div>
-                </div>
-            </div>
-
-        </main>
-    </div>
-
-    <!-- Application Engine Logic -->
-    <script>
-        let state = {
-            employees: [],
-            selectedEmployeeId: null,
-            map: null,
-            markers: {},
-            geofenceCircles: {},
-            statusChart: null,
-            vitalsChart: null
-        };
-
-        // 1. Precise Geographical Haversine Distance Engine
-        function getDistanceMeters(lat1, lon1, lat2, lon2) {
-            const R = 6371000;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-        }
-
-        // Initialize Tactical Leaflet Map
-        function initMap() {
-            state.map = L.map('map', { zoomControl: false }).setView([24.7136, 46.6753], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(state.map);
-        }
-
-        // Fetch Live Data Stream & Calculate Health/Safety Matrices
-        async function fetchData() {
-            const url = document.getElementById('apiUrlInput').value;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                let rawList = Array.isArray(data) ? data : (data.data || []);
-                
-                state.employees = rawList.map((emp, index) => {
-                    const id = String(emp.id || emp.employee_id || `EMP-${index+1}`);
-                    const name = emp.name || emp.employee_name || 'كادر ميداني';
-                    const lat = parseFloat(emp.lat || emp.latitude || 24.7136);
-                    const lng = parseFloat(emp.lng || emp.longitude || emp.lngt || 46.6753);
-                    
-                    const centerLat = parseFloat(emp.center_lat || emp.safe_lat || lat);
-                    const centerLng = parseFloat(emp.center_lng || emp.safe_lng || lng);
-                    const safeRadiusMeters = parseInt(emp.radius || emp.safe_radius || 600);
-
-                    const hr = parseInt(emp.heartRate || emp.hr || 75);
-                    const spo2 = parseInt(emp.spo2 || 98);
-                    const battery = parseInt(emp.battery || 100);
-
-                    // Calculate Geofence Compliance
-                    const distanceFromCenter = getDistanceMeters(lat, lng, centerLat, centerLng);
-                    const isBreached = distanceFromCenter > safeRadiusMeters;
-
-                    // Clinical & Operational Status Triage
-                    let rawStatus = String(emp.status || 'NORMAL').toUpperCase();
-                    let finalStatus = rawStatus;
-                    let medicalAlert = 'NORMAL';
-
-                    if (hr > 120 || hr < 50 || spo2 < 92) {
-                        medicalAlert = 'CRITICAL';
-                    } else if (hr > 100 || spo2 < 95) {
-                        medicalAlert = 'WARNING';
-                    }
-
-                    if (rawStatus !== 'SOS' && isBreached) {
-                        finalStatus = 'BREACH';
-                    }
-
-                    return {
-                        ...emp,
-                        id, name, lat, lng,
-                        centerLat, centerLng, safeRadiusMeters,
-                        distanceFromCenter: Math.round(distanceFromCenter),
-                        isBreached, hr, spo2, battery,
-                        medicalAlert,
-                        status: finalStatus
-                    };
-                });
-
-                updateUI();
-                renderAnalytics();
-            } catch (err) {
-                console.error("Data Stream Error:", err);
-            }
-        }
-
-        // Render Roster Sidebar, Markers, and Geofence Boundaries
-        function updateUI() {
-            const listContainer = document.getElementById('employeeList');
-            const filterTerm = document.getElementById('searchInput').value.toLowerCase();
-            listContainer.innerHTML = '';
-
-            let counts = { total: state.employees.length, normal: 0, breach: 0, sos: 0 };
-
-            state.employees.forEach(emp => {
-                if (emp.status === 'SOS') counts.sos++;
-                else if (emp.status === 'BREACH') counts.breach++;
-                else counts.normal++;
-
-                if (filterTerm && !emp.name.toLowerCase().includes(filterTerm) && !emp.id.toLowerCase().includes(filterTerm)) {
-                    return;
-                }
-
-                const card = document.createElement('div');
-                card.className = `employee-card ${state.selectedEmployeeId === emp.id ? 'active-focus' : ''}`;
-                card.onclick = () => {
-                    state.selectedEmployeeId = emp.id;
-                    state.map.flyTo([emp.lat, emp.lng], 15);
-                    updateUI();
-                };
-
-                let badgeClass = 'normal', badgeText = 'مستقر';
-                if (emp.status === 'SOS') { badgeClass = 'sos'; badgeText = 'طوارئ SOS'; }
-                else if (emp.status === 'BREACH') { badgeClass = 'breach'; badgeText = 'تجاوز نطاق'; }
-
-                card.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-weight:800;font-size:13px;color:var(--text-primary);">${emp.name}</span>
-                        <span class="badge ${badgeClass}">${badgeText}</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;font-size:11px;color:var(--text-secondary);">
-                        <div>النبض: <b style="color:${emp.hr > 100 ? 'var(--sos)':'var(--text-primary)'}">${emp.hr} BPM</b></div>
-                        <div>الأكسجين: <b style="color:${emp.spo2 < 95 ? 'var(--warning)':'var(--text-primary)'}">${emp.spo2}%</b></div>
-                        <div>المسافة للنطاق: <b style="color:var(--text-primary)">${emp.distanceFromCenter}m</b></div>
-                        <div>البطارية: <b style="color:${emp.battery < 20 ? 'var(--sos)':'var(--text-primary)'}">${emp.battery}%</b></div>
-                    </div>
-                `;
-                listContainer.appendChild(card);
-
-                // Leaflet Marker & Geofence Sync
-                let color = 'var(--normal)';
-                if (emp.status === 'SOS' || emp.medicalAlert === 'CRITICAL') color = 'var(--sos)';
-                else if (emp.status === 'BREACH' || emp.medicalAlert === 'WARNING') color = 'var(--warning)';
-
-                if (state.markers[emp.id]) {
-                    state.markers[emp.id].setLatLng([emp.lat, emp.lng]);
-                } else {
-                    const customIcon = L.divIcon({
-                        className: 'pin',
-                        html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 10px ${color};"></div>`
-                    });
-                    state.markers[emp.id] = L.marker([emp.lat, emp.lng], { icon: customIcon }).addTo(state.map);
-                }
-
-                // Render Radial Geofence Zone
-                if (state.geofenceCircles[emp.id]) {
-                    state.geofenceCircles[emp.id].setLatLng([emp.centerLat, emp.centerLng]);
-                } else {
-                    state.geofenceCircles[emp.id] = L.circle([emp.centerLat, emp.centerLng], {
-                        color: emp.isBreached ? '#EF4444' : '#38BDF8',
-                        fillColor: emp.isBreached ? '#EF4444' : '#38BDF8',
-                        fillOpacity: 0.08,
-                        weight: 1.5,
-                        radius: emp.safeRadiusMeters
-                    }).addTo(state.map);
-                }
-            });
-
-            document.getElementById('statTotal').innerText = counts.total;
-            document.getElementById('statNormal').innerText = counts.normal;
-            document.getElementById('statBreach').innerText = counts.breach;
-            document.getElementById('statSos').innerText = counts.sos;
-        }
-
-        /* 3. EXPERT HSE & MEDICAL AI ENGINE (NLP + CLINICAL DIRECTIVES) */
-        function processAiQuery(input) {
-            const query = input.trim().toLowerCase();
-            const data = state.employees;
-
-            if (!data.length) return "⚠️ تنبيه: لا توجد بيانات ميدانية متصلة حالياً للقيام بالتحليل الطبي والأمني.";
-
-            // Clinical Triage / Critical Check
-            if (query.includes('فرز') || query.includes('طبي') || query.includes('ترياج') || query.includes('حرج') || query.includes('إجهاد')) {
-                const criticals = data.filter(e => e.medicalAlert === 'CRITICAL' || e.hr > 110 || e.spo2 < 93);
-                if (!criticals.length) {
-                    return "✅ التقييم الطبي الميداني: جميع الكوادر الميدانية حالياً ضمن النطاقات الحيوية المقبولة (النبض ومستوى الأكسجين مستقرين).";
-                }
-                let report = `🚨 **تقرير الفرز الطبي الطارئ (Emergency Clinical Triage):**\nتم رصد (${criticals.length}) حالات تتطلب التدخل أو المتابعة:\n`;
-                criticals.forEach(c => {
-                    report += `\n• **${c.name}**: النبض: ${c.hr} BPM | الأكسجين: ${c.spo2}%\n  └ *التشخيص الاصطناعي*: ${c.hr > 120 ? 'اشتباه إجهاد حراري/تسارع نبض حاد.' : 'انخفاض في كفاءة التروية الأكسجينية.'}\n  └ *التوجيه*: توجيه الفريق الطبي للموقع فوراً والإجلاء لظلال/منطقة راحة.`;
-                });
-                return report;
-            }
-
-            // Geofence Compliance Check
-            if (query.includes('نطاق') || query.includes('خارج') || query.includes('تجاوز') || query.includes('مخالف')) {
-                const breached = data.filter(e => e.isBreached);
-                if (!breached.length) {
-                    return "🛡️ **الالتزام الأمني**: جميع الكوادر الميدانية تتواجد حالياً داخل نطاقات العمل المحددة (Geofence Safe Zones).";
-                }
-                let report = `⚠️ **تنبيه تجاوز النطاق الجغرافي (Geofence Breach):**\nيوجد (${breached.length}) موظفين خارج منطقة الأمان المخصصة:\n`;
-                breached.forEach(b => {
-                    report += `• **${b.name}**: مبتعد بمقدار **${b.distanceFromCenter} متر** عن المركز.\n`;
-                });
-                report += `\n*التوصية الأمنية*: التواصل مع الكوادر عبر التواصل اللاسلكي للتحقق من أسباب الخروج وإعادتهم للمربع الأمني.`;
-                return report;
-            }
-
-            // SOP Response Directives
-            if (query.includes('إجراء') || query.includes('بروتوكول') || query.includes('sop') || query.includes('طوارئ')) {
-                return `📋 **بروتوكول الاستجابة القياسي المعتمد (HSE Standard Protocol):**\n` +
-                       `1. **في حالة استغاثة SOS**: يتم إرسال أقرب دورية أمنية مع التأكد من جاهزية حقيبة الإسعافات الأوليّة.\n` +
-                       `2. **عند انخفاض الأكسجين < 92%**: إيقاف الموظف عن العمل البدني فوراً وإعطاؤه أكسجين محمول إن وجد.\n` +
-                       `3. **خروج النطاق**: إشعار غرفة العمليات المركزية وتأكيد حظر الدخول للمناطق غير المصرّح بها.`;
-            }
-
-            // Specific Employee Lookup
-            const empMatch = data.find(e => query.includes(e.name.toLowerCase()) || query.includes(e.id.toLowerCase()));
-            if (empMatch) {
-                return `🔍 **التقرير الشامل للكادر [${empMatch.name}] (ID: ${empMatch.id}):**\n` +
-                       `• الحالة العملية: ${empMatch.status}\n` +
-                       `• معدل النبض: ${empMatch.hr} BPM (${empMatch.hr > 100 ? 'مرتفع ⚠️' : 'طبيعي ✅'})\n` +
-                       `• نسبة الأكسجين: ${empMatch.spo2}% (${empMatch.spo2 < 95 ? 'منخفض ⚠️' : 'طبيعي ✅'})\n` +
-                       `• الموقف الجغرافي: تبعد ${empMatch.distanceFromCenter} متر عن المركز (${empMatch.isBreached ? 'تجاوز النطاق ⚠️' : 'داخل النطاق ✅'})\n` +
-                       `• شحن الجهاز: ${empMatch.battery}%`;
-            }
-
-            // Fallback General Analysis
-            const avgHr = Math.round(data.reduce((acc, e) => acc + e.hr, 0) / data.length);
-            const avgSpo2 = Math.round(data.reduce((acc, e) => acc + e.spo2, 0) / data.length);
-            return `💡 **ملخص تقييم الخبير الميداني (AI Assessment):**\n` +
-                   `• إجمالي الطاقة الميدانية: ${data.length} كادر.\n` +
-                   `• متوسط نبضات القلب: ${avgHr} BPM | متوسط الأكسجين: ${avgSpo2}%.\n` +
-                   `• عدد حالات تجاوز النطاق: ${data.filter(e=>e.isBreached).length}.\n\n` +
-                   `يمكنك كتابة اسم أي موظف محدد أو الاستفسار عن "الفرز الطبي" للحصول على تحليل أكثر عمقاً.`;
-        }
-
-        function handleAiMessage(text) {
-            const container = document.getElementById('aiChatMessages');
-            
-            const uMsg = document.createElement('div');
-            uMsg.className = 'ai-msg user';
-            uMsg.innerText = text;
-            container.appendChild(uMsg);
-
-            setTimeout(() => {
-                const botMsg = document.createElement('div');
-                botMsg.className = 'ai-msg bot';
-                botMsg.innerText = processAiQuery(text);
-                container.appendChild(botMsg);
-                container.scrollTop = container.scrollHeight;
-            }, 300);
-        }
-
-        function triggerQuickAi(type) {
-            if (type === 'triage') handleAiMessage("قم بإجراء الفرز الطبي الحرِج للكوادر الميدانية");
-            if (type === 'geofence') handleAiMessage("أعطني تقرير التجاوزات الجغرافية ومخالفات النطاق");
-            if (type === 'sop') handleAiMessage("ما هي توجيهات الاستجابة الطارئة المعتمدة؟");
-        }
-
-        /* 4. ANALYTICS & CHART ENGINE */
-        function renderAnalytics() {
-            const data = state.employees;
-            if (!data.length) return;
-
-            let totalHr = 0, totalSpo2 = 0, breaches = 0, criticalRisk = 0;
-            let statusCounts = { NORMAL: 0, BREACH: 0, SOS: 0 };
-
-            data.forEach(e => {
-                totalHr += e.hr;
-                totalSpo2 += e.spo2;
-                if (e.isBreached) breaches++;
-                if (e.medicalAlert === 'CRITICAL' || e.status === 'SOS') criticalRisk++;
-                if (statusCounts[e.status] !== undefined) statusCounts[e.status]++;
-            });
-
-            document.getElementById('kpiAvgHr').innerText = `${Math.round(totalHr / data.length)} BPM`;
-            document.getElementById('kpiAvgSpo2').innerText = `${Math.round(totalSpo2 / data.length)}%`;
-            document.getElementById('kpiBreaches').innerText = breaches;
-            document.getElementById('kpiCriticalRisk').innerText = criticalRisk;
-
-            // Render Status Chart
-            const ctx1 = document.getElementById('statusChart').getContext('2d');
-            if (state.statusChart) state.statusChart.destroy();
-            state.statusChart = new Chart(ctx1, {
-                type: 'doughnut',
-                data: {
-                    labels: ['مستقر/طبيعي', 'تجاوز نطاق', 'طوارئ SOS'],
-                    datasets: [{
-                        data: [statusCounts.NORMAL, statusCounts.BREACH, statusCounts.SOS],
-                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94A3B8' } } } }
-            });
-
-            // Render Vitals Chart
-            const ctx2 = document.getElementById('vitalsChart').getContext('2d');
-            if (state.vitalsChart) state.vitalsChart.destroy();
-            state.vitalsChart = new Chart(ctx2, {
-                type: 'bar',
-                data: {
-                    labels: data.slice(0, 10).map(e => e.name),
-                    datasets: [
-                        { label: 'النبض (BPM)', data: data.slice(0, 10).map(e => e.hr), backgroundColor: '#38BDF8' },
-                        { label: 'الأكسجين (%)', data: data.slice(0, 10).map(e => e.spo2), backgroundColor: '#10B981' }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { ticks: { color: '#94A3B8' }, grid: { color: '#1E293B' } },
-                        y: { ticks: { color: '#94A3B8' }, grid: { color: '#1E293B' } }
-                    },
-                    plugins: { legend: { labels: { color: '#94A3B8' } } }
-                }
-            });
-        }
-
-        // Setup DOM Events & Initialize
-        window.addEventListener('DOMContentLoaded', () => {
-            initMap();
-            lucide.createIcons();
-
-            document.getElementById('manualRefreshBtn').onclick = fetchData;
-            document.getElementById('searchInput').oninput = updateUI;
-
-            document.getElementById('tabMapBtn').onclick = () => {
-                document.getElementById('mapView').classList.remove('hidden');
-                document.getElementById('analyticsView').classList.add('hidden');
-                document.getElementById('tabMapBtn').classList.add('active');
-                document.getElementById('tabAnalyticsBtn').classList.remove('active');
-                state.map.invalidateSize();
-            };
-
-            document.getElementById('tabAnalyticsBtn').onclick = () => {
-                document.getElementById('mapView').classList.add('hidden');
-                document.getElementById('analyticsView').classList.remove('hidden');
-                document.getElementById('tabAnalyticsBtn').classList.add('active');
-                document.getElementById('tabMapBtn').classList.remove('active');
-                renderAnalytics();
-            };
-
-            document.getElementById('toggleAiChatBtn').onclick = () => document.getElementById('aiChatPanel').classList.toggle('hidden');
-            document.getElementById('closeAiChatBtn').onclick = () => document.getElementById('aiChatPanel').classList.add('hidden');
-            
-            document.getElementById('sendAiBtn').onclick = () => {
-                const el = document.getElementById('aiInput');
-                if (el.value.trim()) { handleAiMessage(el.value); el.value = ''; }
-            };
-
-            document.getElementById('aiInput').onkeyup = (e) => {
-                if (e.key === 'Enter') document.getElementById('sendAiBtn').click();
-            };
-
-            fetchData();
-            setInterval(fetchData, 10000); // Live Stream Sync Every 10 Seconds
-        });
-    </script>
-</body>
-</html>
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Log");
+    log.appendRow([new Date(), data.emp_id, (data.lat+","+data.lng), data.heart_rate, data.spo2+"%", data.body_temp.toFixed(1), data.battery+"%", data.status, data.fcm_token]);
+
+    // الرد الصحيح بصيغة JSON لكي تفهمه الساعة
+    return ContentService.createTextOutput(JSON.stringify({"result":"success"}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({"error":err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Ultimate Security Master v7.0 - [Direct Instant Messaging]
+ */
+
+// ⚠️ تنبيه أمني لم يُغيَّر بالكود: هذا المفتاح مكشوف وسبق تحذيرك بإلغائه من Firebase Console
+// وتخزين البديل عبر Script Properties بدل كتابته هنا مباشرة.
+// هذا التحذير ما زال قائماً - يُنصح بإلغاء هذا المفتاح فوراً من Firebase Console (IAM & Admin)
+// وتوليد مفتاح جديد وتخزينه عبر PropertiesService بدل كتابته صراحة بالكود.
+const SERVICE_ACCOUNT = {
+  "project_id": "android-f549d",
+  "client_email": "firebase-adminsdk-fbsvc@android-f549d.iam.gserviceaccount.com",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDA17tguRyUCnoA\nv8iZv+VVUlxg8BZtXz9WI5XwW1sR6cWr1iLoAIM/GaxDj3NLBlrHkMxude1MuixK\naQ9WquHELYZcy5kD7MFEx3jA9GwwTChGGFtD2Qk4yBUpIBJNcae1htdj0MLyGnYo\n7B8DHRxkIUUZj8k6OJvy6MRVR9r8NWTk1I7EXhn7q3dA2cQ2cZCgJE61dLu+4Mvg\nfNOwY0IYvYKUpmZws92GHBmWIAxgwiGitBANRMDDRfGJyoqaOwMfCUYOORs47G7J\nSRPvPgrG9pitiaVIDvoHfzNgP9ZsQv75osbgLshB8R+FCE6tVyQESZ82DI5oCkvC\n2nM7LFGzAgMBAAECggEACloKRvDo5dGCJxQkcoxohSH8r39z1L8uKTOT0uk0hEum\nPskp6oZMhVCdfKrwp3BZ4yiUsMFH0byUsBHfrulRYTSIZ+bN+fX1kfmbM9BrFlSg\nPNMF4yh9ZDzpVeHQ2bNmK0pnuYX1UQW2ng++wm4HniBjEzIyvRtY07tG/sTyrmMf\nSpEdc8WYJxDTw0AQDnz0VxL/dX6ULQlecGpbdsqiEzLXvOyoyrf/5gipzSIIvwd1\n/iuBibS7KFSlgK8unQz57s30+M+IZ1AB+rI1TTlcsYXgX5ynADALqVVpkupcywMv\nj1/+Wr5ETLuFFH19GtvKPc4We0WbWQxMQBJ6WGNgkQKBgQD+apINGitkv/66Z4Vz\nAJcmGCHWDpk+Z628HPvg1k50Jc0VpZRMvjmHv9Sa6neAqgXuIenKm6S5UjPe86d9\nMQSSiHy3UXCgHDmAX4DXgPp0rNXCWqP29lqc1iDlhnHb1ETXjeRYGzvi+Onl7+3w\nL2JJxUc8yEK9I6FJ8XvR4sASdQKBgQDCCwoupOHwtbWOIDf853sHaxiN3UkaZz3e\nlnmI9nQ2v39rpBcRvOYiGzttXc7UsjVb/ULMH4XE/9tc2/HpckQMeXMa1Xzb1TXS\nILV2QBSVdJxn5fXvv/IVMnRcFu9T/8MrdIIzMORpXECUit+/P782+5oDcIwQhzzQ\nmW4sH/l+hwKBgQDxo/rQIvjwGkMwfL6NOhRVhDou+3KliQfEUasSI7okKvsdAkVW\nlp5BxvuBoAyc0eAMC33oh+fudJr7uWRtTa9QFf6OhvV3vRcITK0tAj3fr4DftgNh\nvx7VM7PPDOD7sCMqsIQfAs7ghxZw5G+T3w11j8BXhMWOq1a3ynqWIM3ZOQKBgQCN\n+6n9q2Qvz6YDUwvkoDRjnzeeRncBPN4GizBuyXcLwF+qEa1Xq1LxTd/UDLoU5Dkr\nEEvaNI6bMWP/tGh0msm0HwHcdq4f5Qi2snxVBFqLaYIwfBHS1i562CpQX+/LFPBo\nUZ4bewEHHxuaFWvW8vwlbUCql6XFSk9zi3EUFGlo7QKBgHEBim7tlI+WK4tSwN4S\nui8gxuEYwmhT0+qkEP/ICcXXNc8sW5Uovjka6mVlEHVojPsiVx8KhpSe5QqOASWE\nIEdGTSMw8dz3e7DvQ+zvvyvjNPmP1XG3BZ2njZ6UI34p4sPG57TZyvg0ENvo+Mmk\nm1F2Xlrz4lLr33LrDrrx99l6\n-----END PRIVATE KEY-----\n"
+};
+
+/** 1. إنشاء الجداول النظيفة (شغل هذه أولاً) */
+function initializeSystem() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var log = ss.getSheetByName("Log") || ss.insertSheet("Log");
+  log.clear().appendRow(["الوقت", "المعرف الوظيفي", "الموقع", "النبض", "الأكسجين", "الحرارة", "البطارية", "الحالة", "Token"]);
+
+  var ctrl = ss.getSheetByName("Control") || ss.insertSheet("Control");
+  ctrl.clear().appendRow(["المعرف الوظيفي", "الأمر", "الحالة (SOS/PENDING)", "الرسالة"]);
+  ctrl.getRange(1,1,1,4).setBackground("#7C3AED").setFontColor("white");
+
+  SpreadsheetApp.getUi().alert("✅ تم التجهيز! اتبع خطوة الـ Trigger الآن.");
+}
+
+/** 2. استقبال البيانات من الساعة */
+function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Log");
+  log.appendRow([new Date(), data.emp_id, (data.lat+","+data.lng), data.heart_rate, data.spo2+"%", data.body_temp.toFixed(1), data.battery+"%", data.status, data.fcm_token]);
+  return ContentService.createTextOutput("OK");
+}
+
+/** 3. الإرسال اللحظي عند الكتابة (onEditTrigger) */
+function onEditTrigger(e) {
+  var sheet = e.source.getActiveSheet();
+  var range = e.range;
+
+  if (sheet.getName() === "Control" && range.getColumn() === 3) {
+    var status = range.getValue().toString().toUpperCase().trim();
+    if (status === "SOS" || status === "PENDING") {
+      var row = range.getRow();
+      var empId = sheet.getRange(row, 1).getValue().toString().trim();
+      var cmd = (status === "SOS") ? "SOS" : sheet.getRange(row, 2).getValue().toString().trim();
+      var msg = sheet.getRange(row, 4).getValue().toString() || "تنبيه إداري";
+
+      var token = getLastToken(empId);
+      if (token) {
+        sendPush(token, cmd, msg);
+        sheet.getRange(row, 3).setValue("SENT ✅");
+      } else {
+        sheet.getRange(row, 3).setValue("ERR: NO TOKEN");
+      }
+    }
+  }
+}
+
+/** دالة البحث عن عنوان الساعة */
+function getLastToken(id) {
+  var rows = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Log").getDataRange().getValues();
+  for (var i = rows.length - 1; i >= 1; i--) {
+    if (rows[i][1].toString().trim().toUpperCase() === id.toUpperCase() && rows[i][8]) return rows[i][8];
+  }
+  return null;
+}
+
+/** محرك الإرسال الفوري */
+function sendPush(t, c, m) {
+  const acc = getAcc();
+  const url = `https://fcm.googleapis.com/v1/projects/${SERVICE_ACCOUNT.project_id}/messages:send`;
+  const pay = { "message": { "token": t, "data": { "command": c, "message": m } } };
+  UrlFetchApp.fetch(url, { "method": "post", "contentType": "application/json", "headers": { "Authorization": "Bearer " + acc }, "payload": JSON.stringify(pay) });
+}
+
+function getAcc() {
+  const h = Utilities.base64EncodeWebSafe(JSON.stringify({ "alg": "RS256", "typ": "JWT" }));
+  const n = Math.floor(Date.now() / 1000);
+  const c = Utilities.base64EncodeWebSafe(JSON.stringify({ "iss": SERVICE_ACCOUNT.client_email, "scope": "https://www.googleapis.com/auth/firebase.messaging", "aud": "https://oauth2.googleapis.com/token", "exp": n + 3600, "iat": n }));
+  const s = Utilities.base64EncodeWebSafe(Utilities.computeRsaSha256Signature(h + "." + c, SERVICE_ACCOUNT.private_key));
+  return JSON.parse(UrlFetchApp.fetch("https://oauth2.googleapis.com/token", { "method": "post", "payload": { "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": h + "." + c + "." + s } }).getContentText()).access_token;
+}
+
+// ============================================================
+// الإضافات التالية فقط جديدة بالكامل — ولا تُعدّل أي سطر مما فوق.
+// أُضيفت لأن السكربت الأصلي لا يحتوي على doGet إطلاقاً، فتعذّر على
+// لوحة التحكم قراءة أي بيانات منه رغم عمل doPost وonEditTrigger بشكل طبيعي.
+// ============================================================
+
+/** 4. قراءة البيانات لعرضها في لوحة التحكم (GET) */
+function doGet(e) {
+  try {
+    var timestamp = new Date();
+    var action = e.parameter.action;
+    var empId = e.parameter.emp_id;
+
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Log");
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify([]))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === "resolve" && empId) {
+      closeOpenIncident_(empId.toString(), timestamp, (e.parameter.resolved_by || "").toString());
+      return handleResolveLog(sheet, empId.toString(), timestamp);
+    }
+
+    if (action === "send_message" && empId) {
+      return handleSendMessageFromDashboard(empId.toString(), e.parameter.command, e.parameter.message);
+    }
+
+    if (action === "update_employee" && empId) {
+      return handleUpdateEmployeeFromDashboard(empId.toString(), e.parameter);
+    }
+
+    if (action === "incidents") {
+      return handleGetIncidents(empId ? empId.toString() : null);
+    }
+
+    var rows = sheet.getDataRange().getValues();
+    if (rows.length <= 1) {
+      return ContentService.createTextOutput(JSON.stringify([]))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // بناء خريطة بيانات الموظف والملف الصحي من شيت "Employees" (إن وُجد) مرة واحدة فقط
+    // بدل قراءته داخل كل تكرار من الحلقة أدناه.
+    var employeesMap = buildEmployeesMap_();
+
+    var latestByEmp = {};
+    for (var i = rows.length - 1; i >= 1; i--) {
+      var row = rows[i];
+      var id = (row[1] || "").toString().trim();
+      if (!id || latestByEmp[id]) continue;
+
+      var locationParts = (row[2] || "").toString().split(",");
+      var lat = parseFloat(locationParts[0]);
+      var lng = parseFloat(locationParts[1]);
+
+      var empInfo = employeesMap[id.toUpperCase()] || null;
+
+      latestByEmp[id] = {
+        timestamp: (row[0] instanceof Date) ? row[0].toISOString() : row[0].toString(),
+        emp_id: id,
+        emp_name: (empInfo && empInfo.full_name) ? empInfo.full_name : ("موظف #" + id),
+        lat: isNaN(lat) ? 24.7136 : lat,
+        lng: isNaN(lng) ? 46.6753 : lng,
+        heart_rate: parseInt(row[3]) || 0,
+        spo2: (row[4] || "98%").toString(),
+        temperature: (row[5] !== undefined && row[5] !== "") ? (row[5].toString() + "°C") : "37.0°C",
+        battery: (row[6] || "100%").toString(),
+        status: (row[7] || "NORMAL").toString().toUpperCase(),
+        fcm_token: (row[8] || "").toString(),
+        // بيانات الملف الصحي - من شيت "Employees"
+        blood_type: empInfo ? empInfo.blood_type : "",
+        chronic_conditions: empInfo ? empInfo.chronic_conditions : "",
+        allergies: empInfo ? empInfo.allergies : "",
+        medications: empInfo ? empInfo.medications : "",
+        emergency_contact_name: empInfo ? empInfo.emergency_contact_name : "",
+        emergency_contact_phone: empInfo ? empInfo.emergency_contact_phone : "",
+        health_notes: empInfo ? empInfo.notes : "",
+        health_updated_at: empInfo ? empInfo.updated_at : ""
+      };
+
+      if (latestByEmp[id].status === "SOS") {
+        ensureOpenIncident_(id, latestByEmp[id].emp_name, (row[0] instanceof Date) ? row[0] : new Date(row[0]));
+      }
+    }
+
+    var data = Object.keys(latestByEmp).map(function (id) { return latestByEmp[id]; });
+
+    return ContentService.createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/** 5. إنهاء حالة الطوارئ من زر لوحة التحكم (يضيف سطر NORMAL جديد بنفس آخر بيانات معروفة) */
+function handleResolveLog(sheet, empId, timestamp) {
+  var cleanId = empId.toString().trim();
+
+  var lastLat = 24.7136, lastLng = 46.6753, lastHr = 75, lastSpo2 = "98%", lastTemp = "36.6", lastBattery = "100%", lastToken = "";
+
+  var rows = sheet.getDataRange().getValues();
+  for (var i = rows.length - 1; i >= 1; i--) {
+    var row = rows[i];
+    if ((row[1] || "").toString().trim() !== cleanId) continue;
+
+    var parts = (row[2] || "").toString().split(",");
+    if (parts.length === 2) {
+      var la = parseFloat(parts[0]), ln = parseFloat(parts[1]);
+      if (!isNaN(la) && !isNaN(ln)) { lastLat = la; lastLng = ln; }
+    }
+    if (row[3]) lastHr = row[3];
+    if (row[4]) lastSpo2 = row[4];
+    if (row[5] !== undefined && row[5] !== "") lastTemp = row[5];
+    if (row[6]) lastBattery = row[6];
+    if (row[8]) lastToken = row[8];
+    break;
+  }
+
+  sheet.appendRow([timestamp, cleanId, lastLat + "," + lastLng, lastHr, lastSpo2, lastTemp, lastBattery, "NORMAL", lastToken]);
+
+  return ContentService.createTextOutput(JSON.stringify({ "result": "success", "message": "تم إنهاء حالة الطوارئ لـ " + cleanId }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/** 6. إرسال رسالة/أمر لجهاز الموظف من زر لوحة التحكم — يعيد استخدام getLastToken وsendPush الأصليتين كما هما */
+function handleSendMessageFromDashboard(empId, command, message) {
+  var cleanId = empId.toString().trim();
+  var token = getLastToken(cleanId);
+
+  if (!token) {
+    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": "لا يوجد توكن جهاز مسجل بعد لهذا الموظف" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  try {
+    sendPush(token, (command || "ALERT").toString().toUpperCase(), (message || "").toString());
+    return ContentService.createTextOutput(JSON.stringify({ "result": "success", "message": "تم إرسال الرسالة بنجاح" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ============================================================
+// الإضافات التالية جديدة بالكامل: شيت بيانات الموظف والملف الصحي
+// لا تمسّ أي دالة مما فوق (فقط doGet تم تعديله لإضافة سطر lookup
+// ودمج بيانات هذا الشيت الجديد ضمن كل موظف).
+// ============================================================
+
+var EMPLOYEES_SHEET_NAME_ = "Employees";
+var EMPLOYEES_HEADERS_ = [
+  "المعرف الوظيفي",
+  "الاسم الكامل",
+  "فصيلة الدم",
+  "الحالات المرضية المزمنة",
+  "الحساسية",
+  "الأدوية الحالية",
+  "جهة اتصال الطوارئ - الاسم",
+  "جهة اتصال الطوارئ - الجوال",
+  "ملاحظات صحية إضافية",
+  "آخر تحديث"
+];
+
+/**
+ * يعيد شيت "Employees"، وينشئه بالترويسة الصحيحة إن لم يكن موجوداً.
+ * ملاحظة: هذه الدالة تُستدعى أيضاً من doGet (بدون واجهة مستخدم)،
+ * لذلك لا تستخدم SpreadsheetApp.getUi() هنا إطلاقاً.
+ */
+function getOrCreateEmployeesSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(EMPLOYEES_SHEET_NAME_);
+  if (!sheet) {
+    sheet = ss.insertSheet(EMPLOYEES_SHEET_NAME_);
+    sheet.appendRow(EMPLOYEES_HEADERS_);
+    sheet.getRange(1, 1, 1, EMPLOYEES_HEADERS_.length).setBackground("#7C3AED").setFontColor("white").setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * شغّل هذه الدالة يدوياً من محرر Apps Script (مرة واحدة) لإنشاء شيت
+ * "Employees" وإظهار رسالة تأكيد. لا تُستدعى من doGet أو doPost.
+ */
+function setupEmployeesSheetManually() {
+  getOrCreateEmployeesSheet_();
+  SpreadsheetApp.getUi().alert("✅ تم إنشاء/التحقق من شيت \"Employees\" لبيانات الموظف والملف الصحي.");
+}
+
+/**
+ * يقرأ شيت Employees كامل مرة واحدة ويرجعه ككائن مفهرس بالمعرف الوظيفي
+ * (بأحرف كبيرة موحّدة) لتسريع الدمج داخل doGet بدل البحث صفاً صفاً.
+ */
+function buildEmployeesMap_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(EMPLOYEES_SHEET_NAME_);
+  var map = {};
+  if (!sheet) return map;
+
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    var id = (r[0] || "").toString().trim();
+    if (!id) continue;
+    map[id.toUpperCase()] = {
+      full_name: (r[1] || "").toString(),
+      blood_type: (r[2] || "").toString(),
+      chronic_conditions: (r[3] || "").toString(),
+      allergies: (r[4] || "").toString(),
+      medications: (r[5] || "").toString(),
+      emergency_contact_name: (r[6] || "").toString(),
+      emergency_contact_phone: (r[7] || "").toString(),
+      notes: (r[8] || "").toString(),
+      updated_at: (r[9] instanceof Date) ? r[9].toISOString() : (r[9] || "").toString()
+    };
+  }
+  return map;
+}
+
+/**
+ * 7. حفظ/تحديث بيانات الموظف والملف الصحي من نموذج لوحة التحكم
+ * (يُستدعى من doGet عبر action=update_employee). يبحث عن صف الموظف
+ * بمعرفه الوظيفي؛ يحدّثه إن وُجد أو يضيف صفاً جديداً إن لم يوجد.
+ */
+function handleUpdateEmployeeFromDashboard(empId, params) {
+  try {
+    var sheet = getOrCreateEmployeesSheet_();
+    var cleanId = empId.toString().trim();
+
+    var rows = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < rows.length; i++) {
+      if ((rows[i][0] || "").toString().trim().toUpperCase() === cleanId.toUpperCase()) { rowIndex = i + 1; break; }
+    }
+
+    var record = [
+      cleanId,
+      (params.emp_name || "").toString(),
+      (params.blood_type || "").toString(),
+      (params.chronic_conditions || "").toString(),
+      (params.allergies || "").toString(),
+      (params.medications || "").toString(),
+      (params.emergency_contact_name || "").toString(),
+      (params.emergency_contact_phone || "").toString(),
+      (params.notes || "").toString(),
+      new Date()
+    ];
+
+    if (rowIndex > 0) {
+      sheet.getRange(rowIndex, 1, 1, record.length).setValues([record]);
+    } else {
+      sheet.appendRow(record);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ "result": "success", "message": "تم حفظ بيانات الموظف والملف الصحي بنجاح" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ============================================================
+// الإضافات التالية جديدة بالكامل: سجل دائم لحوادث الاستغاثة (Incidents)
+// لا تمسّ أي دالة مما فوق. الهدف: أرشفة كل حادثة SOS بشيت دائم بدل
+// الاعتماد على activityLog المؤقت بالمتصفح فقط (يضيع عند تحديث الصفحة)،
+// لأجل تقارير سلامة حقيقية (عدد الحوادث، متوسط زمن الاستجابة، من أغلقها).
+// ============================================================
+
+var INCIDENTS_SHEET_NAME_ = "Incidents";
+var INCIDENTS_HEADERS_ = [
+  "معرف الحادثة",
+  "المعرف الوظيفي",
+  "اسم الموظف",
+  "وقت البدء",
+  "وقت الحل",
+  "المدة (دقيقة)",
+  "تم الحل بواسطة",
+  "الحالة"
+];
+
+/**
+ * يعيد شيت "Incidents"، وينشئه بالترويسة الصحيحة إن لم يكن موجوداً.
+ * تُستدعى أيضاً من doGet (بدون واجهة مستخدم) لذلك لا تستخدم
+ * SpreadsheetApp.getUi() هنا إطلاقاً.
+ */
+function getOrCreateIncidentsSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(INCIDENTS_SHEET_NAME_);
+  if (!sheet) {
+    sheet = ss.insertSheet(INCIDENTS_SHEET_NAME_);
+    sheet.appendRow(INCIDENTS_HEADERS_);
+    sheet.getRange(1, 1, 1, INCIDENTS_HEADERS_.length).setBackground("#7C3AED").setFontColor("white").setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * شغّل هذه الدالة يدوياً من محرر Apps Script (مرة واحدة) لإنشاء شيت
+ * "Incidents" وإظهار رسالة تأكيد. لا تُستدعى من doGet أو doPost.
+ */
+function setupIncidentsSheetManually() {
+  getOrCreateIncidentsSheet_();
+  SpreadsheetApp.getUi().alert("✅ تم إنشاء/التحقق من شيت \"Incidents\" لسجل حوادث الطوارئ.");
+}
+
+/**
+ * تُستدعى من doGet لكل موظف حالته SOS حالياً. تفتح حادثة جديدة فقط إن لم
+ * توجد حادثة مفتوحة (OPEN) لنفس الموظف بعد — بهذا تبقى آمنة للاستدعاء
+ * المتكرر من كل طلب doGet (كل 15 ثانية من كل جهاز يفتح اللوحة) دون تكرار.
+ */
+function ensureOpenIncident_(empId, empName, startTimestamp) {
+  var sheet = getOrCreateIncidentsSheet_();
+  var cleanId = empId.toString().trim();
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var rowEmpId = (rows[i][1] || "").toString().trim();
+    if (rowEmpId.toUpperCase() === cleanId.toUpperCase() && rows[i][7] === "OPEN") return;
+  }
+  var incidentId = Utilities.getUuid();
+  sheet.appendRow([incidentId, cleanId, empName || "", startTimestamp, "", "", "", "OPEN"]);
+}
+
+/**
+ * تُستدعى من فرع action=resolve بـ doGet لإغلاق الحادثة المفتوحة المطابقة
+ * وحساب مدتها بالدقائق وتسجيل اسم من أغلقها (اختياري من لوحة التحكم).
+ */
+function closeOpenIncident_(empId, endTimestamp, resolvedBy) {
+  var sheet = getOrCreateIncidentsSheet_();
+  var cleanId = empId.toString().trim();
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var rowEmpId = (rows[i][1] || "").toString().trim();
+    if (rowEmpId.toUpperCase() === cleanId.toUpperCase() && rows[i][7] === "OPEN") {
+      var startValue = rows[i][3];
+      var startDate = (startValue instanceof Date) ? startValue : new Date(startValue);
+      var durationMin = "";
+      if (!isNaN(startDate.getTime())) {
+        durationMin = Math.max(0, Math.round((endTimestamp.getTime() - startDate.getTime()) / 60000));
+      }
+      sheet.getRange(i + 1, 5, 1, 4).setValues([[endTimestamp, durationMin, resolvedBy || "", "RESOLVED"]]);
+      return;
+    }
+  }
+}
+
+/**
+ * 8. إرجاع سجل الحوادث (كامل أو لموظف واحد إن مرّرت emp_id) للوحة التحكم.
+ */
+function handleGetIncidents(empId) {
+  try {
+    var sheet = getOrCreateIncidentsSheet_();
+    var rows = sheet.getDataRange().getValues();
+    var list = [];
+    for (var i = rows.length - 1; i >= 1; i--) {
+      var r = rows[i];
+      var rowEmpId = (r[1] || "").toString().trim();
+      if (empId && rowEmpId.toUpperCase() !== empId.toUpperCase()) continue;
+      list.push({
+        incident_id: r[0],
+        emp_id: rowEmpId,
+        emp_name: r[2],
+        start_time: (r[3] instanceof Date) ? r[3].toISOString() : (r[3] || "").toString(),
+        end_time: (r[4] instanceof Date) ? r[4].toISOString() : (r[4] || "").toString(),
+        duration_minutes: r[5],
+        resolved_by: r[6],
+        status: r[7]
+      });
+      if (list.length >= 50) break;
+    }
+    return ContentService.createTextOutput(JSON.stringify({ "result": "success", "incidents": list }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
